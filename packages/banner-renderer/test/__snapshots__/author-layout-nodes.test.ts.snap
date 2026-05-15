@@ -1,0 +1,86 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`buildAuthorBannerNodes builds stable Spigot author nodes 1`] = `
+[
+  {
+    "assetKey": "MOONLIGHT_PURPLE",
+    "height": 100,
+    "type": "image",
+    "width": 300,
+    "x": 0,
+    "y": 0,
+  },
+  {
+    "assetKey": "DEFAULT_AUTHOR_LOGO",
+    "height": 80,
+    "type": "sprite",
+    "width": 80,
+    "x": 12,
+    "y": 10,
+  },
+  {
+    "align": "left",
+    "color": {
+      "a": 255,
+      "b": 224,
+      "g": 224,
+      "r": 230,
+    },
+    "content": "md_5",
+    "fontFace": "source-sans-pro",
+    "fontSize": 18,
+    "fontWeight": "bold",
+    "type": "text",
+    "x": 104,
+    "y": 22,
+  },
+  {
+    "align": "left",
+    "color": {
+      "a": 255,
+      "b": 224,
+      "g": 224,
+      "r": 230,
+    },
+    "content": "42 resources",
+    "fontFace": "source-sans-pro",
+    "fontSize": 14,
+    "fontWeight": "regular",
+    "type": "text",
+    "x": 104,
+    "y": 38,
+  },
+  {
+    "align": "left",
+    "color": {
+      "a": 255,
+      "b": 224,
+      "g": 224,
+      "r": 230,
+    },
+    "content": "1.2M downloads",
+    "fontFace": "source-sans-pro",
+    "fontSize": 14,
+    "fontWeight": "regular",
+    "type": "text",
+    "x": 104,
+    "y": 72,
+  },
+  {
+    "align": "left",
+    "color": {
+      "a": 255,
+      "b": 224,
+      "g": 224,
+      "r": 230,
+    },
+    "content": "320 reviews",
+    "fontFace": "source-sans-pro",
+    "fontSize": 14,
+    "fontWeight": "regular",
+    "type": "text",
+    "x": 104,
+    "y": 89,
+  },
+]
+`;

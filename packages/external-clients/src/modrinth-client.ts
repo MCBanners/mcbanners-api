@@ -1,6 +1,6 @@
 import { z } from "zod";
-import type { ResourceBannerData } from "@mcbanners/banner-renderer";
-import type { ResourceClient } from "./resource-client";
+import type { AuthorBannerData, ResourceBannerData } from "@mcbanners/banner-renderer";
+import type { AuthorClient, ResourceClient } from "./resource-client";
 import { fetchJson, fetchImageBase64, type FetchFn, type HttpClientOptions } from "./http-client";
 import { normalizeResourceId } from "./resource-id";
 
@@ -29,7 +29,9 @@ const ModrinthMemberSchema = z.object({
 
 const ModrinthMembersSchema = z.array(ModrinthMemberSchema);
 
-export class ModrinthResourceClient implements ResourceClient {
+const ModrinthProjectsSchema = z.array(ModrinthProjectSchema);
+
+export class ModrinthResourceClient implements ResourceClient, AuthorClient {
   constructor(
     private readonly options: HttpClientOptions = {},
     private readonly fetchFn: FetchFn = fetch
@@ -70,6 +72,48 @@ export class ModrinthResourceClient implements ResourceClient {
         price: null
       },
       author: { name: authorName },
+      backend: "MODRINTH"
+    };
+  }
+
+  async getAuthorBannerData(id: string): Promise<AuthorBannerData | null> {
+    const username = normalizeResourceId("MODRINTH", id);
+    const user = await fetchJson(
+      `${MODRINTH_BASE_URL}/user/${encodeURIComponent(username)}`,
+      ModrinthMemberSchema.shape.user,
+      this.options,
+      this.fetchFn
+    );
+    if (user === null) return null;
+
+    const projects = await fetchJson(
+      `${MODRINTH_BASE_URL}/user/${encodeURIComponent(username)}/projects`,
+      ModrinthProjectsSchema,
+      this.options,
+      this.fetchFn
+    );
+    if (projects === null) return null;
+
+    const logoBase64 = user.avatar_url
+      ? await fetchImageBase64(user.avatar_url, this.options, this.fetchFn)
+      : null;
+    const totals = projects.reduce(
+      (acc, project) => ({
+        downloads: acc.downloads + project.downloads,
+        followers: acc.followers + project.followers
+      }),
+      { downloads: 0, followers: 0 }
+    );
+
+    return {
+      author: {
+        name: user.username,
+        resourceCount: projects.length,
+        logoBase64,
+        downloadCount: totals.downloads,
+        likes: totals.followers,
+        reviews: null
+      },
       backend: "MODRINTH"
     };
   }

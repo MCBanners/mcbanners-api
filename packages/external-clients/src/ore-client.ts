@@ -1,6 +1,6 @@
 import { z } from "zod";
-import type { ResourceBannerData } from "@mcbanners/banner-renderer";
-import type { ResourceClient } from "./resource-client";
+import type { AuthorBannerData, ResourceBannerData } from "@mcbanners/banner-renderer";
+import type { AuthorClient, ResourceClient } from "./resource-client";
 import { fetchJson, fetchImageBase64, type FetchFn, type HttpClientOptions } from "./http-client";
 import { normalizeResourceId } from "./resource-id";
 
@@ -29,6 +29,10 @@ const OreProjectSchema = z.object({
   icon_url: z.string().default("")
 });
 
+const OreAuthorProjectsSchema = z.object({
+  result: z.array(OreProjectSchema).default([])
+});
+
 /**
  * Ore (SpongePowered) resource client.
  *
@@ -42,7 +46,7 @@ const OreProjectSchema = z.object({
  * - lastUpdated = null  (Java OreResourceService explicitly passes null even though the field is available)
  * - logo = project.icon_url  (Java: getBase64Image(oreResource.iconUrl()))
  */
-export class OreResourceClient implements ResourceClient {
+export class OreResourceClient implements ResourceClient, AuthorClient {
   private session: { token: string; expiresAt: number } | null = null;
 
   constructor(
@@ -79,6 +83,45 @@ export class OreResourceClient implements ResourceClient {
         price: null
       },
       author: { name: project.namespace.owner },
+      backend: "ORE"
+    };
+  }
+
+  async getAuthorBannerData(id: string): Promise<AuthorBannerData | null> {
+    const token = await this.ensureSession();
+    if (token === null) return null;
+
+    const authorId = normalizeResourceId("ORE", id);
+    const data = await fetchJson(
+      `${ORE_BASE_URL}/projects?owner=${encodeURIComponent(authorId)}`,
+      OreAuthorProjectsSchema,
+      this.options,
+      this.makeAuthFetchFn(token)
+    );
+    if (data === null || data.result.length === 0) return null;
+
+    const totals = data.result.reduce(
+      (acc, project) => ({
+        downloads: acc.downloads + project.stats.downloads,
+        stars: acc.stars + project.stats.stars
+      }),
+      { downloads: 0, stars: 0 }
+    );
+    const logoBase64 = await fetchImageBase64(
+      `https://auth.spongepowered.org/avatar/${encodeURIComponent(authorId)}?size=120x120`,
+      this.options,
+      this.fetchFn
+    );
+
+    return {
+      author: {
+        name: data.result[0]?.namespace.owner ?? authorId,
+        resourceCount: data.result.length,
+        logoBase64,
+        downloadCount: totals.downloads,
+        likes: totals.stars,
+        reviews: null
+      },
       backend: "ORE"
     };
   }

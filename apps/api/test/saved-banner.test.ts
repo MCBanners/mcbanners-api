@@ -14,6 +14,7 @@ import {
   type SavedBannerRepository,
   type SavedBannerRow
 } from "@mcbanners/db";
+import type { AuthorBannerData } from "@mcbanners/banner-renderer";
 
 beforeAll(() => {
   registerRendererFonts();
@@ -48,10 +49,30 @@ const FIXTURE_MODRINTH_RESOURCE: ResourceBannerData = {
   backend: "MODRINTH"
 };
 
+const FIXTURE_SPIGOT_AUTHOR: AuthorBannerData = {
+  author: {
+    name: "md_5",
+    resourceCount: 42,
+    logoBase64: null,
+    downloadCount: 1_250_000,
+    likes: null,
+    reviews: 320
+  },
+  backend: "SPIGOT"
+};
+
 class FixtureResourceClient {
   constructor(private readonly data: ResourceBannerData | null) {}
 
   getResourceBannerData(): Promise<ResourceBannerData | null> {
+    return Promise.resolve(this.data);
+  }
+}
+
+class FixtureAuthorClient {
+  constructor(private readonly data: AuthorBannerData | null) {}
+
+  getAuthorBannerData(): Promise<AuthorBannerData | null> {
     return Promise.resolve(this.data);
   }
 }
@@ -100,8 +121,16 @@ const makeSavedApp = (
     SPIGOT: new FixtureResourceClient(FIXTURE_SPIGOT_RESOURCE),
     MODRINTH: new FixtureResourceClient(FIXTURE_MODRINTH_RESOURCE)
   },
-  minecraftAdapter: MinecraftStatusAdapter = createFixtureAdapter(MC_STATUS_FIXTURES)
-) => createApp(minecraftAdapter, resourceClients, undefined, { savedBanners: repository });
+  minecraftAdapter: MinecraftStatusAdapter = createFixtureAdapter(MC_STATUS_FIXTURES),
+  authorClients = { SPIGOT: new FixtureAuthorClient(FIXTURE_SPIGOT_AUTHOR) }
+) =>
+  createApp(
+    minecraftAdapter,
+    resourceClients,
+    undefined,
+    { savedBanners: repository },
+    authorClients
+  );
 
 const savedRow = (
   overrides: Partial<SavedBannerRow> & Pick<SavedBannerRow, "mnemonic">
@@ -308,6 +337,20 @@ describe("GET /banner/saved/:mnemonic.:outputType", () => {
     expect(res.headers.get("Content-Type")).toBe("image/jpeg");
   });
 
+  it("recalls a Spigot author saved banner", async () => {
+    const repository = new InMemorySavedBannerRepository([
+      savedRow({
+        mnemonic: "abcdefghijklmn",
+        type: 2,
+        metadata: '{"author_id":"1"}'
+      })
+    ]);
+    const res = await makeSavedApp(repository).request("/banner/saved/abcdefghijklmn.png");
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toBe("image/png");
+  });
+
   it("returns 400 for unsupported output format", async () => {
     const repository = new InMemorySavedBannerRepository([
       savedRow({ mnemonic: "abcdefghijklmn" })
@@ -321,14 +364,14 @@ describe("GET /banner/saved/:mnemonic.:outputType", () => {
     const repository = new InMemorySavedBannerRepository([
       savedRow({
         mnemonic: "abcdefghijklmn",
-        type: 2,
-        metadata: '{"author_id":"1"}'
+        type: 17,
+        metadata: '{"user_id":"1"}'
       })
     ]);
     const res = await makeSavedApp(repository).request("/banner/saved/abcdefghijklmn.png");
     const body = (await res.json()) as { error: string };
 
     expect(res.status).toBe(501);
-    expect(body.error).toContain("SPIGOT_AUTHOR");
+    expect(body.error).toContain("DISCORD_USER");
   });
 });

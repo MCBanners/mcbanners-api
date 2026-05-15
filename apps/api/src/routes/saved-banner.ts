@@ -3,12 +3,16 @@ import { Hono, type Context } from "hono";
 import {
   buildResourceBannerNodes,
   buildServerBannerNodes,
+  buildAuthorBannerNodes,
   createCanvasSurface,
   encodeJpg,
   encodePng,
   mapStatusToServerBannerData,
+  parseAuthorBannerSettings,
   parseResourceBannerSettings,
   parseServerBannerSettings,
+  AUTHOR_BANNER_HEIGHT,
+  AUTHOR_BANNER_WIDTH,
   registerRendererFonts,
   renderNode,
   RESOURCE_BANNER_HEIGHT,
@@ -16,7 +20,7 @@ import {
   SERVER_BANNER_HEIGHT,
   SERVER_BANNER_WIDTH
 } from "@mcbanners/banner-renderer";
-import type { ResourceClient } from "@mcbanners/external-clients";
+import type { AuthorClient, ResourceClient } from "@mcbanners/external-clients";
 import type { MinecraftStatusAdapter } from "@mcbanners/minecraft-status";
 import {
   decodeBannerTypeOrdinal,
@@ -29,6 +33,7 @@ import {
 import { bannerTypeSchema, type BannerType, type ServiceBackend } from "@mcbanners/domain";
 
 import type { ResourceClients } from "./resource-banner";
+import type { AuthorClients } from "./author-banner";
 
 const SAVED_BANNER_FILENAME_RE = /^([A-Za-z]{14})\.(png|jpg)$/i;
 
@@ -153,10 +158,32 @@ const backendForResourceBannerType = (bannerType: BannerType): ServiceBackend | 
   }
 };
 
+const backendForAuthorBannerType = (bannerType: BannerType): ServiceBackend | null => {
+  switch (bannerType) {
+    case "SPIGOT_AUTHOR":
+      return "SPIGOT";
+    case "MODRINTH_AUTHOR":
+      return "MODRINTH";
+    case "CURSEFORGE_AUTHOR":
+      return "CURSEFORGE";
+    case "HANGAR_AUTHOR":
+      return "HANGAR";
+    case "SPONGE_AUTHOR":
+      return "ORE";
+    case "BUILTBYBIT_AUTHOR":
+      return "BUILTBYBIT";
+    case "POLYMART_AUTHOR":
+      return "POLYMART";
+    default:
+      return null;
+  }
+};
+
 export class SavedBannerRecallService {
   constructor(
     private readonly minecraftAdapter: MinecraftStatusAdapter,
-    private readonly resourceClients: ResourceClients
+    private readonly resourceClients: ResourceClients,
+    private readonly authorClients: AuthorClients
   ) {}
 
   async render(row: SavedBannerRow, outputType: SavedBannerOutputType): Promise<Buffer | null> {
@@ -179,6 +206,11 @@ export class SavedBannerRecallService {
     const backend = backendForResourceBannerType(bannerType);
     if (backend !== null) {
       return await this.renderResource(backend, metadata, settings, outputType);
+    }
+
+    const authorBackend = backendForAuthorBannerType(bannerType);
+    if (authorBackend !== null) {
+      return await this.renderAuthor(authorBackend, metadata, settings, outputType);
     }
 
     throw new UnsupportedSavedBannerTypeError(bannerType);
@@ -243,15 +275,47 @@ export class SavedBannerRecallService {
 
     return await encodeSurface(surface, outputType);
   }
+
+  private async renderAuthor(
+    backend: ServiceBackend,
+    metadata: SavedBannerJsonMap,
+    settings: SavedBannerJsonMap,
+    outputType: SavedBannerOutputType
+  ): Promise<Buffer | null> {
+    const authorId = metadata["author_id"];
+    if (authorId === undefined || authorId === "") {
+      throw new SavedBannerDataError("Saved author banner is missing author_id");
+    }
+
+    const client: AuthorClient | undefined = this.authorClients[backend];
+    if (client === undefined) {
+      return null;
+    }
+
+    const data = await client.getAuthorBannerData(authorId);
+    if (data === null) {
+      return null;
+    }
+
+    ensureFonts();
+    const nodes = buildAuthorBannerNodes(data, parseAuthorBannerSettings(settings));
+    const surface = createCanvasSurface(AUTHOR_BANNER_WIDTH, AUTHOR_BANNER_HEIGHT);
+    for (const node of nodes) {
+      await renderNode(surface, node);
+    }
+
+    return await encodeSurface(surface, outputType);
+  }
 }
 
 export const createSavedBannerRoute = (
   repository: SavedBannerRepository,
   minecraftAdapter: MinecraftStatusAdapter,
-  resourceClients: ResourceClients
+  resourceClients: ResourceClients,
+  authorClients: AuthorClients = {}
 ): Hono => {
   const route = new Hono();
-  const recall = new SavedBannerRecallService(minecraftAdapter, resourceClients);
+  const recall = new SavedBannerRecallService(minecraftAdapter, resourceClients, authorClients);
 
   route.post("/save", async (c) => {
     let body: unknown;

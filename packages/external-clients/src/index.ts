@@ -1,4 +1,4 @@
-export type { ResourceClient } from "./resource-client";
+export type { AuthorClient, ResourceClient } from "./resource-client";
 export { SpigotResourceClient } from "./spigot-client";
 export { ModrinthResourceClient } from "./modrinth-client";
 export { CurseForgeResourceClient } from "./curseforge-client";

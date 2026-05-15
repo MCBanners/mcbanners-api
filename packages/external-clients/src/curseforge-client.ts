@@ -1,6 +1,6 @@
 import { z } from "zod";
-import type { ResourceBannerData } from "@mcbanners/banner-renderer";
-import type { ResourceClient } from "./resource-client";
+import type { AuthorBannerData, ResourceBannerData } from "@mcbanners/banner-renderer";
+import type { AuthorClient, ResourceClient } from "./resource-client";
 import { fetchJson, fetchImageBase64, type FetchFn, type HttpClientOptions } from "./http-client";
 import { normalizeResourceId } from "./resource-id";
 
@@ -35,7 +35,13 @@ const CfWidgetResourceSchema = z.object({
   members: z.array(CfWidgetMemberSchema).default([])
 });
 
-export class CurseForgeResourceClient implements ResourceClient {
+const CfWidgetAuthorSchema = z.object({
+  id: z.number(),
+  username: z.string(),
+  projects: z.array(z.object({ id: z.number(), name: z.string().optional() })).default([])
+});
+
+export class CurseForgeResourceClient implements ResourceClient, AuthorClient {
   constructor(
     private readonly options: HttpClientOptions = {},
     private readonly fetchFn: FetchFn = fetch
@@ -73,6 +79,46 @@ export class CurseForgeResourceClient implements ResourceClient {
         price: null
       },
       author: { name: ownerMember.username },
+      backend: "CURSEFORGE"
+    };
+  }
+
+  async getAuthorBannerData(id: string): Promise<AuthorBannerData | null> {
+    const normalizedId = normalizeResourceId("CURSEFORGE", id);
+    const numericId = Number.parseInt(normalizedId, 10);
+    const authorPath = Number.isInteger(numericId)
+      ? `author/${encodeURIComponent(normalizedId)}`
+      : `author/search/${encodeURIComponent(normalizedId)}`;
+    const author = await fetchJson(
+      `${CFWIDGET_BASE_URL}${authorPath}`,
+      CfWidgetAuthorSchema,
+      this.options,
+      this.fetchFn
+    );
+    if (author === null) return null;
+
+    let totalDownloads = 0;
+    for (const project of author.projects) {
+      const resource = await fetchJson(
+        `${CFWIDGET_BASE_URL}${String(project.id)}`,
+        CfWidgetResourceSchema,
+        this.options,
+        this.fetchFn
+      );
+      if (resource !== null) {
+        totalDownloads += resource.downloads.total;
+      }
+    }
+
+    return {
+      author: {
+        name: author.username,
+        resourceCount: author.projects.length,
+        logoBase64: null,
+        downloadCount: totalDownloads,
+        likes: null,
+        reviews: null
+      },
       backend: "CURSEFORGE"
     };
   }

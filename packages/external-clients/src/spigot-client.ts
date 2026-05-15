@@ -1,6 +1,6 @@
 import { z } from "zod";
-import type { ResourceBannerData } from "@mcbanners/banner-renderer";
-import type { ResourceClient } from "./resource-client";
+import type { AuthorBannerData, ResourceBannerData } from "@mcbanners/banner-renderer";
+import type { AuthorClient, ResourceClient } from "./resource-client";
 import { fetchJson, fetchImageBase64, type FetchFn, type HttpClientOptions } from "./http-client";
 import { normalizeResourceId } from "./resource-id";
 
@@ -35,7 +35,17 @@ const SpigotResourceSchema = z.object({
   })
 });
 
-export class SpigotResourceClient implements ResourceClient {
+const SpigotAuthorSchema = z.object({
+  id: z.string(),
+  username: z.string(),
+  resource_count: z.string().default("0"),
+  resourceCount: z.string().default("0"),
+  avatar: z.string().default("")
+});
+
+const SpigotResourceArraySchema = z.array(SpigotResourceSchema);
+
+export class SpigotResourceClient implements ResourceClient, AuthorClient {
   constructor(
     private readonly options: HttpClientOptions = {},
     private readonly fetchFn: FetchFn = fetch
@@ -75,6 +85,48 @@ export class SpigotResourceClient implements ResourceClient {
         price
       },
       author: { name: resource.author.username },
+      backend: "SPIGOT"
+    };
+  }
+
+  async getAuthorBannerData(id: string): Promise<AuthorBannerData | null> {
+    const authorId = normalizeResourceId("SPIGOT", id);
+    const author = await fetchJson(
+      `${SPIGOT_BASE_URL}getAuthor&id=${encodeURIComponent(authorId)}`,
+      SpigotAuthorSchema,
+      this.options,
+      this.fetchFn
+    );
+    if (author === null) return null;
+
+    const resources = await fetchJson(
+      `${SPIGOT_BASE_URL}getResourcesByAuthor&id=${encodeURIComponent(authorId)}&page=1`,
+      SpigotResourceArraySchema,
+      this.options,
+      this.fetchFn
+    );
+    if (resources === null) return null;
+
+    const logoUrl = author.avatar.split("?")[0] ?? "";
+    const logoBase64 = logoUrl ? await fetchImageBase64(logoUrl, this.options, this.fetchFn) : null;
+    const totals = resources.reduce(
+      (acc, resource) => ({
+        downloads: acc.downloads + (parseInt(resource.stats.downloads, 10) || 0),
+        reviews: acc.reviews + (parseInt(resource.stats.reviews.total, 10) || 0)
+      }),
+      { downloads: 0, reviews: 0 }
+    );
+
+    return {
+      author: {
+        name: author.username,
+        resourceCount:
+          parseInt(author.resource_count || author.resourceCount, 10) || resources.length,
+        logoBase64,
+        downloadCount: totals.downloads,
+        likes: null,
+        reviews: totals.reviews
+      },
       backend: "SPIGOT"
     };
   }

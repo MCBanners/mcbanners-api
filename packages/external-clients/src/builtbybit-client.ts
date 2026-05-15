@@ -1,7 +1,7 @@
 import { z } from "zod";
-import type { ResourceBannerData } from "@mcbanners/banner-renderer";
-import type { ResourceClient } from "./resource-client";
-import { fetchJson, type FetchFn, type HttpClientOptions } from "./http-client";
+import type { AuthorBannerData, ResourceBannerData } from "@mcbanners/banner-renderer";
+import type { AuthorClient, ResourceClient } from "./resource-client";
+import { fetchImageBase64, fetchJson, type FetchFn, type HttpClientOptions } from "./http-client";
 import { normalizeResourceId } from "./resource-id";
 
 const BBB_BASE_URL = "https://api.builtbybit.com/v1/";
@@ -39,6 +39,12 @@ const BbbMemberSchema = z.object({
   })
 });
 
+const BbbAuthorResourcesSchema = z.object({
+  data: z.object({
+    resources: z.array(BbbResourceSchema.shape.data).default([])
+  })
+});
+
 export interface BuiltByBitClientOptions extends HttpClientOptions {
   /** BuiltByBit API key. Java: `@Value("${builtbybit.key}")`. */
   apiKey?: string;
@@ -59,7 +65,7 @@ export interface BuiltByBitClientOptions extends HttpClientOptions {
  * - If free: `downloadCount = download_count`, price = null.
  * - Author name comes from the member endpoint (`members/{author_id}`).
  */
-export class BuiltByBitResourceClient implements ResourceClient {
+export class BuiltByBitResourceClient implements ResourceClient, AuthorClient {
   private readonly apiKey: string;
 
   constructor(
@@ -107,6 +113,49 @@ export class BuiltByBitResourceClient implements ResourceClient {
         price: isPremium ? { amount: r.price, currency: r.currency.toUpperCase() } : null
       },
       author: { name: a.username },
+      backend: "BUILTBYBIT"
+    };
+  }
+
+  async getAuthorBannerData(id: string): Promise<AuthorBannerData | null> {
+    const authFetch = this.makeAuthFetchFn();
+    const authorId = normalizeResourceId("BUILTBYBIT", id);
+    const member = await fetchJson(
+      `${BBB_BASE_URL}members/${encodeURIComponent(authorId)}`,
+      BbbMemberSchema,
+      this.options,
+      authFetch
+    );
+    if (member === null) return null;
+
+    const resources = await fetchJson(
+      `${BBB_BASE_URL}resources/authors/${encodeURIComponent(authorId)}`,
+      BbbAuthorResourcesSchema,
+      this.options,
+      authFetch
+    );
+    if (resources === null || resources.data.resources.length === 0) return null;
+
+    const logoBase64 = member.data.avatar_url
+      ? await fetchImageBase64(member.data.avatar_url, this.options, this.fetchFn)
+      : null;
+    const totals = resources.data.resources.reduce(
+      (acc, resource) => ({
+        downloads: acc.downloads + resource.download_count,
+        reviews: acc.reviews + resource.review_count
+      }),
+      { downloads: 0, reviews: 0 }
+    );
+
+    return {
+      author: {
+        name: member.data.username,
+        resourceCount: member.data.resource_count,
+        logoBase64,
+        downloadCount: totals.downloads,
+        likes: null,
+        reviews: totals.reviews
+      },
       backend: "BUILTBYBIT"
     };
   }

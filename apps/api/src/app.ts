@@ -6,6 +6,7 @@ import { CachedMinecraftStatusAdapter } from "./cached-mc-adapter";
 import { createMcServerRoute } from "./routes/mc-server";
 import { createServerBannerRoute } from "./routes/server-banner";
 import { createResourceBannerRoute, type ResourceClients } from "./routes/resource-banner";
+import { createAuthorBannerRoute, type AuthorClients } from "./routes/author-banner";
 import { createSavedBannerRoute, createUnavailableSavedBannerRoute } from "./routes/saved-banner";
 
 /**
@@ -19,9 +20,14 @@ export interface AppCaches {
   bannerImage?: MemoryCache;
   /** In-memory cache for rendered resource banner image Buffers (TTL 60 s). */
   resourceBannerImage?: MemoryCache;
+  /** In-memory cache for author lookup responses (TTL 30 s). */
+  authorData?: MemoryCache;
+  /** In-memory cache for rendered author banner image Buffers (TTL 60 s). */
+  authorBannerImage?: MemoryCache;
 }
 
 export type { ResourceClients };
+export type { AuthorClients };
 
 export interface AppRepositories {
   savedBanners?: SavedBannerRepository | null;
@@ -39,7 +45,8 @@ export const createApp = (
   minecraftAdapter: MinecraftStatusAdapter,
   resourceClients: ResourceClients,
   caches?: AppCaches,
-  repositories?: AppRepositories
+  repositories?: AppRepositories,
+  authorClients?: AuthorClients
 ): Hono => {
   const app = new Hono();
 
@@ -69,12 +76,22 @@ export const createApp = (
     createResourceBannerRoute(resourceClients, caches?.resourceBannerImage)
   );
 
+  app.route(
+    "/banner/author",
+    createAuthorBannerRoute(authorClients ?? {}, caches?.authorData, caches?.authorBannerImage)
+  );
+
   if (repositories?.savedBanners === null) {
     app.route("/banner/saved", createUnavailableSavedBannerRoute());
   } else if (repositories?.savedBanners !== undefined) {
     app.route(
       "/banner/saved",
-      createSavedBannerRoute(repositories.savedBanners, mcAdapter, resourceClients)
+      createSavedBannerRoute(
+        repositories.savedBanners,
+        mcAdapter,
+        resourceClients,
+        authorClients ?? {}
+      )
     );
   }
 

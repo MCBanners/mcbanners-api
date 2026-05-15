@@ -33,6 +33,12 @@ const resourceBannerImageCache = new MemoryCache({
   maxEntries: 200,
   maxBytes: 50_000_000
 });
+const authorDataCache = new MemoryCache({ ttlMs: 30_000, maxEntries: 500 });
+const authorBannerImageCache = new MemoryCache({
+  ttlMs: 60_000,
+  maxEntries: 200,
+  maxBytes: 50_000_000
+});
 
 const resourceClients = {
   SPIGOT: new SpigotResourceClient(),
@@ -78,11 +84,14 @@ const app = createApp(
   {
     mcStatus: mcStatusCache,
     bannerImage: bannerImageCache,
-    resourceBannerImage: resourceBannerImageCache
+    resourceBannerImage: resourceBannerImageCache,
+    authorData: authorDataCache,
+    authorBannerImage: authorBannerImageCache
   },
   {
     savedBanners: savedBannerRepository
-  }
+  },
+  resourceClients
 );
 
 export default app;

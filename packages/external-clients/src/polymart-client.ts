@@ -1,6 +1,6 @@
 import { z } from "zod";
-import type { ResourceBannerData } from "@mcbanners/banner-renderer";
-import type { ResourceClient } from "./resource-client";
+import type { AuthorBannerData, ResourceBannerData } from "@mcbanners/banner-renderer";
+import type { AuthorClient, ResourceClient } from "./resource-client";
 import { fetchJson, fetchImageBase64, type FetchFn, type HttpClientOptions } from "./http-client";
 import { normalizeResourceId } from "./resource-id";
 
@@ -38,6 +38,39 @@ const PolymartResourceSchema = z.object({
   })
 });
 
+const PolymartAuthorSchema = z.object({
+  response: z.object({
+    user: z
+      .object({
+        id: z.number(),
+        username: z.string(),
+        type: z.string().default("user"),
+        profilePictureURL: z.string().nullable().default(null),
+        statistics: z.object({
+          resourceCount: z.number().default(0),
+          resourceDownloads: z.number().default(0),
+          resourceRatings: z.number().default(0),
+          resourceAverageRating: z.number().default(0)
+        })
+      })
+      .optional(),
+    team: z
+      .object({
+        id: z.number(),
+        username: z.string(),
+        type: z.string().default("team"),
+        profilePictureURL: z.string().nullable().default(null),
+        statistics: z.object({
+          resourceCount: z.number().default(0),
+          resourceDownloads: z.number().default(0),
+          resourceRatings: z.number().default(0),
+          resourceAverageRating: z.number().default(0)
+        })
+      })
+      .optional()
+  })
+});
+
 /**
  * Resource banner client for Polymart (polymart.org).
  *
@@ -55,7 +88,7 @@ const PolymartResourceSchema = z.object({
  * - Rating: `{ count: reviews.count, average: reviews.stars }`.
  *   Java: `new RatingInformation(reviewCount, (double) resource.stars())`.
  */
-export class PolymartResourceClient implements ResourceClient {
+export class PolymartResourceClient implements ResourceClient, AuthorClient {
   constructor(
     private readonly options: HttpClientOptions = {},
     private readonly fetchFn: FetchFn = fetch
@@ -90,6 +123,36 @@ export class PolymartResourceClient implements ResourceClient {
         price: isPremium ? { amount: r.price, currency: r.currency.toUpperCase() } : null
       },
       author: { name: r.owner.name },
+      backend: "POLYMART"
+    };
+  }
+
+  async getAuthorBannerData(id: string): Promise<AuthorBannerData | null> {
+    const authorId = normalizeResourceId("POLYMART", id);
+    const data = await fetchJson(
+      `${POLYMART_BASE_URL}getAccountInfo/?user_id=${encodeURIComponent(authorId)}`,
+      PolymartAuthorSchema,
+      this.options,
+      this.fetchFn
+    );
+    if (data === null) return null;
+
+    const author = data.response.user ?? data.response.team;
+    if (author === undefined) return null;
+
+    const logoBase64 = author.profilePictureURL
+      ? await fetchImageBase64(author.profilePictureURL, this.options, this.fetchFn)
+      : null;
+
+    return {
+      author: {
+        name: author.username,
+        resourceCount: author.statistics.resourceCount,
+        logoBase64,
+        downloadCount: author.statistics.resourceDownloads,
+        likes: null,
+        reviews: author.statistics.resourceRatings
+      },
       backend: "POLYMART"
     };
   }
