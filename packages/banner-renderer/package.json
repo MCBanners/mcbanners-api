@@ -11,5 +11,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.build.json"
+  },
+  "dependencies": {
+    "@napi-rs/canvas": "^1.0.0"
   }
 }
