@@ -3,16 +3,10 @@ import { SpigotResourceClient } from "../src/spigot-client";
 import type { FetchFn } from "../src/http-client";
 
 /** Creates a mock fetch that returns predefined responses by URL. */
-const makeMockFetch = (
-  responses: Record<string, { status: number; body: string | Uint8Array }>
-): FetchFn =>
+const makeMockFetch =
+  (responses: Record<string, { status: number; body: string | Uint8Array }>): FetchFn =>
   (input) => {
-    const url =
-      input instanceof URL
-        ? input.href
-        : input instanceof Request
-          ? input.url
-          : input;
+    const url = input instanceof URL ? input.href : input instanceof Request ? input.url : input;
     const resp = responses[url];
     if (resp === undefined) throw new Error(`Unmocked URL: ${url}`);
     return Promise.resolve(new Response(resp.body, { status: resp.status }));
@@ -52,9 +46,7 @@ const PREMIUM_RESOURCE_JSON = JSON.stringify({
   author: { id: "2", username: "Ruany" }
 });
 
-const TINY_PNG = new Uint8Array([
-  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a
-]);
+const TINY_PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
 describe("SpigotResourceClient", () => {
   it("returns ResourceBannerData for a nominal free resource", async () => {
@@ -81,14 +73,10 @@ describe("SpigotResourceClient", () => {
   it("strips query string from icon_link before fetching", async () => {
     const fetchedUrls: string[] = [];
     const mockFetch: FetchFn = (input) => {
-      const url =
-        input instanceof URL
-          ? input.href
-          : input instanceof Request
-            ? input.url
-            : input;
+      const url = input instanceof URL ? input.href : input instanceof Request ? input.url : input;
       fetchedUrls.push(url);
-      if (url === `${SPIGOT_BASE}12345`) return Promise.resolve(new Response(FREE_RESOURCE_JSON, { status: 200 }));
+      if (url === `${SPIGOT_BASE}12345`)
+        return Promise.resolve(new Response(FREE_RESOURCE_JSON, { status: 200 }));
       if (url === "https://static.spigotmc.org/img/essentials.png")
         return Promise.resolve(new Response(TINY_PNG, { status: 200 }));
       throw new Error(`Unexpected URL: ${url}`);

@@ -14,7 +14,10 @@ import {
   RESOURCE_BANNER_WIDTH
 } from "./resource-banner-defaults";
 import type { ResourceBannerData } from "./resource-banner-data";
-import type { ResourceBannerSettings, ResourceBannerTextSettings } from "./resource-banner-settings";
+import type {
+  ResourceBannerSettings,
+  ResourceBannerTextSettings
+} from "./resource-banner-settings";
 
 /** Backends that show "Updated:" date instead of reviews/stars. */
 const UPDATED_DATE_BACKENDS: readonly ServiceBackend[] = ["CURSEFORGE", "MODRINTH"];
@@ -156,16 +159,14 @@ export const buildResourceBannerNodes = (
     // Hangar: show "{n} stars"
     if (settings.reviews.enable) {
       const content =
-        settings.reviews.display ||
-        `${abbreviateNumber(data.resource.rating.count)} stars`;
+        settings.reviews.display || `${abbreviateNumber(data.resource.rating.count)} stars`;
       nodes.push(makeTextNode(settings.reviews, content, fontColor));
     }
   } else {
     // All other backends: show "{n} reviews"
     if (settings.reviews.enable) {
       const content =
-        settings.reviews.display ||
-        `${abbreviateNumber(data.resource.rating.count)} reviews`;
+        settings.reviews.display || `${abbreviateNumber(data.resource.rating.count)} reviews`;
       nodes.push(makeTextNode(settings.reviews, content, fontColor));
     }
   }
@@ -206,8 +207,7 @@ export const buildResourceBannerNodes = (
     const isPremium = data.resource.price !== null;
     const wording = isPremium ? "purchases" : "downloads";
     const content =
-      settings.downloads.display ||
-      `${abbreviateNumber(data.resource.downloadCount)} ${wording}`;
+      settings.downloads.display || `${abbreviateNumber(data.resource.downloadCount)} ${wording}`;
     nodes.push(makeTextNode(settings.downloads, content, fontColor));
   }
 

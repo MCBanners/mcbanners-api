@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeAll } from "bun:test";
-import { createApp } from "../src/app";
+import { createApp, type AppCaches } from "../src/app";
 import { createFixtureAdapter, MC_STATUS_FIXTURES } from "@mcbanners/minecraft-status";
 import { registerRendererFonts } from "@mcbanners/banner-renderer";
+import { MemoryCache } from "@mcbanners/cache";
 import type { ResourceBannerData } from "@mcbanners/banner-renderer";
 import type { ResourceClients } from "../src/routes/resource-banner";
 
@@ -48,7 +49,8 @@ class FixtureResourceClient {
 
 const adapter = createFixtureAdapter(MC_STATUS_FIXTURES);
 
-const makeApp = (clients: ResourceClients) => createApp(adapter, clients);
+const makeApp = (clients: ResourceClients, caches?: AppCaches) =>
+  createApp(adapter, clients, caches);
 
 const clients: ResourceClients = {
   SPIGOT: new FixtureResourceClient(FIXTURE_SPIGOT_FREE),
@@ -151,8 +153,146 @@ describe("GET /banner/resource/:platform/:id/banner.jpg", () => {
 describe("Cache-Control header", () => {
   it("includes cache-control header on successful PNG response", async () => {
     const res = await app.request("/banner/resource/spigot/12345/banner.png");
-    expect(res.headers.get("Cache-Control")).toBe(
-      "public, max-age=60, stale-while-revalidate=300"
+    expect(res.headers.get("Cache-Control")).toBe("public, max-age=60, stale-while-revalidate=300");
+  });
+
+  it("includes cache-control header on isValid response", async () => {
+    const res = await app.request("/banner/resource/spigot/12345/isValid");
+    expect(res.headers.get("Cache-Control")).toBe("public, max-age=30, stale-while-revalidate=60");
+  });
+
+  it("does not include cache-control header on 404 (unknown platform)", async () => {
+    const res = await app.request("/banner/resource/unknown/12345/banner.png");
+    expect(res.status).toBe(404);
+    expect(res.headers.get("Cache-Control")).toBeNull();
+  });
+
+  it("does not include cache-control header on 404 (resource not found)", async () => {
+    const nullClients: ResourceClients = { SPIGOT: new FixtureResourceClient(null) };
+    const nullApp = makeApp(nullClients);
+    const res = await nullApp.request("/banner/resource/spigot/missing/banner.png");
+    expect(res.status).toBe(404);
+    expect(res.headers.get("Cache-Control")).toBeNull();
+  });
+
+  it("does not include cache-control header on 400 (bad output type)", async () => {
+    const res = await app.request("/banner/resource/spigot/12345/banner.webp");
+    expect(res.status).toBe(400);
+    expect(res.headers.get("Cache-Control")).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Content-Length header
+// ---------------------------------------------------------------------------
+
+describe("Content-Length header", () => {
+  it("includes Content-Length on successful PNG response", async () => {
+    const res = await app.request("/banner/resource/spigot/12345/banner.png");
+    expect(res.status).toBe(200);
+    const contentLength = res.headers.get("Content-Length");
+    expect(contentLength).not.toBeNull();
+    expect(Number(contentLength)).toBeGreaterThan(0);
+  });
+
+  it("includes Content-Length on successful JPEG response", async () => {
+    const res = await app.request("/banner/resource/spigot/12345/banner.jpg");
+    expect(res.status).toBe(200);
+    const contentLength = res.headers.get("Content-Length");
+    expect(contentLength).not.toBeNull();
+    expect(Number(contentLength)).toBeGreaterThan(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Platform case-insensitivity
+// ---------------------------------------------------------------------------
+
+describe("platform case-insensitivity", () => {
+  it("mixed-case platform (Spigot) renders PNG successfully", async () => {
+    const res = await app.request("/banner/resource/Spigot/12345/banner.png");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toBe("image/png");
+  });
+
+  it("mixed-case platform (SpIgOt) renders PNG successfully", async () => {
+    const res = await app.request("/banner/resource/SpIgOt/12345/banner.png");
+    expect(res.status).toBe(200);
+  });
+
+  it("mixed-case platform (Spigot) isValid returns true", async () => {
+    const res = await app.request("/banner/resource/Spigot/12345/isValid");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { valid: boolean };
+    expect(body.valid).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Cache key deduplication (with injected MemoryCache)
+// ---------------------------------------------------------------------------
+
+describe("cache key deduplication", () => {
+  it("query param order does not create separate cache entries", async () => {
+    const cache = new MemoryCache({ maxEntries: 100, ttlMs: 60_000 });
+    const cachedApp = makeApp(clients, { resourceBannerImage: cache });
+
+    await cachedApp.request("/banner/resource/spigot/12345/banner.png?z=last&a=first");
+    const afterFirst = cache.stats();
+    expect(afterFirst.sets).toBe(1);
+    expect(afterFirst.misses).toBe(1);
+
+    await cachedApp.request("/banner/resource/spigot/12345/banner.png?a=first&z=last");
+    const afterSecond = cache.stats();
+    expect(afterSecond.hits).toBe(1);
+    expect(afterSecond.sets).toBe(1);
+  });
+
+  it("id casing does not create separate cache entries", async () => {
+    const cache = new MemoryCache({ maxEntries: 100, ttlMs: 60_000 });
+    const cachedApp = makeApp(clients, { resourceBannerImage: cache });
+
+    await cachedApp.request("/banner/resource/spigot/SomePlugin/banner.png");
+    expect(cache.stats().sets).toBe(1);
+
+    await cachedApp.request("/banner/resource/spigot/someplugin/banner.png");
+    expect(cache.stats().hits).toBe(1);
+    expect(cache.stats().sets).toBe(1);
+  });
+
+  it("different query params produce separate cache entries", async () => {
+    const cache = new MemoryCache({ maxEntries: 100, ttlMs: 60_000 });
+    const cachedApp = makeApp(clients, { resourceBannerImage: cache });
+
+    await cachedApp.request("/banner/resource/spigot/12345/banner.png");
+    await cachedApp.request(
+      "/banner/resource/spigot/12345/banner.png?background__template=OCEAN_DUSK"
     );
+    expect(cache.stats().sets).toBe(2);
+  });
+
+  it("second identical request hits cache (set then hit)", async () => {
+    const cache = new MemoryCache({ maxEntries: 100, ttlMs: 60_000 });
+    const cachedApp = makeApp(clients, { resourceBannerImage: cache });
+
+    await cachedApp.request("/banner/resource/modrinth/sodium/banner.png");
+    expect(cache.stats().sets).toBe(1);
+    expect(cache.stats().misses).toBe(1);
+
+    await cachedApp.request("/banner/resource/modrinth/sodium/banner.png");
+    expect(cache.stats().hits).toBe(1);
+    expect(cache.stats().sets).toBe(1);
+  });
+
+  it("byte estimate is set from buffer length (cache accepts large entries)", async () => {
+    const cache = new MemoryCache({ maxEntries: 100, ttlMs: 60_000, maxBytes: 10_000_000 });
+    const cachedApp = makeApp(clients, { resourceBannerImage: cache });
+
+    // Two identical requests: first sets, second hits — if byte estimate caused
+    // an immediate eviction, the second would be a miss instead of a hit.
+    await cachedApp.request("/banner/resource/spigot/12345/banner.png");
+    await cachedApp.request("/banner/resource/spigot/12345/banner.png");
+    expect(cache.stats().hits).toBe(1);
+    expect(cache.stats().evictions).toBe(0);
   });
 });

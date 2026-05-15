@@ -55,8 +55,12 @@ export const createResourceBannerRoute = (
     if (client === undefined) {
       return c.json({ valid: false });
     }
-    const data = await client.getResourceBannerData(id);
-    return c.json({ valid: data !== null });
+    // Normalize id to lowercase for consistent cache key deduplication.
+    const normalizedId = id.toLowerCase();
+    const data = await client.getResourceBannerData(normalizedId);
+    const res = c.json({ valid: data !== null });
+    res.headers.set("Cache-Control", "public, max-age=30, stale-while-revalidate=60");
+    return res;
   });
 
   route.get("/:platform/:id/:bannerFile", async (c) => {
@@ -79,7 +83,9 @@ export const createResourceBannerRoute = (
     }
     const outputType = match[1].toLowerCase();
 
-    const data = await client.getResourceBannerData(id);
+    // Normalize id to lowercase so cache keys are consistent across casing variants.
+    const normalizedId = id.toLowerCase();
+    const data = await client.getResourceBannerData(normalizedId);
     if (data === null) {
       return c.body(null, 404);
     }
@@ -101,7 +107,7 @@ export const createResourceBannerRoute = (
     const buf =
       bannerCache !== undefined
         ? await bannerCache.getOrSet<Buffer>(
-            buildBannerCacheKey(platform, id, outputType, rawQuery),
+            buildBannerCacheKey(platform, normalizedId, outputType, rawQuery),
             renderBanner,
             { ttlMs: BANNER_CACHE_TTL_MS, byteEstimate: (b) => b.length }
           )

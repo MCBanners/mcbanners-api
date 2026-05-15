@@ -69,4 +69,3 @@ describe("resource banner render — determinism", () => {
     }
   );
 });
-

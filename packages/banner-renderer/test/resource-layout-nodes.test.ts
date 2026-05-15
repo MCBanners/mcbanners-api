@@ -178,21 +178,30 @@ describe("buildResourceBannerNodes — logo", () => {
   });
 
   test("uses MODRINTH sprite fallback when logoBase64 is null", () => {
-    const noLogoModrinth = { ...FIXTURE_MODRINTH, resource: { ...FIXTURE_MODRINTH.resource, logoBase64: null } };
+    const noLogoModrinth = {
+      ...FIXTURE_MODRINTH,
+      resource: { ...FIXTURE_MODRINTH.resource, logoBase64: null }
+    };
     const nodes = buildResourceBannerNodes(noLogoModrinth, DEFAULT_RESOURCE_BANNER_SETTINGS);
     const logo = nodes[1] as SpriteNode;
     expect(logo.assetKey).toBe("DEFAULT_MODRINTH_RES_LOGO");
   });
 
   test("uses CURSEFORGE sprite fallback", () => {
-    const noLogoForge = { ...FIXTURE_CURSEFORGE, resource: { ...FIXTURE_CURSEFORGE.resource, logoBase64: null } };
+    const noLogoForge = {
+      ...FIXTURE_CURSEFORGE,
+      resource: { ...FIXTURE_CURSEFORGE.resource, logoBase64: null }
+    };
     const nodes = buildResourceBannerNodes(noLogoForge, DEFAULT_RESOURCE_BANNER_SETTINGS);
     const logo = nodes[1] as SpriteNode;
     expect(logo.assetKey).toBe("DEFAULT_CURSEFORGE_RES_LOGO");
   });
 
   test("uses HANGAR sprite fallback", () => {
-    const noLogoHangar = { ...FIXTURE_HANGAR, resource: { ...FIXTURE_HANGAR.resource, logoBase64: null } };
+    const noLogoHangar = {
+      ...FIXTURE_HANGAR,
+      resource: { ...FIXTURE_HANGAR.resource, logoBase64: null }
+    };
     const nodes = buildResourceBannerNodes(noLogoHangar, DEFAULT_RESOURCE_BANNER_SETTINGS);
     const logo = nodes[1] as SpriteNode;
     expect(logo.assetKey).toBe("DEFAULT_HANGAR_RES_LOGO");
@@ -201,7 +210,10 @@ describe("buildResourceBannerNodes — logo", () => {
   test("logo y is auto-centered: floor((100 - size) / 2)", () => {
     const nodes = buildResourceBannerNodes(FIXTURE_NO_LOGO, DEFAULT_RESOURCE_BANNER_SETTINGS);
     const logo = nodes[1] as SpriteNode;
-    const logoSize = Math.min(DEFAULT_RESOURCE_BANNER_SETTINGS.logo.size, RESOURCE_BANNER_LOGO_MAX_SIZE);
+    const logoSize = Math.min(
+      DEFAULT_RESOURCE_BANNER_SETTINGS.logo.size,
+      RESOURCE_BANNER_LOGO_MAX_SIZE
+    );
     expect(logo.y).toBe(Math.floor((RESOURCE_BANNER_HEIGHT - logoSize) / 2));
   });
 
@@ -218,7 +230,10 @@ describe("buildResourceBannerNodes — logo", () => {
 
 describe("buildResourceBannerNodes — resource name", () => {
   const findResourceName = (nodes: readonly RenderNode[]): TextNode =>
-    nodes.find((n): n is TextNode => n.type === "text" && n.y === DEFAULT_RESOURCE_BANNER_SETTINGS.resourceName.y)!;
+    nodes.find(
+      (n): n is TextNode =>
+        n.type === "text" && n.y === DEFAULT_RESOURCE_BANNER_SETTINGS.resourceName.y
+    )!;
 
   test("uses resource.name when display is empty", () => {
     const nodes = buildResourceBannerNodes(FIXTURE_SPIGOT_FREE, DEFAULT_RESOURCE_BANNER_SETTINGS);
@@ -240,7 +255,10 @@ describe("buildResourceBannerNodes — resource name", () => {
   test("resource name is omitted when enable=false", () => {
     const settings = parseResourceBannerSettings({ resource_name__enable: "false" });
     const nodes = buildResourceBannerNodes(FIXTURE_SPIGOT_FREE, settings);
-    const found = nodes.find((n): n is TextNode => n.type === "text" && n.y === DEFAULT_RESOURCE_BANNER_SETTINGS.resourceName.y);
+    const found = nodes.find(
+      (n): n is TextNode =>
+        n.type === "text" && n.y === DEFAULT_RESOURCE_BANNER_SETTINGS.resourceName.y
+    );
     expect(found).toBeUndefined();
   });
 
@@ -264,14 +282,20 @@ describe("buildResourceBannerNodes — resource name", () => {
 describe("buildResourceBannerNodes — author name", () => {
   test('renders "by {author.name}"', () => {
     const nodes = buildResourceBannerNodes(FIXTURE_SPIGOT_FREE, DEFAULT_RESOURCE_BANNER_SETTINGS);
-    const authorNode = nodes.find((n): n is TextNode => n.type === "text" && n.y === DEFAULT_RESOURCE_BANNER_SETTINGS.authorName.y)!;
+    const authorNode = nodes.find(
+      (n): n is TextNode =>
+        n.type === "text" && n.y === DEFAULT_RESOURCE_BANNER_SETTINGS.authorName.y
+    )!;
     expect(authorNode.content).toBe(`by ${FIXTURE_SPIGOT_FREE.author.name}`);
   });
 
   test("uses display override for author name", () => {
     const settings = parseResourceBannerSettings({ author_name__display: "Plugin Team" });
     const nodes = buildResourceBannerNodes(FIXTURE_SPIGOT_FREE, settings);
-    const authorNode = nodes.find((n): n is TextNode => n.type === "text" && n.y === DEFAULT_RESOURCE_BANNER_SETTINGS.authorName.y)!;
+    const authorNode = nodes.find(
+      (n): n is TextNode =>
+        n.type === "text" && n.y === DEFAULT_RESOURCE_BANNER_SETTINGS.authorName.y
+    )!;
     expect(authorNode.content).toBe("Plugin Team");
   });
 });
@@ -372,7 +396,10 @@ describe("buildResourceBannerNodes — star sprites", () => {
   });
 
   test("4.75 star rating produces 5 FULL", () => {
-    const nodes = buildResourceBannerNodes(FIXTURE_SPIGOT_PREMIUM, DEFAULT_RESOURCE_BANNER_SETTINGS); // average=4.75
+    const nodes = buildResourceBannerNodes(
+      FIXTURE_SPIGOT_PREMIUM,
+      DEFAULT_RESOURCE_BANNER_SETTINGS
+    ); // average=4.75
     const stars = getStarNodes(nodes);
     expect(stars.every((s) => s.assetKey === "STAR_FULL")).toBe(true);
   });
@@ -430,7 +457,10 @@ describe("buildResourceBannerNodes — downloads", () => {
   });
 
   test("premium resource uses 'purchases' wording", () => {
-    const nodes = buildResourceBannerNodes(FIXTURE_SPIGOT_PREMIUM, DEFAULT_RESOURCE_BANNER_SETTINGS);
+    const nodes = buildResourceBannerNodes(
+      FIXTURE_SPIGOT_PREMIUM,
+      DEFAULT_RESOURCE_BANNER_SETTINGS
+    );
     const dlNode = nodes.find((n): n is TextNode => n.type === "text" && n.y === downloadsY)!;
     expect(dlNode.content).toContain("purchases");
     expect(dlNode.content).not.toContain("downloads");
@@ -439,7 +469,9 @@ describe("buildResourceBannerNodes — downloads", () => {
   test("download count is abbreviated", () => {
     const nodes = buildResourceBannerNodes(FIXTURE_SPIGOT_FREE, DEFAULT_RESOURCE_BANNER_SETTINGS);
     const dlNode = nodes.find((n): n is TextNode => n.type === "text" && n.y === downloadsY)!;
-    expect(dlNode.content).toBe(`${abbreviateNumber(FIXTURE_SPIGOT_FREE.resource.downloadCount)} downloads`);
+    expect(dlNode.content).toBe(
+      `${abbreviateNumber(FIXTURE_SPIGOT_FREE.resource.downloadCount)} downloads`
+    );
   });
 
   test("downloads node omitted when enable=false", () => {
@@ -456,7 +488,10 @@ describe("buildResourceBannerNodes — price", () => {
   const priceX = DEFAULT_RESOURCE_BANNER_SETTINGS.price.x; // 210
 
   test("price node renders for premium resource", () => {
-    const nodes = buildResourceBannerNodes(FIXTURE_SPIGOT_PREMIUM, DEFAULT_RESOURCE_BANNER_SETTINGS);
+    const nodes = buildResourceBannerNodes(
+      FIXTURE_SPIGOT_PREMIUM,
+      DEFAULT_RESOURCE_BANNER_SETTINGS
+    );
     const priceNode = nodes.find((n): n is TextNode => n.type === "text" && n.x === priceX);
     expect(priceNode).toBeDefined();
     expect(priceNode!.content).toBe("9.99 USD");
@@ -469,7 +504,10 @@ describe("buildResourceBannerNodes — price", () => {
   });
 
   test("price node is bold by default", () => {
-    const nodes = buildResourceBannerNodes(FIXTURE_SPIGOT_PREMIUM, DEFAULT_RESOURCE_BANNER_SETTINGS);
+    const nodes = buildResourceBannerNodes(
+      FIXTURE_SPIGOT_PREMIUM,
+      DEFAULT_RESOURCE_BANNER_SETTINGS
+    );
     const priceNode = nodes.find((n): n is TextNode => n.type === "text" && n.x === priceX)!;
     expect(priceNode.fontWeight).toBe("bold");
   });

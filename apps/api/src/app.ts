@@ -57,7 +57,10 @@ export const createApp = (
   // Internal dev alias (not part of the public API contract)
   app.route("/server", createServerBannerRoute(mcAdapter, caches?.bannerImage));
 
-  app.route("/banner/resource", createResourceBannerRoute(resourceClients, caches?.resourceBannerImage));
+  app.route(
+    "/banner/resource",
+    createResourceBannerRoute(resourceClients, caches?.resourceBannerImage)
+  );
 
   return app;
 };

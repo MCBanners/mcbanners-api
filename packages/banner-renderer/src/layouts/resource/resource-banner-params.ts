@@ -10,7 +10,10 @@ import {
 import type { RawQuery } from "@mcbanners/domain";
 
 import { DEFAULT_RESOURCE_BANNER_SETTINGS } from "./resource-banner-defaults";
-import type { ResourceBannerSettings, ResourceBannerTextSettings } from "./resource-banner-settings";
+import type {
+  ResourceBannerSettings,
+  ResourceBannerTextSettings
+} from "./resource-banner-settings";
 
 /**
  * Parses a single text parameter namespace from rawQuery, falling back to
