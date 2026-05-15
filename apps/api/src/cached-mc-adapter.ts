@@ -22,10 +22,11 @@ export class CachedMinecraftStatusAdapter implements MinecraftStatusAdapter {
   }
 
   getStatus(host: string, port: number): Promise<MinecraftServerStatus | null> {
-    const key = `mc:status:${host}:${String(port)}`;
+    const normalizedHost = host.toLowerCase();
+    const key = `mc:status:${normalizedHost}:${String(port)}`;
     return this.cache.getOrSet<MinecraftServerStatus | null>(
       key,
-      () => this.inner.getStatus(host, port),
+      () => this.inner.getStatus(normalizedHost, port),
       { ttlMs: STATUS_TTL_MS, cacheNull: false }
     );
   }

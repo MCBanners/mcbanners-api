@@ -9,11 +9,16 @@ export interface CacheOptions {
 }
 
 /** Per-call options for {@link IMemoryCache.getOrSet}. */
-export interface GetOrSetOptions {
+export interface GetOrSetOptions<T = unknown> {
   /** Override the cache-wide TTL for this specific entry. */
   ttlMs?: number;
-  /** Byte estimate for this entry (used for maxBytes tracking). Defaults to 0. */
-  byteEstimate?: number;
+  /**
+   * Byte estimate for this entry (used for maxBytes tracking).
+   * Accepts either a static number or a function called with the resolved
+   * value so the actual buffer length can be recorded after rendering.
+   * Defaults to 0.
+   */
+  byteEstimate?: number | ((value: T) => number);
   /**
    * If true, cache null results. Defaults to false so that "not found"
    * responses are never stored and retried on the next call.
@@ -39,5 +44,5 @@ export interface IMemoryCache {
   set(key: string, value: unknown, ttlMs?: number, byteEstimate?: number): void;
   delete(key: string): boolean;
   clearPrefix(prefix: string): void;
-  getOrSet<T>(key: string, fn: () => Promise<T>, opts?: GetOrSetOptions): Promise<T>;
+  getOrSet<T>(key: string, fn: () => Promise<T>, opts?: GetOrSetOptions<T>): Promise<T>;
 }

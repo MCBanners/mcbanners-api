@@ -36,7 +36,7 @@ export class CacheNamespace {
     this.cache.clearPrefix(this.prefix + ":");
   }
 
-  getOrSet<T>(key: string, fn: () => Promise<T>, opts?: GetOrSetOptions): Promise<T> {
+  getOrSet<T>(key: string, fn: () => Promise<T>, opts?: GetOrSetOptions<T>): Promise<T> {
     return this.cache.getOrSet<T>(this.key(key), fn, opts);
   }
 }

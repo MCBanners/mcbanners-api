@@ -119,7 +119,7 @@ export class MemoryCache implements IMemoryCache {
    * Failures (thrown errors) are not cached and the inflight entry is removed
    * so subsequent calls will retry.
    */
-  getOrSet<T>(key: string, fn: () => Promise<T>, opts?: GetOrSetOptions): Promise<T> {
+  getOrSet<T>(key: string, fn: () => Promise<T>, opts?: GetOrSetOptions<T>): Promise<T> {
     const cached = this.get<T>(key);
     if (cached !== undefined) return Promise.resolve(cached);
 
@@ -133,7 +133,9 @@ export class MemoryCache implements IMemoryCache {
       .then((value: T) => {
         this.inflight.delete(key);
         if (value !== null || opts?.cacheNull === true) {
-          this.set(key, value, opts?.ttlMs, opts?.byteEstimate ?? 0);
+          const raw = opts?.byteEstimate;
+          const bytes = typeof raw === "function" ? raw(value) : (raw ?? 0);
+          this.set(key, value, opts?.ttlMs, bytes);
         }
         return value;
       })

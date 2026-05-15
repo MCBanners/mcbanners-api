@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll } from "bun:test";
 import { createApp } from "../src/app";
 import { createFixtureAdapter, MC_STATUS_FIXTURES } from "@mcbanners/minecraft-status";
 import { registerRendererFonts } from "@mcbanners/banner-renderer";
+import { MemoryCache } from "@mcbanners/cache";
 
 // Pre-register fonts once for all render tests.
 beforeAll(() => {
@@ -524,5 +525,49 @@ describe("Deterministic output", () => {
     const bufJpg = Buffer.from(await resJpg.arrayBuffer());
 
     expect(bufPng.equals(bufJpg)).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Cache key normalization
+// ---------------------------------------------------------------------------
+
+describe("Cache key normalization", () => {
+  it("host casing does not create duplicate banner cache entries", async () => {
+    const cache = new MemoryCache({ ttlMs: 60_000 });
+    const appWithCache = createApp(adapter, { bannerImage: cache });
+
+    const res1 = await appWithCache.request("/banner/server/mc.hypixel.net/25565/banner.png");
+    const res2 = await appWithCache.request("/banner/server/MC.HYPIXEL.NET/25565/banner.png");
+
+    expect(res1.status).toBe(200);
+    expect(res2.status).toBe(200);
+    // Both map to the same normalised key → only 1 render, 1 cache set.
+    expect(cache.stats().sets).toBe(1);
+  });
+
+  it("output type casing does not create duplicate banner cache entries", async () => {
+    const cache = new MemoryCache({ ttlMs: 60_000 });
+    const appWithCache = createApp(adapter, { bannerImage: cache });
+
+    const res1 = await appWithCache.request("/banner/server/mc.hypixel.net/25565/banner.png");
+    const res2 = await appWithCache.request("/banner/server/mc.hypixel.net/25565/banner.PNG");
+
+    expect(res1.status).toBe(200);
+    expect(res2.status).toBe(200);
+    // Both map to the same normalised key → only 1 render, 1 cache set.
+    expect(cache.stats().sets).toBe(1);
+  });
+
+  it("banner cache records byte estimate from rendered buffer length", async () => {
+    // maxBytes large enough to not evict; verify the entry is stored (sets=1, evictions=0).
+    const cache = new MemoryCache({ ttlMs: 60_000, maxBytes: 10_000_000 });
+    const appWithCache = createApp(adapter, { bannerImage: cache });
+
+    await appWithCache.request("/banner/server/mc.hypixel.net/25565/banner.png");
+
+    const s = cache.stats();
+    expect(s.sets).toBe(1);
+    expect(s.evictions).toBe(0); // rendered PNG is well under 10 MB
   });
 });

@@ -31,7 +31,11 @@ const ensureFonts = (): void => {
 
 /**
  * Builds a deterministic cache key for a rendered banner.
- * Query params are sorted alphabetically so key is stable regardless of param order.
+ *
+ * Normalization rules (to prevent duplicate entries from trivially different inputs):
+ * - `host` is lowercased (DNS hostnames are case-insensitive)
+ * - `outputType` is lowercased (already enforced at parse time, but kept here for safety)
+ * - Query params are sorted alphabetically (key stability regardless of param order)
  */
 const buildBannerCacheKey = (
   host: string,
@@ -43,7 +47,7 @@ const buildBannerCacheKey = (
     .sort((a, b) => a[0].localeCompare(b[0]))
     .map(([k, v]) => `${k}=${v}`)
     .join("&");
-  return `banner:server:${host}:${String(port)}:${outputType}:${queryKey}`;
+  return `banner:server:${host.toLowerCase()}:${String(port)}:${outputType.toLowerCase()}:${queryKey}`;
 };
 
 /**
@@ -65,7 +69,8 @@ export const createServerBannerRoute = (
   const route = new Hono();
 
   route.get("/:host/:port/isValid", async (c) => {
-    const { host, port: portStr } = c.req.param();
+    const { host: rawHost, port: portStr } = c.req.param();
+    const host = rawHost.toLowerCase();
     const port = parseInt(portStr, 10);
     if (isNaN(port)) {
       return c.json({ valid: false });
@@ -76,7 +81,10 @@ export const createServerBannerRoute = (
 
   // Handles /banner.png and /banner.jpg — must come after /isValid.
   route.get("/:host/:port/:bannerFile", async (c) => {
-    const { host, port: portStr, bannerFile } = c.req.param();
+    const { host: rawHost, port: portStr, bannerFile } = c.req.param();
+    // Normalize host to lowercase — DNS hostnames are case-insensitive and this
+    // ensures cache key determinism for mixed-case inputs.
+    const host = rawHost.toLowerCase();
 
     const match = BANNER_FILENAME_RE.exec(bannerFile);
     if (!match?.[1]) {
@@ -122,7 +130,7 @@ export const createServerBannerRoute = (
         ? await bannerCache.getOrSet<Buffer>(
             buildBannerCacheKey(host, port, outputType, rawQuery),
             renderBanner,
-            { ttlMs: BANNER_CACHE_TTL_MS, byteEstimate: 0 }
+            { ttlMs: BANNER_CACHE_TTL_MS, byteEstimate: (b) => b.length }
           )
         : await renderBanner();
 

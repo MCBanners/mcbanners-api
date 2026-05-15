@@ -207,6 +207,48 @@ describe("MemoryCache – getOrSet", () => {
 });
 
 // ---------------------------------------------------------------------------
+// getOrSet byteEstimate function
+// ---------------------------------------------------------------------------
+
+describe("MemoryCache – getOrSet byteEstimate function", () => {
+  it("accepts a static number as byteEstimate", async () => {
+    const cache = new MemoryCache({ ttlMs: 60_000, maxBytes: 100 });
+    await cache.getOrSet("key", () => Promise.resolve("value"), { byteEstimate: 50 });
+    expect(cache.get<string>("key")).toBe("value");
+  });
+
+  it("accepts a function as byteEstimate and calls it with the resolved value", async () => {
+    const cache = new MemoryCache({ ttlMs: 60_000, maxBytes: 1000 });
+    const str = "x".repeat(80);
+    let byteEstimateCalled = false;
+    await cache.getOrSet("key", () => Promise.resolve(str), {
+      byteEstimate: (v: string) => {
+        byteEstimateCalled = true;
+        return v.length;
+      }
+    });
+    expect(byteEstimateCalled).toBe(true);
+    expect(cache.get<string>("key")).toBe(str);
+  });
+
+  it("function byteEstimate drives maxBytes eviction correctly", async () => {
+    // maxBytes: 100 — first entry is 60 bytes, second 50 bytes; total 110 > 100 → evict first.
+    const cache = new MemoryCache({ ttlMs: 60_000, maxBytes: 100 });
+    const large = "a".repeat(60);
+    const small = "b".repeat(50);
+    await cache.getOrSet("large", () => Promise.resolve(large), {
+      byteEstimate: (v: string) => v.length
+    });
+    await cache.getOrSet("small", () => Promise.resolve(small), {
+      byteEstimate: (v: string) => v.length
+    });
+    expect(cache.get<unknown>("large")).toBeUndefined(); // evicted
+    expect(cache.get<string>("small")).toBe(small);
+    expect(cache.stats().evictions).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Request coalescing
 // ---------------------------------------------------------------------------
 
