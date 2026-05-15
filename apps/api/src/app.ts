@@ -4,6 +4,7 @@ import type { MemoryCache } from "@mcbanners/cache";
 import { CachedMinecraftStatusAdapter } from "./cached-mc-adapter";
 import { createMcServerRoute } from "./routes/mc-server";
 import { createServerBannerRoute } from "./routes/server-banner";
+import { createResourceBannerRoute, type ResourceClients } from "./routes/resource-banner";
 
 /**
  * Optional caches injected into the app for production use.
@@ -14,18 +15,25 @@ export interface AppCaches {
   mcStatus?: MemoryCache;
   /** In-memory cache for rendered banner image Buffers (TTL 60 s). */
   bannerImage?: MemoryCache;
+  /** In-memory cache for rendered resource banner image Buffers (TTL 60 s). */
+  resourceBannerImage?: MemoryCache;
 }
+
+export type { ResourceClients };
 
 /**
  * Creates the main Hono application with all routes mounted.
  *
  * @param minecraftAdapter - The adapter used to resolve Minecraft server status.
- *   Pass a FixtureMinecraftStatusAdapter for local dev/tests, or a live HTTP
- *   adapter for production.
+ * @param resourceClients - Map of platform name (uppercase) to ResourceClient.
  * @param caches - Optional in-memory caches. When omitted all requests are
  *   passed through to the adapter and renderer without caching.
  */
-export const createApp = (minecraftAdapter: MinecraftStatusAdapter, caches?: AppCaches): Hono => {
+export const createApp = (
+  minecraftAdapter: MinecraftStatusAdapter,
+  resourceClients: ResourceClients,
+  caches?: AppCaches
+): Hono => {
   const app = new Hono();
 
   // Wrap adapter with cache when provided.
@@ -48,6 +56,8 @@ export const createApp = (minecraftAdapter: MinecraftStatusAdapter, caches?: App
 
   // Internal dev alias (not part of the public API contract)
   app.route("/server", createServerBannerRoute(mcAdapter, caches?.bannerImage));
+
+  app.route("/banner/resource", createResourceBannerRoute(resourceClients, caches?.resourceBannerImage));
 
   return app;
 };

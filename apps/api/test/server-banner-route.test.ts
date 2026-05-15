@@ -10,7 +10,7 @@ beforeAll(() => {
 });
 
 const adapter = createFixtureAdapter(MC_STATUS_FIXTURES);
-const app = createApp(adapter);
+const app = createApp(adapter, {});
 
 // ---------------------------------------------------------------------------
 // Health check
@@ -535,7 +535,7 @@ describe("Deterministic output", () => {
 describe("Cache key normalization", () => {
   it("host casing does not create duplicate banner cache entries", async () => {
     const cache = new MemoryCache({ ttlMs: 60_000 });
-    const appWithCache = createApp(adapter, { bannerImage: cache });
+    const appWithCache = createApp(adapter, {}, { bannerImage: cache });
 
     const res1 = await appWithCache.request("/banner/server/mc.hypixel.net/25565/banner.png");
     const res2 = await appWithCache.request("/banner/server/MC.HYPIXEL.NET/25565/banner.png");
@@ -548,7 +548,7 @@ describe("Cache key normalization", () => {
 
   it("output type casing does not create duplicate banner cache entries", async () => {
     const cache = new MemoryCache({ ttlMs: 60_000 });
-    const appWithCache = createApp(adapter, { bannerImage: cache });
+    const appWithCache = createApp(adapter, {}, { bannerImage: cache });
 
     const res1 = await appWithCache.request("/banner/server/mc.hypixel.net/25565/banner.png");
     const res2 = await appWithCache.request("/banner/server/mc.hypixel.net/25565/banner.PNG");
@@ -562,7 +562,7 @@ describe("Cache key normalization", () => {
   it("banner cache records byte estimate from rendered buffer length", async () => {
     // maxBytes large enough to not evict; verify the entry is stored (sets=1, evictions=0).
     const cache = new MemoryCache({ ttlMs: 60_000, maxBytes: 10_000_000 });
-    const appWithCache = createApp(adapter, { bannerImage: cache });
+    const appWithCache = createApp(adapter, {}, { bannerImage: cache });
 
     await appWithCache.request("/banner/server/mc.hypixel.net/25565/banner.png");
 

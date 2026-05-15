@@ -13,6 +13,7 @@
     { "path": "../../packages/domain/tsconfig.build.json" },
     { "path": "../../packages/minecraft-status/tsconfig.build.json" },
     { "path": "../../packages/banner-renderer/tsconfig.build.json" },
-    { "path": "../../packages/cache/tsconfig.build.json" }
+    { "path": "../../packages/cache/tsconfig.build.json" },
+    { "path": "../../packages/external-clients/tsconfig.build.json" }
   ]
 }
