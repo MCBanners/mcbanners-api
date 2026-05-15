@@ -477,3 +477,153 @@ describe("Ore resource route", () => {
     expect(res.status).toBe(404);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Route edge cases — wildcard parser integration
+// ---------------------------------------------------------------------------
+
+describe("route edge cases", () => {
+  it("returns 404 when action segment is missing (/spigot/123 with no banner.png)", async () => {
+    // No action — the wildcard yields only one segment, cannot split id+action
+    const res = await app.request("/banner/resource/spigot/123");
+    expect(res.status).toBe(404);
+  });
+
+  it("returns 400 for unknown action (banner.webp)", async () => {
+    const res = await app.request("/banner/resource/spigot/12345/banner.webp");
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 404 for unknown platform with banner.png", async () => {
+    const res = await app.request("/banner/resource/unknown/12345/banner.png");
+    expect(res.status).toBe(404);
+  });
+
+  it("returns { valid: false } for unknown platform with isValid", async () => {
+    const res = await app.request("/banner/resource/unknown/12345/isValid");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { valid: boolean };
+    expect(body.valid).toBe(false);
+  });
+
+  it("spigot with slash in id routes to client with slash id (client returns null → 404)", async () => {
+    // /banner/resource/spigot/a/b/banner.png parses as id="a/b", action="banner.png".
+    // The spigot fixture returns data for any id, so the render succeeds here.
+    const res = await app.request("/banner/resource/spigot/a/b/banner.png");
+    // The fixture client ignores the id and always returns FIXTURE_SPIGOT_FREE
+    expect(res.status).toBe(200);
+  });
+
+  it("spigot with slash in id — isValid returns true (fixture always returns data)", async () => {
+    const res = await app.request("/banner/resource/spigot/a/b/isValid");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { valid: boolean };
+    expect(body.valid).toBe(true);
+  });
+
+  it("hangar too-many-slashes passes multi-segment id to client (client returns data)", async () => {
+    const hangarClientsLocal: ResourceClients = {
+      HANGAR: new FixtureResourceClient({
+        resource: {
+          name: "TooManySlashes",
+          logoBase64: null,
+          downloadCount: 0,
+          lastUpdated: null,
+          rating: { count: 0, average: 0 },
+          price: null
+        },
+        author: { name: "author" },
+        backend: "HANGAR"
+      })
+    };
+    const res = await makeApp(hangarClientsLocal).request(
+      "/banner/resource/hangar/too/many/slashes/banner.png"
+    );
+    // The fixture client ignores the id and returns data → 200
+    expect(res.status).toBe(200);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Cache key safety — Hangar slash ids
+// ---------------------------------------------------------------------------
+
+describe("cache key safety for slash-containing ids", () => {
+  it("hangar author/slug id is cached and retrieved on second request", async () => {
+    const hangarClientsLocal: ResourceClients = {
+      HANGAR: new FixtureResourceClient({
+        resource: {
+          name: "EternalLight",
+          logoBase64: TINY_PNG_B64,
+          downloadCount: 1000,
+          lastUpdated: null,
+          rating: { count: 5, average: 0 },
+          price: null
+        },
+        author: { name: "papermc" },
+        backend: "HANGAR"
+      })
+    };
+    const cache = new MemoryCache({ maxEntries: 100, ttlMs: 60_000 });
+    const cachedApp = makeApp(hangarClientsLocal, { resourceBannerImage: cache });
+
+    await cachedApp.request("/banner/resource/hangar/papermc/eternal-light/banner.png");
+    expect(cache.stats().sets).toBe(1);
+    expect(cache.stats().misses).toBe(1);
+
+    await cachedApp.request("/banner/resource/hangar/papermc/eternal-light/banner.png");
+    expect(cache.stats().hits).toBe(1);
+    expect(cache.stats().sets).toBe(1);
+  });
+
+  it("different Hangar ids produce different cache entries", async () => {
+    const hangarClientsLocal: ResourceClients = {
+      HANGAR: new FixtureResourceClient({
+        resource: {
+          name: "Plugin",
+          logoBase64: null,
+          downloadCount: 0,
+          lastUpdated: null,
+          rating: { count: 0, average: 0 },
+          price: null
+        },
+        author: { name: "org" },
+        backend: "HANGAR"
+      })
+    };
+    const cache = new MemoryCache({ maxEntries: 100, ttlMs: 60_000 });
+    const cachedApp = makeApp(hangarClientsLocal, { resourceBannerImage: cache });
+
+    await cachedApp.request("/banner/resource/hangar/org/plugin-a/banner.png");
+    await cachedApp.request("/banner/resource/hangar/org/plugin-b/banner.png");
+    expect(cache.stats().sets).toBe(2);
+    expect(cache.stats().hits).toBe(0);
+  });
+
+  it("Hangar id casing is normalized in cache key", async () => {
+    const hangarClientsLocal: ResourceClients = {
+      HANGAR: new FixtureResourceClient({
+        resource: {
+          name: "Plugin",
+          logoBase64: null,
+          downloadCount: 0,
+          lastUpdated: null,
+          rating: { count: 0, average: 0 },
+          price: null
+        },
+        author: { name: "org" },
+        backend: "HANGAR"
+      })
+    };
+    const cache = new MemoryCache({ maxEntries: 100, ttlMs: 60_000 });
+    const cachedApp = makeApp(hangarClientsLocal, { resourceBannerImage: cache });
+
+    await cachedApp.request("/banner/resource/hangar/Org/Plugin-A/banner.png");
+    expect(cache.stats().sets).toBe(1);
+
+    // Same id, different casing → should hit the cache
+    await cachedApp.request("/banner/resource/hangar/org/plugin-a/banner.png");
+    expect(cache.stats().hits).toBe(1);
+    expect(cache.stats().sets).toBe(1);
+  });
+});

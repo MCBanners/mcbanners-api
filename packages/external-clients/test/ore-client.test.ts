@@ -170,4 +170,59 @@ describe("OreResourceClient", () => {
     expect(result).not.toBeNull();
     expect(result?.resource.logoBase64).toBeNull();
   });
+
+  it("two separate instances do not share session state", async () => {
+    let authCalls = 0;
+
+    const countingFetch: FetchFn = (input) => {
+      const url = input instanceof URL ? input.href : input instanceof Request ? input.url : input;
+      if (url === `${ORE_BASE}/authenticate`) {
+        authCalls++;
+        return Promise.resolve(new Response(AUTH_JSON, { status: 200 }));
+      }
+      if (url === `${ORE_BASE}/projects/myplugin`) {
+        return Promise.resolve(new Response(NOMINAL_PROJECT_JSON, { status: 200 }));
+      }
+      if (url === `${ORE_BASE}/projects/myplugin/icon`) {
+        return Promise.resolve(new Response(new Uint8Array([]), { status: 404 }));
+      }
+      throw new Error(`Unmocked URL: ${url}`);
+    };
+
+    const clientA = new OreResourceClient({}, countingFetch);
+    const clientB = new OreResourceClient({}, countingFetch);
+
+    await clientA.getResourceBannerData("myplugin");
+    await clientB.getResourceBannerData("myplugin");
+
+    // Each instance authenticates independently — 2 separate auth calls
+    expect(authCalls).toBe(2);
+  });
+
+  it("session is reused within the same instance (no re-auth on second call)", async () => {
+    let authCalls = 0;
+
+    const countingFetch: FetchFn = (input) => {
+      const url = input instanceof URL ? input.href : input instanceof Request ? input.url : input;
+      if (url === `${ORE_BASE}/authenticate`) {
+        authCalls++;
+        return Promise.resolve(new Response(AUTH_JSON, { status: 200 }));
+      }
+      if (url === `${ORE_BASE}/projects/myplugin`) {
+        return Promise.resolve(new Response(NOMINAL_PROJECT_JSON, { status: 200 }));
+      }
+      if (url === `${ORE_BASE}/projects/myplugin/icon`) {
+        return Promise.resolve(new Response(new Uint8Array([]), { status: 404 }));
+      }
+      throw new Error(`Unmocked URL: ${url}`);
+    };
+
+    const client = new OreResourceClient({}, countingFetch);
+
+    await client.getResourceBannerData("myplugin");
+    await client.getResourceBannerData("myplugin");
+
+    // Same instance, valid session → only one auth call
+    expect(authCalls).toBe(1);
+  });
 });
