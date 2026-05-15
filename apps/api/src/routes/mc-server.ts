@@ -34,7 +34,9 @@ export const createMcServerRoute = (adapter: MinecraftStatusAdapter): Hono => {
       return c.json({ error: "Server not found" }, 404);
     }
 
-    return c.json(status);
+    return c.json(status, 200, {
+      "Cache-Control": "public, max-age=30, stale-while-revalidate=60"
+    });
   });
 
   /**
@@ -75,7 +77,11 @@ export const createMcServerRoute = (adapter: MinecraftStatusAdapter): Hono => {
     const bytes = Buffer.from(base64, "base64");
 
     return new Response(bytes, {
-      headers: { "Content-Type": "image/png", "Content-Length": String(bytes.length) }
+      headers: {
+        "Content-Type": "image/png",
+        "Content-Length": String(bytes.length),
+        "Cache-Control": "public, max-age=300, stale-while-revalidate=600"
+      }
     });
   });
 

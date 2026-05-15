@@ -13,9 +13,13 @@ import {
 } from "@mcbanners/banner-renderer";
 import { SERVER_BANNER_WIDTH, SERVER_BANNER_HEIGHT } from "@mcbanners/banner-renderer";
 import type { MinecraftStatusAdapter } from "@mcbanners/minecraft-status";
+import type { MemoryCache } from "@mcbanners/cache";
 
 /** Matches `banner.png` or `banner.jpg` (case-insensitive). */
 const BANNER_FILENAME_RE = /^banner\.(png|jpg)$/i;
+
+/** TTL for cached rendered banner images (60 seconds). */
+const BANNER_CACHE_TTL_MS = 60_000;
 
 let fontsRegistered = false;
 const ensureFonts = (): void => {
@@ -23,6 +27,23 @@ const ensureFonts = (): void => {
     registerRendererFonts();
     fontsRegistered = true;
   }
+};
+
+/**
+ * Builds a deterministic cache key for a rendered banner.
+ * Query params are sorted alphabetically so key is stable regardless of param order.
+ */
+const buildBannerCacheKey = (
+  host: string,
+  port: number,
+  outputType: string,
+  rawQuery: Record<string, string>
+): string => {
+  const queryKey = Object.entries(rawQuery)
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([k, v]) => `${k}=${v}`)
+    .join("&");
+  return `banner:server:${host}:${String(port)}:${outputType}:${queryKey}`;
 };
 
 /**
@@ -37,7 +58,10 @@ const ensureFonts = (): void => {
  * /:host/:port/banner.:outputType because Hono does not parse path parameters
  * that follow a literal dot within the same segment.
  */
-export const createServerBannerRoute = (adapter: MinecraftStatusAdapter): Hono => {
+export const createServerBannerRoute = (
+  adapter: MinecraftStatusAdapter,
+  bannerCache?: MemoryCache
+): Hono => {
   const route = new Hono();
 
   route.get("/:host/:port/isValid", async (c) => {
@@ -75,26 +99,40 @@ export const createServerBannerRoute = (adapter: MinecraftStatusAdapter): Hono =
 
     ensureFonts();
 
-    const data = mapStatusToServerBannerData(status);
     const rawQuery = Object.fromEntries(new URL(c.req.url).searchParams.entries());
-    const settings = parseServerBannerSettings(rawQuery);
-    const nodes = buildServerBannerNodes(data, settings);
 
-    const surface = createCanvasSurface(SERVER_BANNER_WIDTH, SERVER_BANNER_HEIGHT);
-    for (const node of nodes) {
-      await renderNode(surface, node);
-    }
+    const renderBanner = async (): Promise<Buffer> => {
+      const data = mapStatusToServerBannerData(status);
+      const settings = parseServerBannerSettings(rawQuery);
+      const nodes = buildServerBannerNodes(data, settings);
 
-    if (outputType === "jpg") {
-      const buf = await encodeJpg(surface);
-      return new Response(buf, {
-        headers: { "Content-Type": "image/jpeg", "Content-Length": String(buf.length) }
-      });
-    }
+      const surface = createCanvasSurface(SERVER_BANNER_WIDTH, SERVER_BANNER_HEIGHT);
+      for (const node of nodes) {
+        await renderNode(surface, node);
+      }
 
-    const buf = await encodePng(surface);
+      if (outputType === "jpg") {
+        return encodeJpg(surface);
+      }
+      return encodePng(surface);
+    };
+
+    const buf =
+      bannerCache !== undefined
+        ? await bannerCache.getOrSet<Buffer>(
+            buildBannerCacheKey(host, port, outputType, rawQuery),
+            renderBanner,
+            { ttlMs: BANNER_CACHE_TTL_MS, byteEstimate: 0 }
+          )
+        : await renderBanner();
+
+    const contentType = outputType === "jpg" ? "image/jpeg" : "image/png";
     return new Response(buf, {
-      headers: { "Content-Type": "image/png", "Content-Length": String(buf.length) }
+      headers: {
+        "Content-Type": contentType,
+        "Content-Length": String(buf.length),
+        "Cache-Control": "public, max-age=60, stale-while-revalidate=300"
+      }
     });
   });
 

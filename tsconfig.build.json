@@ -6,7 +6,7 @@
     { "path": "./packages/external-clients" },
     { "path": "./packages/minecraft-status/tsconfig.build.json" },
     { "path": "./packages/db" },
-    { "path": "./packages/cache" },
+    { "path": "./packages/cache/tsconfig.build.json" },
     { "path": "./packages/config" },
     { "path": "./packages/logger" },
     { "path": "./apps/api/tsconfig.build.json" },

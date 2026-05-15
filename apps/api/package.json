@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@mcbanners/banner-renderer": "workspace:*",
+    "@mcbanners/cache": "workspace:*",
     "@mcbanners/domain": "workspace:*",
     "@mcbanners/minecraft-status": "workspace:*",
     "hono": "^4.12.18"
