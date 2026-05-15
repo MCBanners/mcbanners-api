@@ -1,4 +1,4 @@
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 
 import {
   buildResourceBannerNodes,
@@ -318,6 +318,17 @@ export const createSavedBannerRoute = (
       throw error;
     }
   });
+
+  return route;
+};
+
+export const createUnavailableSavedBannerRoute = (): Hono => {
+  const route = new Hono();
+  const unavailable = (c: Context) =>
+    c.json({ error: "Saved banner database is not configured" }, 503);
+
+  route.post("/save", unavailable);
+  route.get("/:savedBannerFile", unavailable);
 
   return route;
 };

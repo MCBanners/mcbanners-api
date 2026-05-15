@@ -12,6 +12,8 @@
     "typecheck": "tsc -p tsconfig.build.json"
   },
   "dependencies": {
-    "kysely": "^0.29.0"
+    "@mcbanners/config": "workspace:*",
+    "kysely": "^0.29.0",
+    "mysql2": "^3.22.3"
   }
 }

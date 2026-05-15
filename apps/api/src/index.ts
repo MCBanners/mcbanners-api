@@ -2,6 +2,13 @@ import { createApp } from "./app";
 import { createFixtureAdapter, LiveMinecraftStatusAdapter } from "@mcbanners/minecraft-status";
 import { MC_STATUS_FIXTURES } from "@mcbanners/minecraft-status";
 import { MemoryCache } from "@mcbanners/cache";
+import { loadApiRuntimeConfig } from "@mcbanners/config";
+import {
+  createSavedBannerDb,
+  createSavedBannerRepository,
+  destroySavedBannerDb,
+  type SavedBannerRepository
+} from "@mcbanners/db";
 import {
   SpigotResourceClient,
   ModrinthResourceClient,
@@ -13,6 +20,7 @@ import {
 } from "@mcbanners/external-clients";
 
 const isDev = process.env.NODE_ENV !== "production";
+const runtimeConfig = loadApiRuntimeConfig();
 
 const minecraftAdapter = isDev
   ? createFixtureAdapter(MC_STATUS_FIXTURES)
@@ -38,10 +46,43 @@ const resourceClients = {
   POLYMART: new PolymartResourceClient()
 };
 
-const app = createApp(minecraftAdapter, resourceClients, {
-  mcStatus: mcStatusCache,
-  bannerImage: bannerImageCache,
-  resourceBannerImage: resourceBannerImageCache
-});
+const savedBannerDb = runtimeConfig.savedBannerDb.enabled
+  ? createSavedBannerDb(runtimeConfig.savedBannerDb.connection)
+  : null;
+const savedBannerRepository: SavedBannerRepository | null =
+  savedBannerDb === null ? null : createSavedBannerRepository(savedBannerDb);
+
+if (savedBannerDb !== null) {
+  const shutdown = async (): Promise<void> => {
+    await destroySavedBannerDb(savedBannerDb);
+  };
+
+  process.once("beforeExit", () => {
+    void shutdown();
+  });
+  process.once("SIGINT", () => {
+    void shutdown().finally(() => {
+      process.exit(0);
+    });
+  });
+  process.once("SIGTERM", () => {
+    void shutdown().finally(() => {
+      process.exit(0);
+    });
+  });
+}
+
+const app = createApp(
+  minecraftAdapter,
+  resourceClients,
+  {
+    mcStatus: mcStatusCache,
+    bannerImage: bannerImageCache,
+    resourceBannerImage: resourceBannerImageCache
+  },
+  {
+    savedBanners: savedBannerRepository
+  }
+);
 
 export default app;

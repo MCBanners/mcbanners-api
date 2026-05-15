@@ -10,6 +10,8 @@
   "dependencies": {
     "@mcbanners/banner-renderer": "workspace:*",
     "@mcbanners/cache": "workspace:*",
+    "@mcbanners/config": "workspace:*",
+    "@mcbanners/db": "workspace:*",
     "@mcbanners/domain": "workspace:*",
     "@mcbanners/external-clients": "workspace:*",
     "@mcbanners/minecraft-status": "workspace:*",

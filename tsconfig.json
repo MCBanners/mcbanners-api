@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": "."
+  },
+  "include": ["tests/**/*.ts"],
+  "references": [
+    { "path": "./packages/config/tsconfig.build.json" },
+    { "path": "./packages/db/tsconfig.build.json" }
+  ]
+}

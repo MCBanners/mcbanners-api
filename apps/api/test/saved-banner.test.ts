@@ -115,6 +115,22 @@ const savedRow = (
 });
 
 describe("POST /banner/saved/save", () => {
+  it("returns 503 when the runtime exposes saved routes without a repository", async () => {
+    const app = createApp(createFixtureAdapter(MC_STATUS_FIXTURES), {}, undefined, {
+      savedBanners: null
+    });
+    const res = await app.request("/banner/saved/save", {
+      method: "POST",
+      body: JSON.stringify({
+        type: "MINECRAFT_SERVER",
+        metadata: { server_host: "mc.hypixel.net" }
+      }),
+      headers: { "Content-Type": "application/json" }
+    });
+
+    expect(res.status).toBe(503);
+  });
+
   it("saves an anonymous banner and returns a legacy-compatible row shape", async () => {
     const repository = new InMemorySavedBannerRepository();
     const app = makeSavedApp(repository);
@@ -209,6 +225,15 @@ describe("POST /banner/saved/save", () => {
 });
 
 describe("GET /banner/saved/:mnemonic.:outputType", () => {
+  it("returns 503 for recall when the runtime exposes saved routes without a repository", async () => {
+    const app = createApp(createFixtureAdapter(MC_STATUS_FIXTURES), {}, undefined, {
+      savedBanners: null
+    });
+    const res = await app.request("/banner/saved/abcdefghijklmn.png");
+
+    expect(res.status).toBe(503);
+  });
+
   it("returns 404 for a missing mnemonic", async () => {
     const res = await makeSavedApp().request("/banner/saved/abcdefghijklmn.png");
 

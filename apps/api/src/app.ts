@@ -6,7 +6,7 @@ import { CachedMinecraftStatusAdapter } from "./cached-mc-adapter";
 import { createMcServerRoute } from "./routes/mc-server";
 import { createServerBannerRoute } from "./routes/server-banner";
 import { createResourceBannerRoute, type ResourceClients } from "./routes/resource-banner";
-import { createSavedBannerRoute } from "./routes/saved-banner";
+import { createSavedBannerRoute, createUnavailableSavedBannerRoute } from "./routes/saved-banner";
 
 /**
  * Optional caches injected into the app for production use.
@@ -24,7 +24,7 @@ export interface AppCaches {
 export type { ResourceClients };
 
 export interface AppRepositories {
-  savedBanners?: SavedBannerRepository;
+  savedBanners?: SavedBannerRepository | null;
 }
 
 /**
@@ -69,7 +69,9 @@ export const createApp = (
     createResourceBannerRoute(resourceClients, caches?.resourceBannerImage)
   );
 
-  if (repositories?.savedBanners !== undefined) {
+  if (repositories?.savedBanners === null) {
+    app.route("/banner/saved", createUnavailableSavedBannerRoute());
+  } else if (repositories?.savedBanners !== undefined) {
     app.route(
       "/banner/saved",
       createSavedBannerRoute(repositories.savedBanners, mcAdapter, resourceClients)
