@@ -13,6 +13,7 @@
     "typecheck": "tsc -p tsconfig.build.json"
   },
   "dependencies": {
+    "@mcbanners/domain": "workspace:*",
     "@napi-rs/canvas": "^1.0.0"
   }
 }

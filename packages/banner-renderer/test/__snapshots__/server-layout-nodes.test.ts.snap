@@ -1,0 +1,77 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`buildServerBannerNodes snapshots standard server node tree snapshot 1`] = `
+[
+  {
+    "assetKey": "MOONLIGHT_PURPLE",
+    "type": "image",
+    "x": 0,
+    "y": 0,
+  },
+  {
+    "assetKey": "(imageData)",
+    "type": "image",
+    "x": 12,
+    "y": 10,
+  },
+  {
+    "content": "Hypixel",
+    "type": "text",
+    "x": 104,
+    "y": 22,
+  },
+  {
+    "content": "1.20.4",
+    "type": "text",
+    "x": 104,
+    "y": 38,
+  },
+  {
+    "content": "The Minecraft Server Network",
+    "type": "wrapped-text",
+    "x": 104,
+    "y": 55,
+  },
+  {
+    "content": "42500 / 200000 players online",
+    "type": "text",
+    "x": 104,
+    "y": 85,
+  },
+]
+`;
+
+exports[`buildServerBannerNodes snapshots no-icon server node tree snapshot 1`] = `
+[
+  {
+    "type": "image",
+    "x": 0,
+    "y": 0,
+  },
+  {
+    "type": "sprite",
+    "x": 12,
+    "y": 10,
+  },
+  {
+    "type": "text",
+    "x": 104,
+    "y": 22,
+  },
+  {
+    "type": "text",
+    "x": 104,
+    "y": 38,
+  },
+  {
+    "type": "wrapped-text",
+    "x": 104,
+    "y": 55,
+  },
+  {
+    "type": "text",
+    "x": 104,
+    "y": 85,
+  },
+]
+`;

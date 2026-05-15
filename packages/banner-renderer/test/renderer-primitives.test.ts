@@ -219,9 +219,7 @@ describe("renderer primitives", () => {
     }
 
     expect(caughtError).toBeInstanceOf(Error);
-    expect((caughtError as Error).message).toContain(
-      "Image asset not found in manifest"
-    );
+    expect((caughtError as Error).message).toContain("Image asset not found in manifest");
   });
 
   test("renderDebugNode draws debug overlay without error", () => {

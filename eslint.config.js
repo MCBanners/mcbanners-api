@@ -14,7 +14,14 @@ export default tseslint.config(
     }
   },
   {
-    ignores: ["**/dist/**", "**/*.tsbuildinfo", "node_modules/**", "eslint.config.js"]
+    ignores: [
+      "**/dist/**",
+      "**/*.tsbuildinfo",
+      "node_modules/**",
+      "eslint.config.js",
+      "**/src/**/*.js",
+      "**/src/**/*.d.ts"
+    ]
   },
   {
     rules: {
