@@ -296,3 +296,184 @@ describe("cache key deduplication", () => {
     expect(cache.stats().evictions).toBe(0);
   });
 });
+
+// ---------------------------------------------------------------------------
+// CurseForge platform
+// ---------------------------------------------------------------------------
+
+const FIXTURE_CURSEFORGE: ResourceBannerData = {
+  resource: {
+    name: "JourneyMap",
+    logoBase64: TINY_PNG_B64,
+    downloadCount: 50_000_000,
+    lastUpdated: "2024-06-01T12:00:00Z",
+    rating: { count: 0, average: 0 },
+    price: null
+  },
+  author: { name: "techbrew" },
+  backend: "CURSEFORGE"
+};
+
+const cfClients: ResourceClients = {
+  SPIGOT: new FixtureResourceClient(null),
+  MODRINTH: new FixtureResourceClient(null),
+  CURSEFORGE: new FixtureResourceClient(FIXTURE_CURSEFORGE),
+  HANGAR: new FixtureResourceClient(null),
+  ORE: new FixtureResourceClient(null)
+};
+
+describe("CurseForge resource route", () => {
+  const cfApp = makeApp(cfClients);
+
+  it("returns 200 PNG for a known CurseForge resource", async () => {
+    const res = await cfApp.request("/banner/resource/curseforge/12345/banner.png");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toBe("image/png");
+  });
+
+  it("returns 200 JPEG for a known CurseForge resource", async () => {
+    const res = await cfApp.request("/banner/resource/curseforge/12345/banner.jpg");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toBe("image/jpeg");
+  });
+
+  it("returns { valid: true } for CurseForge isValid", async () => {
+    const res = await cfApp.request("/banner/resource/curseforge/12345/isValid");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { valid: boolean };
+    expect(body.valid).toBe(true);
+  });
+
+  it("is case-insensitive (CURSEFORGE upper-case)", async () => {
+    const res = await cfApp.request("/banner/resource/CURSEFORGE/12345/banner.png");
+    expect(res.status).toBe(200);
+  });
+
+  it("returns 404 when CurseForge client returns null", async () => {
+    const nullCfClients: ResourceClients = { CURSEFORGE: new FixtureResourceClient(null) };
+    const res = await makeApp(nullCfClients).request(
+      "/banner/resource/curseforge/99999/banner.png"
+    );
+    expect(res.status).toBe(404);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Hangar platform
+// ---------------------------------------------------------------------------
+
+const FIXTURE_HANGAR: ResourceBannerData = {
+  resource: {
+    name: "EternalLight",
+    logoBase64: TINY_PNG_B64,
+    downloadCount: 8500,
+    lastUpdated: "2024-07-15T10:00:00Z",
+    rating: { count: 42, average: 0 },
+    price: null
+  },
+  author: { name: "papermc" },
+  backend: "HANGAR"
+};
+
+const hangarClients: ResourceClients = {
+  SPIGOT: new FixtureResourceClient(null),
+  MODRINTH: new FixtureResourceClient(null),
+  CURSEFORGE: new FixtureResourceClient(null),
+  HANGAR: new FixtureResourceClient(FIXTURE_HANGAR),
+  ORE: new FixtureResourceClient(null)
+};
+
+describe("Hangar resource route", () => {
+  const hangarApp = makeApp(hangarClients);
+
+  it("returns 200 PNG for a known Hangar resource", async () => {
+    const res = await hangarApp.request("/banner/resource/hangar/papermc/eternal-light/banner.png");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toBe("image/png");
+  });
+
+  it("returns 200 JPEG for a known Hangar resource", async () => {
+    const res = await hangarApp.request("/banner/resource/hangar/papermc/eternal-light/banner.jpg");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toBe("image/jpeg");
+  });
+
+  it("returns { valid: true } for Hangar isValid", async () => {
+    const res = await hangarApp.request("/banner/resource/hangar/papermc/eternal-light/isValid");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { valid: boolean };
+    expect(body.valid).toBe(true);
+  });
+
+  it("is case-insensitive (HANGAR upper-case)", async () => {
+    const res = await hangarApp.request("/banner/resource/HANGAR/papermc/eternal-light/banner.png");
+    expect(res.status).toBe(200);
+  });
+
+  it("returns 404 when Hangar client returns null", async () => {
+    const nullHangarClients: ResourceClients = { HANGAR: new FixtureResourceClient(null) };
+    const res = await makeApp(nullHangarClients).request(
+      "/banner/resource/hangar/unknown/plugin/banner.png"
+    );
+    expect(res.status).toBe(404);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Ore platform
+// ---------------------------------------------------------------------------
+
+const FIXTURE_ORE: ResourceBannerData = {
+  resource: {
+    name: "MyPlugin",
+    logoBase64: TINY_PNG_B64,
+    downloadCount: 3200,
+    lastUpdated: null,
+    rating: { count: 78, average: null },
+    price: null
+  },
+  author: { name: "PluginDev" },
+  backend: "ORE"
+};
+
+const oreClients: ResourceClients = {
+  SPIGOT: new FixtureResourceClient(null),
+  MODRINTH: new FixtureResourceClient(null),
+  CURSEFORGE: new FixtureResourceClient(null),
+  HANGAR: new FixtureResourceClient(null),
+  ORE: new FixtureResourceClient(FIXTURE_ORE)
+};
+
+describe("Ore resource route", () => {
+  const oreApp = makeApp(oreClients);
+
+  it("returns 200 PNG for a known Ore resource", async () => {
+    const res = await oreApp.request("/banner/resource/ore/myplugin/banner.png");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toBe("image/png");
+  });
+
+  it("returns 200 JPEG for a known Ore resource", async () => {
+    const res = await oreApp.request("/banner/resource/ore/myplugin/banner.jpg");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toBe("image/jpeg");
+  });
+
+  it("returns { valid: true } for Ore isValid", async () => {
+    const res = await oreApp.request("/banner/resource/ore/myplugin/isValid");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { valid: boolean };
+    expect(body.valid).toBe(true);
+  });
+
+  it("is case-insensitive (ORE upper-case)", async () => {
+    const res = await oreApp.request("/banner/resource/ORE/myplugin/banner.png");
+    expect(res.status).toBe(200);
+  });
+
+  it("returns 404 when Ore client returns null", async () => {
+    const nullOreClients: ResourceClients = { ORE: new FixtureResourceClient(null) };
+    const res = await makeApp(nullOreClients).request("/banner/resource/ore/unknown/banner.png");
+    expect(res.status).toBe(404);
+  });
+});

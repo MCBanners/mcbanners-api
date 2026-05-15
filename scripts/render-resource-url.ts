@@ -10,15 +10,22 @@
  *   bun run scripts/render-resource-url.ts <platform> <id> [outputType] [outputDir]
  *
  * Arguments:
- *   platform   — spigot | modrinth  (case-insensitive)
- *   id         — Spigot numeric ID or Modrinth project slug / ID
+ *   platform   — spigot | modrinth | curseforge | hangar | ore  (case-insensitive)
+ *   id         — platform-specific resource ID
+ *                Hangar: "author/slug" (e.g. "papermc/eternal-light")
+ *                Spigot: numeric ID
+ *                Modrinth: project slug or ID
+ *                CurseForge: numeric CurseForge project ID
+ *                Ore: plugin ID (e.g. "nucleus")
  *   outputType — png (default) | jpg
  *   outputDir  — output directory (default: ./tmp/resource-url-out)
  *
  * Examples:
  *   bun run scripts/render-resource-url.ts spigot 12345
  *   bun run scripts/render-resource-url.ts modrinth sodium jpg
- *   bun run scripts/render-resource-url.ts spigot 12345 png ./tmp/out
+ *   bun run scripts/render-resource-url.ts curseforge 32274
+ *   bun run scripts/render-resource-url.ts hangar "papermc/eternal-light"
+ *   bun run scripts/render-resource-url.ts ore nucleus
  */
 
 import { mkdir, writeFile } from "node:fs/promises";
@@ -27,6 +34,9 @@ import { join } from "node:path";
 import {
   SpigotResourceClient,
   ModrinthResourceClient,
+  CurseForgeResourceClient,
+  HangarResourceClient,
+  OreResourceClient,
   type ResourceClient
 } from "../packages/external-clients/src";
 import {
@@ -47,7 +57,7 @@ const [, , rawPlatform, rawId, rawOutputType, rawOutputDir] = process.argv;
 
 if (!rawPlatform || !rawId) {
   console.error("Usage: bun run scripts/render-resource-url.ts <platform> <id> [png|jpg] [outputDir]");
-  console.error("  platform: spigot | modrinth");
+  console.error("  platform: spigot | modrinth | curseforge | hangar | ore");
   process.exit(1);
 }
 
@@ -63,12 +73,15 @@ if (outputType !== "png" && outputType !== "jpg") {
 
 const clientMap: Record<string, ResourceClient> = {
   spigot: new SpigotResourceClient(),
-  modrinth: new ModrinthResourceClient()
+  modrinth: new ModrinthResourceClient(),
+  curseforge: new CurseForgeResourceClient(),
+  hangar: new HangarResourceClient(),
+  ore: new OreResourceClient()
 };
 
 const client = clientMap[platform];
 if (client === undefined) {
-  console.error(`Unknown platform: ${rawPlatform}. Supported: spigot, modrinth`);
+  console.error(`Unknown platform: ${rawPlatform}. Supported: spigot, modrinth, curseforge, hangar, ore`);
   process.exit(1);
 }
 

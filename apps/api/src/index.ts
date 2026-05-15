@@ -2,7 +2,13 @@ import { createApp } from "./app";
 import { createFixtureAdapter, LiveMinecraftStatusAdapter } from "@mcbanners/minecraft-status";
 import { MC_STATUS_FIXTURES } from "@mcbanners/minecraft-status";
 import { MemoryCache } from "@mcbanners/cache";
-import { SpigotResourceClient, ModrinthResourceClient } from "@mcbanners/external-clients";
+import {
+  SpigotResourceClient,
+  ModrinthResourceClient,
+  CurseForgeResourceClient,
+  HangarResourceClient,
+  OreResourceClient
+} from "@mcbanners/external-clients";
 
 const isDev = process.env.NODE_ENV !== "production";
 
@@ -20,7 +26,10 @@ const resourceBannerImageCache = new MemoryCache({
 
 const resourceClients = {
   SPIGOT: new SpigotResourceClient(),
-  MODRINTH: new ModrinthResourceClient()
+  MODRINTH: new ModrinthResourceClient(),
+  CURSEFORGE: new CurseForgeResourceClient(),
+  HANGAR: new HangarResourceClient(),
+  ORE: new OreResourceClient()
 };
 
 const app = createApp(minecraftAdapter, resourceClients, {
