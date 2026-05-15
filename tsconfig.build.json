@@ -1,7 +1,7 @@
 {
   "files": [],
   "references": [
-    { "path": "./packages/banner-renderer" },
+    { "path": "./packages/banner-renderer/tsconfig.build.json" },
     { "path": "./packages/domain/tsconfig.build.json" },
     { "path": "./packages/external-clients" },
     { "path": "./packages/minecraft-status" },

@@ -5,10 +5,11 @@
   "main": "src/index.ts",
   "exports": {
     ".": "./src/index.ts",
+    "./assets": "./src/assets/index.ts",
     "./*": "./src/*.ts"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc -p tsconfig.json"
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.build.json"
   }
 }
