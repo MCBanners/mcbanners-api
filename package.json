@@ -1,0 +1,32 @@
+{
+  "name": "mcbanners-api-next",
+  "private": true,
+  "type": "module",
+  "packageManager": "bun@1.2.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "bun --filter @mcbanners/api dev",
+    "build": "tsc -b tsconfig.build.json",
+    "test": "bun test packages/domain/test",
+    "typecheck": "tsc -b tsconfig.build.json --pretty",
+    "lint": "eslint .",
+    "format": "prettier --write \"apps/**/*.{json,ts}\" \"packages/**/*.{json,ts}\" \"docs/**/*.md\" \"*.json\" \"*.js\""
+  },
+  "dependencies": {
+    "hono": "^4.7.11",
+    "kysely": "^0.28.2",
+    "pino": "^9.7.0",
+    "zod": "^3.25.28"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.27.0",
+    "@types/bun": "^1.2.13",
+    "eslint": "^9.27.0",
+    "prettier": "^3.5.3",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.32.1"
+  }
+}

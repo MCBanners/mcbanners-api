@@ -1,0 +1,17 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./packages/banner-renderer" },
+    { "path": "./packages/domain" },
+    { "path": "./packages/external-clients" },
+    { "path": "./packages/minecraft-status" },
+    { "path": "./packages/db" },
+    { "path": "./packages/cache" },
+    { "path": "./packages/config" },
+    { "path": "./packages/logger" },
+    { "path": "./apps/api" },
+    { "path": "./apps/discord-bot" },
+    { "path": "./apps/compat-runner" },
+    { "path": "./apps/bench-runner" }
+  ]
+}

@@ -1,0 +1,6 @@
+node_modules
+dist
+*.tsbuildinfo
+banner-api
+mc-api
+discord-api
