@@ -7,7 +7,9 @@ import {
   ModrinthResourceClient,
   CurseForgeResourceClient,
   HangarResourceClient,
-  OreResourceClient
+  OreResourceClient,
+  BuiltByBitResourceClient,
+  PolymartResourceClient
 } from "@mcbanners/external-clients";
 
 const isDev = process.env.NODE_ENV !== "production";
@@ -29,7 +31,11 @@ const resourceClients = {
   MODRINTH: new ModrinthResourceClient(),
   CURSEFORGE: new CurseForgeResourceClient(),
   HANGAR: new HangarResourceClient(),
-  ORE: new OreResourceClient()
+  ORE: new OreResourceClient(),
+  BUILTBYBIT: new BuiltByBitResourceClient(
+    process.env["BUILTBYBIT_API_KEY"] ? { apiKey: process.env["BUILTBYBIT_API_KEY"] } : {}
+  ),
+  POLYMART: new PolymartResourceClient()
 };
 
 const app = createApp(minecraftAdapter, resourceClients, {

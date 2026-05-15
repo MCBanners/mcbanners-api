@@ -479,6 +479,191 @@ describe("Ore resource route", () => {
 });
 
 // ---------------------------------------------------------------------------
+// BuiltByBit platform
+// ---------------------------------------------------------------------------
+
+const FIXTURE_BUILTBYBIT: ResourceBannerData = {
+  resource: {
+    name: "BuiltByBitPlugin",
+    logoBase64: null,
+    downloadCount: 8500,
+    lastUpdated: null,
+    rating: { count: 200, average: 4.8 },
+    price: null
+  },
+  author: { name: "BBBDev" },
+  backend: "BUILTBYBIT"
+};
+
+const FIXTURE_BUILTBYBIT_PREMIUM: ResourceBannerData = {
+  resource: {
+    name: "PremiumBBBPlugin",
+    logoBase64: null,
+    downloadCount: 350,
+    lastUpdated: null,
+    rating: { count: 50, average: 4.9 },
+    price: { amount: 9.99, currency: "USD" }
+  },
+  author: { name: "BBBPremDev" },
+  backend: "BUILTBYBIT"
+};
+
+const bbbClients: ResourceClients = {
+  SPIGOT: new FixtureResourceClient(null),
+  MODRINTH: new FixtureResourceClient(null),
+  CURSEFORGE: new FixtureResourceClient(null),
+  HANGAR: new FixtureResourceClient(null),
+  ORE: new FixtureResourceClient(null),
+  BUILTBYBIT: new FixtureResourceClient(FIXTURE_BUILTBYBIT)
+};
+
+describe("BuiltByBit resource route", () => {
+  const bbbApp = makeApp(bbbClients);
+
+  it("returns 200 PNG for a known BBB resource", async () => {
+    const res = await bbbApp.request("/banner/resource/builtbybit/12345/banner.png");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toBe("image/png");
+  });
+
+  it("returns 200 JPEG for a known BBB resource", async () => {
+    const res = await bbbApp.request("/banner/resource/builtbybit/12345/banner.jpg");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toBe("image/jpeg");
+  });
+
+  it("returns { valid: true } for BBB isValid", async () => {
+    const res = await bbbApp.request("/banner/resource/builtbybit/12345/isValid");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { valid: boolean };
+    expect(body.valid).toBe(true);
+  });
+
+  it("is case-insensitive (BUILTBYBIT upper-case)", async () => {
+    const res = await bbbApp.request("/banner/resource/BUILTBYBIT/12345/banner.png");
+    expect(res.status).toBe(200);
+  });
+
+  it("renders a premium resource banner (with price)", async () => {
+    const premApp = makeApp({
+      BUILTBYBIT: new FixtureResourceClient(FIXTURE_BUILTBYBIT_PREMIUM)
+    });
+    const res = await premApp.request("/banner/resource/builtbybit/55555/banner.png");
+    expect(res.status).toBe(200);
+  });
+
+  it("returns 404 when BBB client returns null", async () => {
+    const nullBbbClients: ResourceClients = { BUILTBYBIT: new FixtureResourceClient(null) };
+    const res = await makeApp(nullBbbClients).request(
+      "/banner/resource/builtbybit/unknown/banner.png"
+    );
+    expect(res.status).toBe(404);
+  });
+
+  it("returns { valid: false } for BBB isValid when client returns null", async () => {
+    const nullBbbClients: ResourceClients = { BUILTBYBIT: new FixtureResourceClient(null) };
+    const res = await makeApp(nullBbbClients).request(
+      "/banner/resource/builtbybit/unknown/isValid"
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { valid: boolean };
+    expect(body.valid).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Polymart platform
+// ---------------------------------------------------------------------------
+
+const FIXTURE_POLYMART_FREE: ResourceBannerData = {
+  resource: {
+    name: "PolymartPlugin",
+    logoBase64: TINY_PNG_B64,
+    downloadCount: 12000,
+    lastUpdated: null,
+    rating: { count: 300, average: 5 },
+    price: null
+  },
+  author: { name: "PolyAuthor" },
+  backend: "POLYMART"
+};
+
+const FIXTURE_POLYMART_PREMIUM: ResourceBannerData = {
+  resource: {
+    name: "PolymartPremiumPlugin",
+    logoBase64: TINY_PNG_B64,
+    downloadCount: 7500,
+    lastUpdated: null,
+    rating: { count: 120, average: 4 },
+    price: { amount: 4.99, currency: "USD" }
+  },
+  author: { name: "PolyPremAuthor" },
+  backend: "POLYMART"
+};
+
+const polymartClients: ResourceClients = {
+  SPIGOT: new FixtureResourceClient(null),
+  MODRINTH: new FixtureResourceClient(null),
+  CURSEFORGE: new FixtureResourceClient(null),
+  HANGAR: new FixtureResourceClient(null),
+  ORE: new FixtureResourceClient(null),
+  BUILTBYBIT: new FixtureResourceClient(null),
+  POLYMART: new FixtureResourceClient(FIXTURE_POLYMART_FREE)
+};
+
+describe("Polymart resource route", () => {
+  const polymartApp = makeApp(polymartClients);
+
+  it("returns 200 PNG for a known Polymart resource", async () => {
+    const res = await polymartApp.request("/banner/resource/polymart/123/banner.png");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toBe("image/png");
+  });
+
+  it("returns 200 JPEG for a known Polymart resource", async () => {
+    const res = await polymartApp.request("/banner/resource/polymart/123/banner.jpg");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toBe("image/jpeg");
+  });
+
+  it("returns { valid: true } for Polymart isValid", async () => {
+    const res = await polymartApp.request("/banner/resource/polymart/123/isValid");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { valid: boolean };
+    expect(body.valid).toBe(true);
+  });
+
+  it("is case-insensitive (POLYMART upper-case)", async () => {
+    const res = await polymartApp.request("/banner/resource/POLYMART/123/banner.png");
+    expect(res.status).toBe(200);
+  });
+
+  it("renders a premium Polymart resource banner (with price)", async () => {
+    const premApp = makeApp({
+      POLYMART: new FixtureResourceClient(FIXTURE_POLYMART_PREMIUM)
+    });
+    const res = await premApp.request("/banner/resource/polymart/123/banner.png");
+    expect(res.status).toBe(200);
+  });
+
+  it("returns 404 when Polymart client returns null", async () => {
+    const nullPolyClients: ResourceClients = { POLYMART: new FixtureResourceClient(null) };
+    const res = await makeApp(nullPolyClients).request(
+      "/banner/resource/polymart/unknown/banner.png"
+    );
+    expect(res.status).toBe(404);
+  });
+
+  it("returns { valid: false } for Polymart isValid when client returns null", async () => {
+    const nullPolyClients: ResourceClients = { POLYMART: new FixtureResourceClient(null) };
+    const res = await makeApp(nullPolyClients).request("/banner/resource/polymart/unknown/isValid");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { valid: boolean };
+    expect(body.valid).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Route edge cases — wildcard parser integration
 // ---------------------------------------------------------------------------
 

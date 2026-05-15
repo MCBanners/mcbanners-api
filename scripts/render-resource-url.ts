@@ -26,6 +26,8 @@
  *   bun run scripts/render-resource-url.ts curseforge 32274
  *   bun run scripts/render-resource-url.ts hangar "papermc/eternal-light"
  *   bun run scripts/render-resource-url.ts ore nucleus
+ *   bun run scripts/render-resource-url.ts builtbybit 12345         # requires BUILTBYBIT_API_KEY
+ *   bun run scripts/render-resource-url.ts polymart 123
  */
 
 import { mkdir, writeFile } from "node:fs/promises";
@@ -37,6 +39,8 @@ import {
   CurseForgeResourceClient,
   HangarResourceClient,
   OreResourceClient,
+  BuiltByBitResourceClient,
+  PolymartResourceClient,
   type ResourceClient
 } from "../packages/external-clients/src";
 import {
@@ -57,7 +61,7 @@ const [, , rawPlatform, rawId, rawOutputType, rawOutputDir] = process.argv;
 
 if (!rawPlatform || !rawId) {
   console.error("Usage: bun run scripts/render-resource-url.ts <platform> <id> [png|jpg] [outputDir]");
-  console.error("  platform: spigot | modrinth | curseforge | hangar | ore");
+  console.error("  platform: spigot | modrinth | curseforge | hangar | ore | builtbybit | polymart");
   process.exit(1);
 }
 
@@ -76,12 +80,18 @@ const clientMap: Record<string, ResourceClient> = {
   modrinth: new ModrinthResourceClient(),
   curseforge: new CurseForgeResourceClient(),
   hangar: new HangarResourceClient(),
-  ore: new OreResourceClient()
+  ore: new OreResourceClient(),
+  builtbybit: new BuiltByBitResourceClient(
+    process.env["BUILTBYBIT_API_KEY"] ? { apiKey: process.env["BUILTBYBIT_API_KEY"] } : {}
+  ),
+  polymart: new PolymartResourceClient()
 };
 
 const client = clientMap[platform];
 if (client === undefined) {
-  console.error(`Unknown platform: ${rawPlatform}. Supported: spigot, modrinth, curseforge, hangar, ore`);
+  console.error(
+    `Unknown platform: ${rawPlatform}. Supported: spigot, modrinth, curseforge, hangar, ore, builtbybit, polymart`
+  );
   process.exit(1);
 }
 
