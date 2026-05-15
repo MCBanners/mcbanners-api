@@ -183,15 +183,33 @@ describe("encodeVarInt / tryReadVarInt", () => {
     return result.value;
   };
 
-  it("encodes and decodes 0", () => { expect(roundtrip(0)).toBe(0); });
-  it("encodes and decodes 1", () => { expect(roundtrip(1)).toBe(1); });
-  it("encodes and decodes 127 (max 1-byte)", () => { expect(roundtrip(127)).toBe(127); });
-  it("encodes and decodes 128 (first 2-byte)", () => { expect(roundtrip(128)).toBe(128); });
-  it("encodes and decodes 255", () => { expect(roundtrip(255)).toBe(255); });
-  it("encodes and decodes 300", () => { expect(roundtrip(300)).toBe(300); });
-  it("encodes and decodes 25565 (default MC port)", () => { expect(roundtrip(25565)).toBe(25565); });
-  it("encodes and decodes 765 (protocol version)", () => { expect(roundtrip(765)).toBe(765); });
-  it("encodes and decodes 2097151 (max 3-byte)", () => { expect(roundtrip(2097151)).toBe(2097151); });
+  it("encodes and decodes 0", () => {
+    expect(roundtrip(0)).toBe(0);
+  });
+  it("encodes and decodes 1", () => {
+    expect(roundtrip(1)).toBe(1);
+  });
+  it("encodes and decodes 127 (max 1-byte)", () => {
+    expect(roundtrip(127)).toBe(127);
+  });
+  it("encodes and decodes 128 (first 2-byte)", () => {
+    expect(roundtrip(128)).toBe(128);
+  });
+  it("encodes and decodes 255", () => {
+    expect(roundtrip(255)).toBe(255);
+  });
+  it("encodes and decodes 300", () => {
+    expect(roundtrip(300)).toBe(300);
+  });
+  it("encodes and decodes 25565 (default MC port)", () => {
+    expect(roundtrip(25565)).toBe(25565);
+  });
+  it("encodes and decodes 765 (protocol version)", () => {
+    expect(roundtrip(765)).toBe(765);
+  });
+  it("encodes and decodes 2097151 (max 3-byte)", () => {
+    expect(roundtrip(2097151)).toBe(2097151);
+  });
 
   it("encodes 0 as a single byte [0x00]", () => {
     expect(Array.from(encodeVarInt(0))).toEqual([0x00]);

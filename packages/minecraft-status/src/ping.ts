@@ -15,6 +15,21 @@ import type { McApiResponse } from "./mc-api-response";
 import { componentToLegacy, stripColors, cleanMotd } from "./motd-utils";
 
 // ---------------------------------------------------------------------------
+// Safety limits
+// ---------------------------------------------------------------------------
+
+/** Maximum accumulated TCP bytes before aborting — prevents memory exhaustion. */
+const MAX_PACKET_BYTES = 2 * 1024 * 1024; // 2 MB
+
+/** Maximum favicon data URI length. Oversized favicons are silently dropped. */
+const MAX_FAVICON_BYTES = 65_536; // 64 KB
+
+/** Maximum raw MOTD string length before any normalization. Excess is truncated. */
+const MAX_MOTD_LENGTH = 32_768; // 32 KB
+
+export { MAX_PACKET_BYTES, MAX_FAVICON_BYTES, MAX_MOTD_LENGTH };
+
+// ---------------------------------------------------------------------------
 // VarInt codec
 // ---------------------------------------------------------------------------
 
@@ -112,17 +127,21 @@ export function slpToMcApiResponse(
   const versionName = slp.version?.name ?? "Unknown";
   const version = cleanMotd(versionName);
 
-  const raw = componentToLegacy(slp.description ?? "").trim();
+  // Truncate raw MOTD before normalization to prevent processing pathologically
+  // long strings sent by malicious or misconfigured servers.
+  const rawFull = componentToLegacy(slp.description ?? "").trim();
+  const raw = rawFull.length > MAX_MOTD_LENGTH ? rawFull.slice(0, MAX_MOTD_LENGTH) : rawFull;
   const colorless = stripColors(raw);
   const formatted = cleanMotd(raw);
 
   const online = slp.players?.online ?? 0;
   const max = slp.players?.max ?? 0;
 
-  // The SLP protocol delivers the favicon as a data URI string directly.
+  // Drop oversized favicons (e.g. servers sending unexpectedly large icons).
   // Use a conditional spread to satisfy exactOptionalPropertyTypes.
+  const favicon = slp.favicon;
   const iconEntry =
-    slp.favicon && slp.favicon.length > 0 ? { icon: slp.favicon } : {};
+    favicon && favicon.length > 0 && favicon.length <= MAX_FAVICON_BYTES ? { icon: favicon } : {};
 
   return {
     host,
@@ -238,6 +257,14 @@ export async function pingMinecraftServer(
     socket.on("data", (chunk: Buffer) => {
       chunks.push(chunk);
       const data = Buffer.concat(chunks);
+
+      // Abort if the server sends an unreasonably large response to prevent
+      // unbounded memory growth.
+      if (data.length > MAX_PACKET_BYTES) {
+        done(null);
+        return;
+      }
+
       try {
         const result = tryParseStatusResponse(data, host, port);
         if (result !== null) done(result);

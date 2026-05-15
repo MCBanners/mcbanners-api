@@ -6,6 +6,8 @@ export { FixtureMinecraftStatusAdapter, createFixtureAdapter } from "./fixture-a
 export { LiveMinecraftStatusAdapter } from "./live-adapter";
 export { pingMinecraftServer } from "./ping";
 export { componentToLegacy, stripColors, cleanMotd } from "./motd-utils";
+export { resolveMcSrv, type SrvResolver, type SrvRecord } from "./srv";
+export { validateHost, validatePort } from "./validate";
 export {
   MC_STATUS_FIXTURES,
   MC_FIXTURE_HYPIXEL,
