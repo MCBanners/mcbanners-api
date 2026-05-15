@@ -13,7 +13,7 @@ export interface ParsedResourceRoute {
    *   - Spigot / Modrinth / CurseForge / Ore: single segment (`"12345"`, `"sodium"`)
    *   - Hangar: two-segment author/slug (`"papermc/eternal-light"`)
    *
-   * The caller is responsible for normalising (e.g. `.toLowerCase()`) before
+   * The caller is responsible for platform-specific normalization before
    * passing to a resource client.
    */
   id: string;

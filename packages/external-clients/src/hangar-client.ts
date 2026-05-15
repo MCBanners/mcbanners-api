@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { ResourceBannerData } from "@mcbanners/banner-renderer";
 import type { ResourceClient } from "./resource-client";
 import { fetchJson, fetchImageBase64, type FetchFn, type HttpClientOptions } from "./http-client";
+import { normalizeResourceId } from "./resource-id";
 
 const HANGAR_BASE_URL = "https://hangar.papermc.io/api/v1";
 
@@ -40,8 +41,9 @@ export class HangarResourceClient implements ResourceClient {
 
   async getResourceBannerData(id: string): Promise<ResourceBannerData | null> {
     // id is expected in "author/slug" format; the slash is meaningful in the path.
+    const resourceId = normalizeResourceId("HANGAR", id);
     const project = await fetchJson(
-      `${HANGAR_BASE_URL}/projects/${id}`,
+      `${HANGAR_BASE_URL}/projects/${resourceId}`,
       HangarProjectSchema,
       this.options,
       this.fetchFn

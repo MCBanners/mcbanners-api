@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { ResourceBannerData } from "@mcbanners/banner-renderer";
 import type { ResourceClient } from "./resource-client";
 import { fetchJson, type FetchFn, type HttpClientOptions } from "./http-client";
+import { normalizeResourceId } from "./resource-id";
 
 const BBB_BASE_URL = "https://api.builtbybit.com/v1/";
 
@@ -70,9 +71,10 @@ export class BuiltByBitResourceClient implements ResourceClient {
 
   async getResourceBannerData(id: string): Promise<ResourceBannerData | null> {
     const authFetch = this.makeAuthFetchFn();
+    const resourceId = normalizeResourceId("BUILTBYBIT", id);
 
     const resource = await fetchJson(
-      `${BBB_BASE_URL}resources/${encodeURIComponent(id)}`,
+      `${BBB_BASE_URL}resources/${encodeURIComponent(resourceId)}`,
       BbbResourceSchema,
       this.options,
       authFetch

@@ -47,6 +47,17 @@ class FixtureResourceClient {
   }
 }
 
+class CapturingResourceClient {
+  readonly ids: string[] = [];
+
+  constructor(private readonly data: ResourceBannerData | null) {}
+
+  getResourceBannerData(id: string): Promise<ResourceBannerData | null> {
+    this.ids.push(id);
+    return Promise.resolve(this.data);
+  }
+}
+
 const adapter = createFixtureAdapter(MC_STATUS_FIXTURES);
 
 const makeApp = (clients: ResourceClients, caches?: AppCaches) =>
@@ -248,16 +259,26 @@ describe("cache key deduplication", () => {
     expect(afterSecond.sets).toBe(1);
   });
 
-  it("id casing does not create separate cache entries", async () => {
+  it("Modrinth id casing is normalized in the cache key", async () => {
     const cache = new MemoryCache({ maxEntries: 100, ttlMs: 60_000 });
     const cachedApp = makeApp(clients, { resourceBannerImage: cache });
 
-    await cachedApp.request("/banner/resource/spigot/SomePlugin/banner.png");
+    await cachedApp.request("/banner/resource/modrinth/Sodium/banner.png");
     expect(cache.stats().sets).toBe(1);
 
-    await cachedApp.request("/banner/resource/spigot/someplugin/banner.png");
+    await cachedApp.request("/banner/resource/modrinth/sodium/banner.png");
     expect(cache.stats().hits).toBe(1);
     expect(cache.stats().sets).toBe(1);
+  });
+
+  it("Spigot ids are not blanket-lowercased before client lookup", async () => {
+    const client = new CapturingResourceClient(FIXTURE_SPIGOT_FREE);
+    const capturingApp = makeApp({ SPIGOT: client });
+
+    const res = await capturingApp.request("/banner/resource/spigot/SomePlugin/banner.png");
+
+    expect(res.status).toBe(200);
+    expect(client.ids).toEqual(["SomePlugin"]);
   });
 
   it("different query params produce separate cache entries", async () => {
@@ -836,6 +857,27 @@ describe("cache key safety for slash-containing ids", () => {
     await cachedApp.request("/banner/resource/hangar/org/plugin-a/banner.png");
     expect(cache.stats().hits).toBe(1);
     expect(cache.stats().sets).toBe(1);
+  });
+
+  it("passes normalized Hangar author/slug ids to clients", async () => {
+    const client = new CapturingResourceClient({
+      resource: {
+        name: "Plugin",
+        logoBase64: null,
+        downloadCount: 0,
+        lastUpdated: null,
+        rating: { count: 0, average: 0 },
+        price: null
+      },
+      author: { name: "org" },
+      backend: "HANGAR"
+    });
+    const capturingApp = makeApp({ HANGAR: client });
+
+    const res = await capturingApp.request("/banner/resource/hangar/Org/Plugin-A/banner.png");
+
+    expect(res.status).toBe(200);
+    expect(client.ids).toEqual(["org/plugin-a"]);
   });
 });
 

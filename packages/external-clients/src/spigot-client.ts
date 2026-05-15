@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { ResourceBannerData } from "@mcbanners/banner-renderer";
 import type { ResourceClient } from "./resource-client";
 import { fetchJson, fetchImageBase64, type FetchFn, type HttpClientOptions } from "./http-client";
+import { normalizeResourceId } from "./resource-id";
 
 const SPIGOT_BASE_URL = "https://api.spigotmc.org/simple/0.2/index.php?action=";
 
@@ -41,8 +42,9 @@ export class SpigotResourceClient implements ResourceClient {
   ) {}
 
   async getResourceBannerData(id: string): Promise<ResourceBannerData | null> {
+    const resourceId = normalizeResourceId("SPIGOT", id);
     const resource = await fetchJson(
-      `${SPIGOT_BASE_URL}getResource&id=${id}`,
+      `${SPIGOT_BASE_URL}getResource&id=${encodeURIComponent(resourceId)}`,
       SpigotResourceSchema,
       this.options,
       this.fetchFn

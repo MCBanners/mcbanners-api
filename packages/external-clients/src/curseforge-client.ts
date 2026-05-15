@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { ResourceBannerData } from "@mcbanners/banner-renderer";
 import type { ResourceClient } from "./resource-client";
 import { fetchJson, fetchImageBase64, type FetchFn, type HttpClientOptions } from "./http-client";
+import { normalizeResourceId } from "./resource-id";
 
 const CFWIDGET_BASE_URL = "https://api.cfwidget.com/";
 
@@ -41,8 +42,9 @@ export class CurseForgeResourceClient implements ResourceClient {
   ) {}
 
   async getResourceBannerData(id: string): Promise<ResourceBannerData | null> {
+    const resourceId = normalizeResourceId("CURSEFORGE", id);
     const resource = await fetchJson(
-      `${CFWIDGET_BASE_URL}${encodeURIComponent(id)}`,
+      `${CFWIDGET_BASE_URL}${encodeURIComponent(resourceId)}`,
       CfWidgetResourceSchema,
       this.options,
       this.fetchFn

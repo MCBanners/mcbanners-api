@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { ResourceBannerData } from "@mcbanners/banner-renderer";
 import type { ResourceClient } from "./resource-client";
 import { fetchJson, fetchImageBase64, type FetchFn, type HttpClientOptions } from "./http-client";
+import { normalizeResourceId } from "./resource-id";
 
 const POLYMART_BASE_URL = "https://api.polymart.org/v1/";
 
@@ -61,8 +62,9 @@ export class PolymartResourceClient implements ResourceClient {
   ) {}
 
   async getResourceBannerData(id: string): Promise<ResourceBannerData | null> {
+    const resourceId = normalizeResourceId("POLYMART", id);
     const data = await fetchJson(
-      `${POLYMART_BASE_URL}getResourceInfo/?resource_id=${encodeURIComponent(id)}`,
+      `${POLYMART_BASE_URL}getResourceInfo/?resource_id=${encodeURIComponent(resourceId)}`,
       PolymartResourceSchema,
       this.options,
       this.fetchFn

@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import type { ResourceClient } from "@mcbanners/external-clients";
+import { normalizeResourceId, type ResourceClient } from "@mcbanners/external-clients";
 import type { MemoryCache } from "@mcbanners/cache";
 import {
   buildResourceBannerNodes,
@@ -30,7 +30,7 @@ const buildBannerCacheKey = (
     .sort((a, b) => a[0].localeCompare(b[0]))
     .map(([k, v]) => `${k}=${v}`)
     .join("&");
-  return `banner:resource:${platform.toLowerCase()}:${id.toLowerCase()}:${outputType.toLowerCase()}:${queryKey}`;
+  return `banner:resource:${platform.toLowerCase()}:${normalizeResourceId(platform, id)}:${outputType.toLowerCase()}:${queryKey}`;
 };
 
 export type ResourceClients = Record<string, ResourceClient>;
@@ -79,7 +79,7 @@ export const createResourceBannerRoute = (
       if (client === undefined) {
         return c.json({ valid: false });
       }
-      const normalizedId = id.toLowerCase();
+      const normalizedId = normalizeResourceId(platform, id);
       const data = await client.getResourceBannerData(normalizedId);
       const res = c.json({ valid: data !== null });
       res.headers.set("Cache-Control", "public, max-age=30, stale-while-revalidate=60");
@@ -100,7 +100,7 @@ export const createResourceBannerRoute = (
     }
 
     const outputType = match[1].toLowerCase();
-    const normalizedId = id.toLowerCase();
+    const normalizedId = normalizeResourceId(platform, id);
     const data = await client.getResourceBannerData(normalizedId);
     if (data === null) {
       return c.body(null, 404);

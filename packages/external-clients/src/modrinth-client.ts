@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { ResourceBannerData } from "@mcbanners/banner-renderer";
 import type { ResourceClient } from "./resource-client";
 import { fetchJson, fetchImageBase64, type FetchFn, type HttpClientOptions } from "./http-client";
+import { normalizeResourceId } from "./resource-id";
 
 const MODRINTH_BASE_URL = "https://api.modrinth.com/v2";
 
@@ -35,8 +36,9 @@ export class ModrinthResourceClient implements ResourceClient {
   ) {}
 
   async getResourceBannerData(id: string): Promise<ResourceBannerData | null> {
+    const resourceId = normalizeResourceId("MODRINTH", id);
     const project = await fetchJson(
-      `${MODRINTH_BASE_URL}/project/${encodeURIComponent(id)}`,
+      `${MODRINTH_BASE_URL}/project/${encodeURIComponent(resourceId)}`,
       ModrinthProjectSchema,
       this.options,
       this.fetchFn
@@ -44,7 +46,7 @@ export class ModrinthResourceClient implements ResourceClient {
     if (project === null) return null;
 
     const members = await fetchJson(
-      `${MODRINTH_BASE_URL}/project/${encodeURIComponent(id)}/members`,
+      `${MODRINTH_BASE_URL}/project/${encodeURIComponent(resourceId)}/members`,
       ModrinthMembersSchema,
       this.options,
       this.fetchFn

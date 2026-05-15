@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { ResourceBannerData } from "@mcbanners/banner-renderer";
 import type { ResourceClient } from "./resource-client";
 import { fetchJson, fetchImageBase64, type FetchFn, type HttpClientOptions } from "./http-client";
+import { normalizeResourceId } from "./resource-id";
 
 const ORE_BASE_URL = "https://ore.spongepowered.org/api/v2";
 
@@ -54,7 +55,7 @@ export class OreResourceClient implements ResourceClient {
     if (token === null) return null;
 
     // Java: pluginId.toLowerCase(Locale.ROOT)
-    const pluginId = id.toLowerCase();
+    const pluginId = normalizeResourceId("ORE", id);
 
     const project = await fetchJson(
       `${ORE_BASE_URL}/projects/${encodeURIComponent(pluginId)}`,

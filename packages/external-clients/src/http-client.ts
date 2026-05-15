@@ -4,10 +4,22 @@ export type FetchFn = (input: string | URL | Request, init?: RequestInit) => Pro
 
 export interface HttpClientOptions {
   timeoutMs?: number;
+  maxImageBytes?: number;
 }
 
 const DEFAULT_TIMEOUT_MS = 5000;
+const DEFAULT_MAX_IMAGE_BYTES = 1_048_576;
 const USER_AGENT = "MCBanners";
+export const allowedImageContentTypes = [
+  "image/png",
+  "image/jpeg",
+  "image/jpg",
+  "image/webp",
+  "image/gif"
+] as const;
+const ALLOWED_IMAGE_CONTENT_TYPES = new Set<string>(allowedImageContentTypes);
+
+export const defaultMaxImageBytes = DEFAULT_MAX_IMAGE_BYTES;
 
 export async function fetchJson<T>(
   url: string,
@@ -48,6 +60,7 @@ export async function fetchImageBase64(
   if (!url) return null;
 
   const timeoutMs = options?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const maxImageBytes = options?.maxImageBytes ?? DEFAULT_MAX_IMAGE_BYTES;
   const controller = new AbortController();
   const timer = setTimeout(() => {
     controller.abort();
@@ -61,7 +74,27 @@ export async function fetchImageBase64(
 
     if (!response.ok) return null;
 
+    const contentTypeHeader = response.headers.get("Content-Type");
+    if (contentTypeHeader !== null) {
+      const contentType = contentTypeHeader.split(";")[0]?.trim().toLowerCase();
+      if (contentType === undefined || !ALLOWED_IMAGE_CONTENT_TYPES.has(contentType)) {
+        return null;
+      }
+    }
+
+    const contentLengthHeader = response.headers.get("Content-Length");
+    if (contentLengthHeader !== null) {
+      const contentLength = Number.parseInt(contentLengthHeader, 10);
+      if (Number.isFinite(contentLength) && contentLength > maxImageBytes) {
+        return null;
+      }
+    }
+
     const buffer = await response.arrayBuffer();
+    if (buffer.byteLength > maxImageBytes) {
+      return null;
+    }
+
     return Buffer.from(buffer).toString("base64");
   } catch {
     return null;
