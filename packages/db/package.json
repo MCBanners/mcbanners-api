@@ -8,6 +8,6 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "kysely": "^0.28.2"
+    "kysely": "^0.29.0"
   }
 }

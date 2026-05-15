@@ -8,6 +8,6 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "hono": "^4.7.11"
+    "hono": "^4.12.18"
   }
 }

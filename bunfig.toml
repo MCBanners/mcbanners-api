@@ -1,0 +1,12 @@
+[install]
+# Keep regular installs locked to the reviewed bun.lock. Use `bun update --latest`
+# deliberately, then review package.json and bun.lock together.
+frozenLockfile = true
+
+# Do not run dependency lifecycle scripts unless a package is explicitly trusted
+# through package.json `trustedDependencies`.
+ignoreScripts = true
+
+# Avoid brand-new package versions by default during future update work.
+minimumReleaseAge = 86400
+

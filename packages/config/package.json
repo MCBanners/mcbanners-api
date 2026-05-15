@@ -8,6 +8,6 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "zod": "^3.25.28"
+    "zod": "^4.4.3"
   }
 }

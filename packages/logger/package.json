@@ -8,6 +8,6 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "pino": "^9.7.0"
+    "pino": "^10.3.1"
   }
 }
