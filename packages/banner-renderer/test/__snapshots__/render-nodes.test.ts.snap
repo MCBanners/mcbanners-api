@@ -1,0 +1,64 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`render node serialization render node snapshot matches expected shape 1`] = `
+{
+  "align": "left",
+  "color": {
+    "a": 255,
+    "b": 255,
+    "g": 255,
+    "r": 255,
+  },
+  "content": "Hello world",
+  "fontFace": "inter",
+  "fontSize": 20,
+  "fontWeight": "bold",
+  "type": "text",
+  "x": 10,
+  "y": 30,
+}
+`;
+
+exports[`render node serialization render node snapshot matches expected shape 2`] = `
+{
+  "align": "left",
+  "color": {
+    "a": 255,
+    "b": 255,
+    "g": 255,
+    "r": 255,
+  },
+  "content": "This is a longer piece of text that should be wrapped across multiple lines",
+  "fontFace": "source-sans-pro",
+  "fontSize": 14,
+  "fontWeight": "regular",
+  "lineHeight": 18,
+  "maxChars": 200,
+  "maxWidth": 240,
+  "type": "wrapped-text",
+  "x": 10,
+  "y": 30,
+}
+`;
+
+exports[`render node serialization render node snapshot matches expected shape 3`] = `
+{
+  "assetKey": "BLUE_RADIAL",
+  "height": 60,
+  "type": "image",
+  "width": 468,
+  "x": 0,
+  "y": 0,
+}
+`;
+
+exports[`render node serialization render node snapshot matches expected shape 4`] = `
+{
+  "assetKey": "STAR_FULL",
+  "height": 24,
+  "type": "sprite",
+  "width": 24,
+  "x": 18,
+  "y": 17,
+}
+`;
