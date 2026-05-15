@@ -1,16 +1,20 @@
 # 007 Renderer Asset Inventory
 
-Milestone 3 prep inventories legacy renderer assets only. No binary assets were copied into `mcbanners-api-next`.
+Milestone 3a copies the legacy renderer assets into `mcbanners-api-next` and
+pins them with deterministic SHA-256 hashes. The files remain byte-for-byte
+legacy compatibility assets; no optimization, decoding, or renderer porting has
+been done yet.
 
 ## Asset Categories
 
-| Category                   | Legacy source                              | Expected target                           | Count |
+| Category                   | Legacy source                              | Copied target                             | Count |
 | -------------------------- | ------------------------------------------ | ----------------------------------------- | ----- |
 | Background templates       | `../banner-api/src/main/resources/banner`  | `packages/banner-renderer/assets/banner`  | 11    |
 | Fonts                      | `../banner-api/src/main/resources/fonts`   | `packages/banner-renderer/assets/fonts`   | 16    |
 | Sprites and fallback logos | `../banner-api/src/main/resources/sprites` | `packages/banner-renderer/assets/sprites` | 12    |
 
-The typed inventory lives at `packages/banner-renderer/src/assets/index.ts`.
+The typed manifest and validation utilities live at
+`packages/banner-renderer/src/assets/index.ts`.
 
 ## Background Templates
 
@@ -72,6 +76,19 @@ Legacy source files:
 
 These are loaded by `Sprite.getImage()` from `/sprites/{sprite}.png`. Layouts also accept remote/base64 logos from platform data; these are not bundled assets.
 
+## Copied Status
+
+All assets found in the legacy renderer resource directories were copied to the
+new package target layout:
+
+- `packages/banner-renderer/assets/banner`
+- `packages/banner-renderer/assets/fonts`
+- `packages/banner-renderer/assets/sprites`
+
+The manifest preserves legacy filenames and records each asset key, kind,
+relative path, expected extension, required status, byte size, legacy source path,
+and expected SHA-256 hash.
+
 ## Missing Or Uncertain Assets
 
 - No other bundled renderer images were found under `banner-api/src/main/resources`.
@@ -80,18 +97,36 @@ These are loaded by `Sprite.getImage()` from `/sprites/{sprite}.png`. Layouts al
 
 ## Startup Validation Expectations
 
-Before production renderer adoption, startup validation should:
+Startup-style validation is implemented through:
+
+- `validateAssetManifest()`
+- `validateAssetFiles()`
+- `computeAssetSha256()`
+- `resolveAssetPath()`
+
+Validation currently:
 
 - Ensure every manifest asset exists at the configured target path.
-- Verify byte size is non-zero.
-- Verify each image/font can be decoded or registered by the selected canvas runtime.
+- Verifies required assets are files.
+- Verifies recorded byte sizes.
+- Verifies SHA-256 hashes.
+- Rejects duplicate asset keys.
+- Rejects unsupported or mismatched asset extensions.
 - Verify all manifest target paths are inside `packages/banner-renderer/assets`.
 - Fail fast with a clear asset id and path when validation fails.
 
+Future renderer startup validation should also verify that each image/font can be
+decoded or registered by the selected canvas runtime.
+
 ## Asset Version And Hash Strategy
 
-Use SHA-256 hashes for copied assets. The next milestone should generate and commit hashes in the manifest at copy time, then validate them in startup checks and tests. Keep the copied asset set exact until visual fixture comparisons prove intentional changes.
+Copied assets are pinned by SHA-256 in the manifest and checked in tests. Any
+future asset update must be an explicit compatibility decision: copy the new file,
+review the binary diff/source, update the byte size and hash, and explain why the
+visual output change is intended.
 
 ## Copy Decision
 
-Do not copy binaries in this prep milestone. Copying should happen in the canvas spike milestone if the spike needs local files for font registration and image decoding.
+Milestone 3a copies binaries because the canvas spike and future renderer startup
+checks need local files for deterministic font registration, image decoding, and
+fixture generation. `@napi-rs/canvas` has not been added yet.
