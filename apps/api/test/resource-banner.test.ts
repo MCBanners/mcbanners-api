@@ -356,6 +356,14 @@ describe("CurseForge resource route", () => {
     );
     expect(res.status).toBe(404);
   });
+
+  it("returns { valid: false } for CurseForge isValid when client returns null", async () => {
+    const nullCfClients: ResourceClients = { CURSEFORGE: new FixtureResourceClient(null) };
+    const res = await makeApp(nullCfClients).request("/banner/resource/curseforge/99999/isValid");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { valid: boolean };
+    expect(body.valid).toBe(false);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -417,6 +425,16 @@ describe("Hangar resource route", () => {
     );
     expect(res.status).toBe(404);
   });
+
+  it("returns { valid: false } for Hangar isValid when client returns null", async () => {
+    const nullHangarClients: ResourceClients = { HANGAR: new FixtureResourceClient(null) };
+    const res = await makeApp(nullHangarClients).request(
+      "/banner/resource/hangar/unknown/plugin/isValid"
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { valid: boolean };
+    expect(body.valid).toBe(false);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -475,6 +493,14 @@ describe("Ore resource route", () => {
     const nullOreClients: ResourceClients = { ORE: new FixtureResourceClient(null) };
     const res = await makeApp(nullOreClients).request("/banner/resource/ore/unknown/banner.png");
     expect(res.status).toBe(404);
+  });
+
+  it("returns { valid: false } for Ore isValid when client returns null", async () => {
+    const nullOreClients: ResourceClients = { ORE: new FixtureResourceClient(null) };
+    const res = await makeApp(nullOreClients).request("/banner/resource/ore/unknown/isValid");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { valid: boolean };
+    expect(body.valid).toBe(false);
   });
 });
 
@@ -810,5 +836,103 @@ describe("cache key safety for slash-containing ids", () => {
     await cachedApp.request("/banner/resource/hangar/org/plugin-a/banner.png");
     expect(cache.stats().hits).toBe(1);
     expect(cache.stats().sets).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Output format casing (banner.PNG, banner.JPG)
+// ---------------------------------------------------------------------------
+
+describe("output format casing", () => {
+  it("banner.PNG (uppercase) returns 200 PNG", async () => {
+    const res = await app.request("/banner/resource/spigot/12345/banner.PNG");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toBe("image/png");
+  });
+
+  it("banner.JPG (uppercase) returns 200 JPEG", async () => {
+    const res = await app.request("/banner/resource/spigot/12345/banner.JPG");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toBe("image/jpeg");
+  });
+
+  it("banner.Png (mixed case) returns 200 PNG", async () => {
+    const res = await app.request("/banner/resource/spigot/12345/banner.Png");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toBe("image/png");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Display name override
+// ---------------------------------------------------------------------------
+
+describe("display name override", () => {
+  it("resource_name__display override changes rendered output vs no override", async () => {
+    const resDefault = await app.request("/banner/resource/spigot/12345/banner.png");
+    const resOverride = await app.request(
+      "/banner/resource/spigot/12345/banner.png?resource_name__display=CustomOverrideName"
+    );
+    expect(resDefault.status).toBe(200);
+    expect(resOverride.status).toBe(200);
+
+    const bufDefault = Buffer.from(await resDefault.arrayBuffer());
+    const bufOverride = Buffer.from(await resOverride.arrayBuffer());
+    // Different text content → different rendered bytes
+    expect(bufDefault.equals(bufOverride)).toBe(false);
+  });
+
+  it("resource_name__display override creates a separate cache entry", async () => {
+    const cache = new MemoryCache({ maxEntries: 100, ttlMs: 60_000 });
+    const cachedApp = makeApp(clients, { resourceBannerImage: cache });
+
+    await cachedApp.request("/banner/resource/spigot/12345/banner.png");
+    expect(cache.stats().sets).toBe(1);
+
+    await cachedApp.request(
+      "/banner/resource/spigot/12345/banner.png?resource_name__display=Override"
+    );
+    // Different query params → separate cache entry
+    expect(cache.stats().sets).toBe(2);
+    expect(cache.stats().hits).toBe(0);
+  });
+
+  it("author_name__display override changes rendered output vs no override", async () => {
+    const resDefault = await app.request("/banner/resource/spigot/12345/banner.png");
+    const resOverride = await app.request(
+      "/banner/resource/spigot/12345/banner.png?author_name__display=by+Override+Author"
+    );
+    expect(resDefault.status).toBe(200);
+    expect(resOverride.status).toBe(200);
+    const bufDefault = Buffer.from(await resDefault.arrayBuffer());
+    const bufOverride = Buffer.from(await resOverride.arrayBuffer());
+    expect(bufDefault.equals(bufOverride)).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Modrinth platform — dedicated coverage
+// ---------------------------------------------------------------------------
+
+describe("Modrinth resource route", () => {
+  it("returns { valid: false } for Modrinth isValid when client returns null", async () => {
+    const nullClients: ResourceClients = { MODRINTH: new FixtureResourceClient(null) };
+    const res = await makeApp(nullClients).request("/banner/resource/modrinth/nonexistent/isValid");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { valid: boolean };
+    expect(body.valid).toBe(false);
+  });
+
+  it("is case-insensitive (MODRINTH upper-case)", async () => {
+    const res = await app.request("/banner/resource/MODRINTH/some-slug/banner.png");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toBe("image/png");
+  });
+
+  it("is case-insensitive (MODRINTH upper-case) for isValid", async () => {
+    const res = await app.request("/banner/resource/MODRINTH/some-slug/isValid");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { valid: boolean };
+    expect(body.valid).toBe(true);
   });
 });

@@ -103,12 +103,7 @@ bun run scripts/render-resource-url.ts spigot 12345 png ./tmp/test-out
 
 Output is written to `./tmp/resource-url-out/` by default. The script does not affect automated tests.
 
-## Remaining marketplaces
+## All platforms supported
 
-The following platforms are not yet implemented and return 404:
-
-- CurseForge
-- Hangar
-- BuiltByBit
-- Polymart
-- Ore
+All seven platforms are now fully implemented. See the compatibility matrix in
+`docs/migration/019-resource-compatibility-matrix.md` for a full breakdown.
