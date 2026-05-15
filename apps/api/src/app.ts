@@ -1,10 +1,12 @@
 import { Hono } from "hono";
 import type { MinecraftStatusAdapter } from "@mcbanners/minecraft-status";
 import type { MemoryCache } from "@mcbanners/cache";
+import type { SavedBannerRepository } from "@mcbanners/db";
 import { CachedMinecraftStatusAdapter } from "./cached-mc-adapter";
 import { createMcServerRoute } from "./routes/mc-server";
 import { createServerBannerRoute } from "./routes/server-banner";
 import { createResourceBannerRoute, type ResourceClients } from "./routes/resource-banner";
+import { createSavedBannerRoute } from "./routes/saved-banner";
 
 /**
  * Optional caches injected into the app for production use.
@@ -21,6 +23,10 @@ export interface AppCaches {
 
 export type { ResourceClients };
 
+export interface AppRepositories {
+  savedBanners?: SavedBannerRepository;
+}
+
 /**
  * Creates the main Hono application with all routes mounted.
  *
@@ -32,7 +38,8 @@ export type { ResourceClients };
 export const createApp = (
   minecraftAdapter: MinecraftStatusAdapter,
   resourceClients: ResourceClients,
-  caches?: AppCaches
+  caches?: AppCaches,
+  repositories?: AppRepositories
 ): Hono => {
   const app = new Hono();
 
@@ -61,6 +68,13 @@ export const createApp = (
     "/banner/resource",
     createResourceBannerRoute(resourceClients, caches?.resourceBannerImage)
   );
+
+  if (repositories?.savedBanners !== undefined) {
+    app.route(
+      "/banner/saved",
+      createSavedBannerRoute(repositories.savedBanners, mcAdapter, resourceClients)
+    );
+  }
 
   return app;
 };
