@@ -82,14 +82,30 @@ export const compatibilityManifest = {
     { name: "LIGHT_MODE", textTheme: "DARK", fileName: "light_mode.png" }
   ],
   fontFaces: [
-    { name: "MONTSERRAT" },
-    { name: "OPEN_SANS" },
-    { name: "POPPINS" },
-    { name: "RALEWAY" },
-    { name: "SOURCE_SANS_PRO" },
-    { name: "JETBRAINS_MONO" },
-    { name: "INTER" },
-    { name: "ROBOTO" }
+    {
+      name: "MONTSERRAT",
+      regularFileName: "MontserratRegular.ttf",
+      boldFileName: "MontserratBold.ttf"
+    },
+    {
+      name: "OPEN_SANS",
+      regularFileName: "OpenSansRegular.ttf",
+      boldFileName: "OpenSansBold.ttf"
+    },
+    { name: "POPPINS", regularFileName: "PoppinsRegular.ttf", boldFileName: "PoppinsBold.ttf" },
+    { name: "RALEWAY", regularFileName: "RalewayRegular.ttf", boldFileName: "RalewayBold.ttf" },
+    {
+      name: "SOURCE_SANS_PRO",
+      regularFileName: "SourceSansProRegular.ttf",
+      boldFileName: "SourceSansProBold.ttf"
+    },
+    {
+      name: "JETBRAINS_MONO",
+      regularFileName: "JetbrainsMonoRegular.ttf",
+      boldFileName: "JetbrainsMonoBold.ttf"
+    },
+    { name: "INTER", regularFileName: "InterRegular.ttf", boldFileName: "InterBold.ttf" },
+    { name: "ROBOTO", regularFileName: "RobotoRegular.ttf", boldFileName: "RobotoBold.ttf" }
   ],
   textAlignments: [{ name: "RIGHT" }, { name: "CENTER" }, { name: "LEFT" }],
   textThemes: [{ name: "LIGHT" }, { name: "DARK" }],

@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
+import { getFontFaceFileName } from "../src/compatibility/enums";
 import { compatibilityManifest } from "../src/compatibility/manifest";
 import { compatibilityManifestSchema } from "../src/compatibility/schema";
 
@@ -39,5 +40,12 @@ describe("compatibilityManifest", () => {
 
     expect(paths.some((path) => path.startsWith("/banner/"))).toBe(true);
     expect(paths.some((path) => path.startsWith("/mc/"))).toBe(true);
+  });
+
+  test("documents Java FontFace regular and bold file-name mapping", () => {
+    for (const fontFace of compatibilityManifest.fontFaces) {
+      expect(fontFace.regularFileName).toBe(getFontFaceFileName(fontFace.name));
+      expect(fontFace.boldFileName).toBe(getFontFaceFileName(fontFace.name, true));
+    }
   });
 });

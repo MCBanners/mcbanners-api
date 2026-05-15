@@ -6,7 +6,9 @@ export const enumValueSchema = z.object({
   alias: z.string().min(1).optional(),
   relatedServiceBackend: z.string().min(1).nullable().optional(),
   textTheme: z.enum(["LIGHT", "DARK"]).optional(),
-  fileName: z.string().min(1).optional()
+  fileName: z.string().min(1).optional(),
+  regularFileName: z.string().min(1).optional(),
+  boldFileName: z.string().min(1).optional()
 });
 
 export const routeSchema = z.object({
