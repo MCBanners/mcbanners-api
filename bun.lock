@@ -5,6 +5,14 @@
     "": {
       "name": "mcbanners-api-next",
       "dependencies": {
+        "@mcbanners/banner-renderer": "workspace:*",
+        "@mcbanners/cache": "workspace:*",
+        "@mcbanners/config": "workspace:*",
+        "@mcbanners/db": "workspace:*",
+        "@mcbanners/domain": "workspace:*",
+        "@mcbanners/external-clients": "workspace:*",
+        "@mcbanners/logger": "workspace:*",
+        "@mcbanners/minecraft-status": "workspace:*",
         "hono": "^4.12.18",
         "kysely": "^0.29.0",
         "pino": "^10.3.1",

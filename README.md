@@ -36,6 +36,17 @@ bun run format
 bun run check
 ```
 
+## Workspace Imports
+
+Use `@mcbanners/<package>` workspace imports for cross-package code:
+
+```ts
+import { compatibilityManifest } from "@mcbanners/domain";
+import { parseIntegerParameter } from "@mcbanners/domain/compatibility/settings";
+```
+
+The root TypeScript paths mirror package `exports`, so aliases are valid in typecheck and Bun runtime. Keep relative imports for files within the same package when they are clearer.
+
 ## Compatibility Warning
 
 Existing public banner URLs, saved banner mnemonic URLs, Java `BannerType` ordinals, `namespace__query_key` settings, `png`/`jpg` output behavior, and `/banner/*` plus `/mc/*` route families are compatibility boundaries. Treat `packages/domain/src/compatibility/manifest.ts` as the Milestone 1 contract.
@@ -49,4 +60,3 @@ The sibling repos are compatibility references only:
 - `../discord-api`
 
 Do not modify them from this repo.
-

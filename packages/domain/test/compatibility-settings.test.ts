@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { textAlignValues } from "../src/compatibility/enums";
+import { textAlignValues } from "@mcbanners/domain/compatibility/enums";
 import {
   filterNamespace,
   namespacedKey,
@@ -15,7 +15,7 @@ import {
   readIntegerParameter,
   readNamespacedRaw,
   readStringParameter
-} from "../src/compatibility/settings";
+} from "@mcbanners/domain/compatibility/settings";
 
 describe("legacy settings primitives", () => {
   const rawQuery = {

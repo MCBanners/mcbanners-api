@@ -14,7 +14,7 @@ import {
   serviceBackendValues,
   textAlignValues,
   textThemeValues
-} from "../src/compatibility/enums";
+} from "@mcbanners/domain/compatibility/enums";
 
 describe("legacy enum definitions", () => {
   test("preserves BannerType Java ordinal order without numeric enums", () => {

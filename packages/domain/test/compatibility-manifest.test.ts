@@ -1,8 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
-import { getFontFaceFileName } from "../src/compatibility/enums";
-import { compatibilityManifest } from "../src/compatibility/manifest";
-import { compatibilityManifestSchema } from "../src/compatibility/schema";
+import { compatibilityManifest, compatibilityManifestSchema } from "@mcbanners/domain";
+import { getFontFaceFileName } from "@mcbanners/domain/compatibility/enums";
 
 describe("compatibilityManifest", () => {
   test("loads and matches the schema", () => {

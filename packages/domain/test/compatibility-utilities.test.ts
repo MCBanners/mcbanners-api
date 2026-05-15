@@ -5,7 +5,7 @@ import {
   cleanupEnumConstant,
   generateMnemonic,
   truncateAfter
-} from "../src/compatibility/utilities";
+} from "@mcbanners/domain/compatibility/utilities";
 
 describe("Java-compatible utilities", () => {
   test("matches NumberUtil.abbreviate fixtures", () => {
