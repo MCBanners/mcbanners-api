@@ -1,0 +1,54 @@
+{
+  "name": "initial-public-route-compatibility",
+  "cases": [
+    {
+      "id": "mc-server-hypixel-json",
+      "description": "Minecraft server status JSON shape",
+      "enabled": true,
+      "type": "json",
+      "method": "GET",
+      "path": "/mc/server?host=mc.hypixel.net"
+    },
+    {
+      "id": "mc-icon-hypixel-png",
+      "description": "Minecraft server icon PNG",
+      "enabled": true,
+      "type": "image",
+      "method": "GET",
+      "path": "/mc/icon?host=mc.hypixel.net"
+    },
+    {
+      "id": "server-banner-hypixel-png",
+      "description": "Minecraft server banner PNG",
+      "enabled": true,
+      "type": "image",
+      "method": "GET",
+      "path": "/banner/server/mc.hypixel.net/25565/banner.png"
+    },
+    {
+      "id": "spigot-resource-banner-png",
+      "description": "Spigot resource banner PNG",
+      "enabled": true,
+      "type": "image",
+      "method": "GET",
+      "path": "/banner/resource/spigot/9089/banner.png"
+    },
+    {
+      "id": "modrinth-resource-banner-png",
+      "description": "Modrinth resource banner PNG",
+      "enabled": true,
+      "type": "image",
+      "method": "GET",
+      "path": "/banner/resource/modrinth/sodium/banner.png"
+    },
+    {
+      "id": "saved-banner-placeholder-png",
+      "description": "Saved banner recall placeholder; enable only with a known shared mnemonic in both systems",
+      "enabled": false,
+      "disabledReason": "Requires a known saved_banner mnemonic present in both legacy and candidate databases",
+      "type": "image",
+      "method": "GET",
+      "path": "/banner/saved/abcdefghijklmn.png"
+    }
+  ]
+}

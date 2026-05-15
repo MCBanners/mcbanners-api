@@ -4,7 +4,9 @@
   "type": "module",
   "scripts": {
     "dev": "bun run src/index.ts",
-    "build": "tsc -p tsconfig.json",
+    "compare": "bun run src/index.ts",
+    "compare:help": "bun run src/index.ts --help",
+    "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json"
   }
 }

@@ -14,9 +14,11 @@
     "test:compat": "bun test packages/domain/test",
     "test:visual": "bun -e \"console.log('Visual tests are not implemented in Milestone 1.')\"",
     "test:integration": "bun test tests/integration",
+    "compat:compare": "bun --filter @mcbanners/compat-runner compare",
+    "compat:compare:help": "bun --filter @mcbanners/compat-runner compare:help",
     "typecheck": "tsc -b tsconfig.build.json --pretty",
     "lint": "eslint .",
-    "format": "prettier --write \"apps/**/*.{json,ts}\" \"packages/**/*.{json,ts}\" \"tests/**/*.{json,ts}\" \"docs/**/*.md\" \"*.json\" \"*.js\"",
+    "format": "prettier --write \"apps/**/*.{json,ts}\" \"packages/**/*.{json,ts}\" \"test/**/*.{json,ts}\" \"tests/**/*.{json,ts}\" \"docs/**/*.md\" \"*.json\" \"*.js\"",
     "check": "bun run typecheck && bun run lint && bun run test"
   },
   "trustedDependencies": [],
