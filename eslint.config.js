@@ -22,7 +22,8 @@ export default tseslint.config(
       "**/src/**/*.js",
       "**/src/**/*.d.ts",
       "**/test/**/*.js",
-      "**/test/**/*.d.ts"
+      "**/test/**/*.d.ts",
+      "scripts/**"
     ]
   },
   {

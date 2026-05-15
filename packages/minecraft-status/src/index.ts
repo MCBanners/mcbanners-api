@@ -3,6 +3,9 @@ export type { MinecraftServerStatus, MinecraftServerPlayers, MinecraftServerMotd
 export { normalizeMinecraftServerStatus } from "./normalize";
 export type { MinecraftStatusAdapter } from "./adapter";
 export { FixtureMinecraftStatusAdapter, createFixtureAdapter } from "./fixture-adapter";
+export { LiveMinecraftStatusAdapter } from "./live-adapter";
+export { pingMinecraftServer } from "./ping";
+export { componentToLegacy, stripColors, cleanMotd } from "./motd-utils";
 export {
   MC_STATUS_FIXTURES,
   MC_FIXTURE_HYPIXEL,

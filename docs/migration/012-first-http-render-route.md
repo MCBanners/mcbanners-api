@@ -52,15 +52,15 @@ GET /banner/server/:host/:port/banner.png
 
 ## Route Map
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/health` | Service health check |
-| `GET` | `/mc/server?host=&port=` | Normalized server status JSON |
-| `GET` | `/mc/icon?host=&port=` | Raw server icon PNG bytes |
-| `GET` | `/banner/server/:host/:port/isValid` | Compatibility validity check |
-| `GET` | `/banner/server/:host/:port/banner.png` | PNG render (public) |
-| `GET` | `/banner/server/:host/:port/banner.jpg` | JPG render (public) |
-| `GET` | `/server/:host/:port/...` | Internal alias (same as /banner/server) |
+| Method | Path                                    | Description                             |
+| ------ | --------------------------------------- | --------------------------------------- |
+| `GET`  | `/health`                               | Service health check                    |
+| `GET`  | `/mc/server?host=&port=`                | Normalized server status JSON           |
+| `GET`  | `/mc/icon?host=&port=`                  | Raw server icon PNG bytes               |
+| `GET`  | `/banner/server/:host/:port/isValid`    | Compatibility validity check            |
+| `GET`  | `/banner/server/:host/:port/banner.png` | PNG render (public)                     |
+| `GET`  | `/banner/server/:host/:port/banner.jpg` | JPG render (public)                     |
+| `GET`  | `/server/:host/:port/...`               | Internal alias (same as /banner/server) |
 
 ### `/banner/server` — Public Compatibility Route
 
@@ -139,17 +139,17 @@ Returns `{ valid: true }` for known servers, `{ valid: false }` for unknown ones
 
 Full render pipeline. Accepts optional query parameters mapped to `ServerBannerParams`:
 
-| Parameter | Default | Notes |
-|-----------|---------|-------|
-| `background` | `"dark"` | `dark`, `light`, `transparent` |
-| `borderRadius` | `0` | px, `0`–`50` |
-| `hideServerIcon` | `false` | |
-| `hidePlayers` | `false` | |
-| `hideVersion` | `false` | |
-| `showMotd` | `true` | |
-| `hideServerName` | `false` | |
-| `nameFont` / `playersFont` / `versionFont` / `motdFont` | — | `"default"`, `"minecraft"`, `"opensans"` |
-| `nameAlign` / `playersAlign` / `versionAlign` / `motdAlign` | — | `"left"`, `"center"`, `"right"` |
+| Parameter                                                   | Default  | Notes                                    |
+| ----------------------------------------------------------- | -------- | ---------------------------------------- |
+| `background`                                                | `"dark"` | `dark`, `light`, `transparent`           |
+| `borderRadius`                                              | `0`      | px, `0`–`50`                             |
+| `hideServerIcon`                                            | `false`  |                                          |
+| `hidePlayers`                                               | `false`  |                                          |
+| `hideVersion`                                               | `false`  |                                          |
+| `showMotd`                                                  | `true`   |                                          |
+| `hideServerName`                                            | `false`  |                                          |
+| `nameFont` / `playersFont` / `versionFont` / `motdFont`     | —        | `"default"`, `"minecraft"`, `"opensans"` |
+| `nameAlign` / `playersAlign` / `versionAlign` / `motdAlign` | —        | `"left"`, `"center"`, `"right"`          |
 
 Returns `image/png` (300×100) or `image/jpeg` with the correct content-type header.
 
@@ -209,12 +209,12 @@ Root `tsconfig.build.json` and all inter-package `references` arrays must point 
 
 Fixtures in `packages/minecraft-status/src/fixtures.ts` cover:
 
-| Key | Description |
-|-----|-------------|
+| Key                    | Description                               |
+| ---------------------- | ----------------------------------------- |
 | `mc.hypixel.net:25565` | Large server with icon, high player count |
-| `noicon.local:25565` | Server with no icon (empty icon field) |
-| `longmotd.local:25565` | Server with a long two-line MOTD |
-| `unicode.local:25565` | Server with Unicode/emoji MOTD |
+| `noicon.local:25565`   | Server with no icon (empty icon field)    |
+| `longmotd.local:25565` | Server with a long two-line MOTD          |
+| `unicode.local:25565`  | Server with Unicode/emoji MOTD            |
 
 `MC_STATUS_FIXTURES` is a `Record<string, McApiResponse>` passed to `createFixtureAdapter()`.
 
