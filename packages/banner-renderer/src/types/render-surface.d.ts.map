@@ -1,1 +1,0 @@
-{"version":3,"file":"render-surface.d.ts","sourceRoot":"","sources":["render-surface.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,MAAM,EAAE,aAAa,EAAE,MAAM,iBAAiB,CAAC;AAE7D,MAAM,WAAW,aAAa;IAC5B,QAAQ,CAAC,MAAM,EAAE,MAAM,CAAC;IACxB,QAAQ,CAAC,OAAO,EAAE,aAAa,CAAC;IAChC,QAAQ,CAAC,KAAK,EAAE,MAAM,CAAC;IACvB,QAAQ,CAAC,MAAM,EAAE,MAAM,CAAC;CACzB"}

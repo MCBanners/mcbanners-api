@@ -8,12 +8,15 @@ into a live Hono route that accepts a host/port, looks up server status, and ret
 
 All rendering is fixture-driven at this stage — no live Minecraft ping is performed.
 
+**Milestone 6 hardening** (follow-up) cleaned up generated artifact tracking, fixed the public route
+prefix to `/banner/server`, and added the `/mc/icon` endpoint.
+
 ---
 
 ## Architecture
 
 ```
-GET /server/:host/:port/banner.png
+GET /banner/server/:host/:port/banner.png
          │
          ▼
   FixtureMinecraftStatusAdapter
@@ -44,6 +47,38 @@ GET /server/:host/:port/banner.png
          ▼
   Response (image/png or image/jpeg)
 ```
+
+---
+
+## Route Map
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/health` | Service health check |
+| `GET` | `/mc/server?host=&port=` | Normalized server status JSON |
+| `GET` | `/mc/icon?host=&port=` | Raw server icon PNG bytes |
+| `GET` | `/banner/server/:host/:port/isValid` | Compatibility validity check |
+| `GET` | `/banner/server/:host/:port/banner.png` | PNG render (public) |
+| `GET` | `/banner/server/:host/:port/banner.jpg` | JPG render (public) |
+| `GET` | `/server/:host/:port/...` | Internal alias (same as /banner/server) |
+
+### `/banner/server` — Public Compatibility Route
+
+The public-facing route uses the `/banner/server` prefix to namespace banner rendering
+separately from raw API data endpoints (`/mc/*`). This matches the intent of the legacy
+`banner-api` service (which was a separate server from `mc-api`).
+
+The legacy `banner-api` mounted `ServerController` at `@RequestMapping("server")`, so
+existing clients may expect `GET /server/:host/:port/...`. During migration, `/server` is
+kept as an internal dev alias that routes to the same handler.
+
+**External clients should use `/banner/server`.**
+
+### `/server` — Internal Alias
+
+`/server/:host/:port/...` is kept as a convenience alias for local development and
+migration testing. It is NOT part of the public API contract and may be removed in a
+future milestone once all clients have migrated to `/banner/server`.
 
 ---
 
@@ -82,11 +117,25 @@ Returns normalized `MinecraftServerStatus` JSON for a known fixture, or 404 if n
 
 Mirrors the legacy mc-api status endpoint shape for compatibility.
 
-#### `GET /server/:host/:port/isValid`
+#### `GET /mc/icon?host=&port=`
 
-Returns `{ valid: true, host, port }` for known servers, `{ valid: false }` for unknown ones.
+Returns the server icon as raw PNG bytes. Decodes the base64 `iconDataUrl` from the server
+status after stripping the `data:image/png;base64,` prefix.
 
-#### `GET /server/:host/:port/banner.png` / `banner.jpg`
+- **200** + `Content-Type: image/png` when the server has an icon
+- **404** when the server is not found
+- **404** when the server has no icon (empty icon field) — not 204, for client compatibility
+- **400** when `host` is missing or `port` is invalid
+
+Mirrors the legacy mc-api `GET /icon` endpoint behavior. The legacy implementation did not
+guard against empty icons (it would throw a Base64 decode error); this implementation
+handles the empty case explicitly and returns 404.
+
+#### `GET /banner/server/:host/:port/isValid`
+
+Returns `{ valid: true }` for known servers, `{ valid: false }` for unknown ones.
+
+#### `GET /banner/server/:host/:port/banner.png` / `banner.jpg`
 
 Full render pipeline. Accepts optional query parameters mapped to `ServerBannerParams`:
 

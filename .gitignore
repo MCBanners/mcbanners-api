@@ -4,7 +4,19 @@ dist
 .env
 .env.*
 packages/banner-renderer/output/
-# Compiled TypeScript outputs that land in src/ due to project-reference resolution
-packages/domain/src/**/*.js
-packages/domain/src/**/*.d.ts
-packages/domain/src/**/*.d.ts.map
+
+# Generated TypeScript compilation outputs in src/ (tsc project-reference artifacts)
+apps/**/src/**/*.js
+apps/**/src/**/*.d.ts
+apps/**/src/**/*.d.ts.map
+packages/**/src/**/*.js
+packages/**/src/**/*.d.ts
+packages/**/src/**/*.d.ts.map
+
+# Generated compilation outputs in test/
+apps/**/test/**/*.js
+apps/**/test/**/*.d.ts
+apps/**/test/**/*.d.ts.map
+packages/**/test/**/*.js
+packages/**/test/**/*.d.ts
+packages/**/test/**/*.d.ts.map

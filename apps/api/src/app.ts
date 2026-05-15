@@ -21,6 +21,11 @@ export const createApp = (minecraftAdapter: MinecraftStatusAdapter): Hono => {
   );
 
   app.route("/mc", createMcServerRoute(minecraftAdapter));
+
+  // Public compatibility route — matches legacy banner-api GET /server/:host/:port/...
+  app.route("/banner/server", createServerBannerRoute(minecraftAdapter));
+
+  // Internal dev alias (not part of the public API contract)
   app.route("/server", createServerBannerRoute(minecraftAdapter));
 
   return app;
