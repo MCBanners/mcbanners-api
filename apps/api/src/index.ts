@@ -1,12 +1,7 @@
-import { Hono } from "hono";
+import { createApp } from "./app";
+import { createFixtureAdapter, MC_STATUS_FIXTURES } from "@mcbanners/minecraft-status";
 
-const app = new Hono();
-
-app.get("/health", (c) =>
-  c.json({
-    service: "mcbanners-api-next",
-    status: "ok"
-  })
-);
+const adapter = createFixtureAdapter(MC_STATUS_FIXTURES);
+const app = createApp(adapter);
 
 export default app;

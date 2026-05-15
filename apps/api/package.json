@@ -8,6 +8,9 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
+    "@mcbanners/banner-renderer": "workspace:*",
+    "@mcbanners/domain": "workspace:*",
+    "@mcbanners/minecraft-status": "workspace:*",
     "hono": "^4.12.18"
   }
 }

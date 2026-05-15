@@ -20,7 +20,9 @@ export default tseslint.config(
       "node_modules/**",
       "eslint.config.js",
       "**/src/**/*.js",
-      "**/src/**/*.d.ts"
+      "**/src/**/*.d.ts",
+      "**/test/**/*.js",
+      "**/test/**/*.d.ts"
     ]
   },
   {

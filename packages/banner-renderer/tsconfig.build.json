@@ -9,5 +9,8 @@
     "rootDir": "src"
   },
   "include": ["src/**/*.ts"],
-  "references": [{ "path": "../domain/tsconfig.build.json" }]
+  "references": [
+    { "path": "../domain/tsconfig.build.json" },
+    { "path": "../minecraft-status/tsconfig.build.json" }
+  ]
 }

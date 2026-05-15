@@ -1,11 +1,12 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "composite": true,
-    "declaration": true,
-    "declarationMap": true,
-    "outDir": "dist",
-    "rootDir": "src"
+    "noEmit": true
   },
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.ts", "test/**/*.ts"],
+  "references": [
+    { "path": "../../packages/domain/tsconfig.build.json" },
+    { "path": "../../packages/minecraft-status/tsconfig.build.json" },
+    { "path": "../../packages/banner-renderer/tsconfig.build.json" }
+  ]
 }
