@@ -84,7 +84,11 @@ docker run --rm -p 3000:3000 --env PORT=3000 mcbanners-api-next:local
 bun run smoke:local
 ```
 
-The smoke script checks `/health`, `/ready`, Minecraft status/icon, a server banner, Modrinth Sodium, and the documented Spigot EssentialsX fixture. The Spigot check is optional because live upstream/API-shape drift should not block release smoke for unrelated routes until Spigot live parity is reviewed.
+The smoke script checks `/health`, `/ready`, Minecraft status/icon, a server
+banner, Modrinth Sodium, and the documented Spigot EssentialsX fixture. The
+Spigot fixture uses resource ID `9089`, which is known to return `image/png`
+from the legacy Java production API at
+`/banner/resource/spigot/9089/banner.png`.
 
 ## Troubleshooting
 

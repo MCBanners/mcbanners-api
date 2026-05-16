@@ -47,6 +47,12 @@ Supported case types:
 Disabled cases are reported as skipped. Saved-banner examples should stay
 disabled until the same mnemonic exists in both legacy and candidate databases.
 
+## Known-Good Live Fixture IDs
+
+- Spigot resource `9089` is EssentialsX. Legacy Java production returns
+  `image/png` for `/banner/resource/spigot/9089/banner.png`, so this is the
+  preferred Spigot resource fixture for compat-runner and local release smoke.
+
 ## Reports
 
 The runner writes:

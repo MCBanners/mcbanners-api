@@ -83,8 +83,7 @@ const smokeCases: readonly SmokeCase[] = [
     path: "/banner/resource/spigot/9089/banner.png",
     kind: "image",
     expectedStatus: 200,
-    expectedContentType: "image/png",
-    optional: true
+    expectedContentType: "image/png"
   }
 ];
 

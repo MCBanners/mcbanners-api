@@ -6,8 +6,11 @@ import { normalizeResourceId } from "./resource-id";
 
 const SPIGOT_BASE_URL = "https://api.spigotmc.org/simple/0.2/index.php?action=";
 
+const SpigotStringishSchema = z.union([z.string(), z.number()]).transform((value) => String(value));
+const SpigotOptionalStringishSchema = SpigotStringishSchema.optional().default("");
+
 const SpigotResourceSchema = z.object({
-  id: z.string(),
+  id: SpigotStringishSchema,
   title: z.string(),
   tag: z.string().default(""),
   current_version: z.string().default(""),
@@ -19,27 +22,27 @@ const SpigotResourceSchema = z.object({
     })
     .default({ price: "0.00", currency: "" }),
   stats: z.object({
-    downloads: z.string().default("0"),
-    updates: z.string().default("0"),
-    rating: z.string().default("0"),
+    downloads: SpigotOptionalStringishSchema,
+    updates: SpigotOptionalStringishSchema,
+    rating: SpigotOptionalStringishSchema,
     reviews: z
       .object({
-        unique: z.string().default("0"),
-        total: z.string().default("0")
+        unique: SpigotOptionalStringishSchema,
+        total: SpigotOptionalStringishSchema
       })
       .default({ unique: "0", total: "0" })
   }),
   author: z.object({
-    id: z.string(),
+    id: SpigotStringishSchema,
     username: z.string()
   })
 });
 
 const SpigotAuthorSchema = z.object({
-  id: z.string(),
+  id: SpigotStringishSchema,
   username: z.string(),
-  resource_count: z.string().default("0"),
-  resourceCount: z.string().default("0"),
+  resource_count: SpigotOptionalStringishSchema,
+  resourceCount: SpigotOptionalStringishSchema,
   avatar: z.string().default("")
 });
 

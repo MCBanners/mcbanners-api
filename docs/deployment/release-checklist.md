@@ -61,7 +61,9 @@ bun run smoke:local -- --base-url http://localhost:3000 --output-dir output/smok
 
 The smoke script performs live network-dependent checks for Minecraft, Modrinth, and Spigot data. It is intentionally not part of `bun run check`.
 
-The Spigot smoke case uses the documented EssentialsX resource ID `9089` and is optional. Treat a skip there as a prompt for manual Spigot parity review, not as a failure of health/readiness or non-Spigot release readiness.
+The Spigot smoke case uses the documented known-good EssentialsX resource ID
+`9089`. It is a required smoke check because the legacy Java production API is
+known to return `image/png` for `/banner/resource/spigot/9089/banner.png`.
 
 ## 5. Compatibility Runner
 

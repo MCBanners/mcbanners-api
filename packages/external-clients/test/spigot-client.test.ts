@@ -47,6 +47,31 @@ const PREMIUM_RESOURCE_JSON = JSON.stringify({
   author: { id: "2", username: "Ruany" }
 });
 
+const ESSENTIALSX_LIVE_SHAPE_JSON = JSON.stringify({
+  id: 9089,
+  title: "EssentialsX",
+  tag: "The modern Essentials suite for Spigot and Paper.",
+  current_version: "2.21.2",
+  category: { id: 15, title: "Tools and Utilities", description: "" },
+  native_minecraft_version: "",
+  supported_minecraft_versions: ["1.8", "1.9", "1.10", "1.11", "1.12", "1.13"],
+  icon_link: "https://www.spigotmc.org/data/resource_icons/9/9089.jpg?1722106418",
+  author: { id: 167887, username: "md678685" },
+  premium: { price: "0.00", currency: "" },
+  stats: {
+    downloads: 5818964,
+    updates: 31,
+    reviews: { unique: 627, total: 663 },
+    rating: "4.5"
+  },
+  external_download_url: "https://github.com/EssentialsX/Essentials/releases/tag/2.21.2",
+  first_release: 1436213568,
+  last_update: 1754248920,
+  description: "Live Spigot Simple API shape fixture trimmed for deterministic tests.",
+  source_code_url: "https://github.com/EssentialsX/Essentials",
+  donate_url: "https://www.patreon.com/essentialsx"
+});
+
 const AUTHOR_JSON = JSON.stringify({
   id: "1",
   username: "md_5",
@@ -129,6 +154,28 @@ describe("SpigotResourceClient", () => {
     expect(result?.resource.rating.average).toBe(4.75);
     expect(result?.resource.rating.count).toBe(730);
     expect(result?.author.name).toBe("Ruany");
+  });
+
+  it("accepts the live Spigot Simple API shape for EssentialsX resource 9089", async () => {
+    const mockFetch = makeMockFetch({
+      [`${SPIGOT_BASE}9089`]: { status: 200, body: ESSENTIALSX_LIVE_SHAPE_JSON },
+      "https://www.spigotmc.org/data/resource_icons/9/9089.jpg": {
+        status: 200,
+        body: TINY_PNG
+      }
+    });
+
+    const client = new SpigotResourceClient({}, mockFetch);
+    const result = await client.getResourceBannerData("9089");
+
+    expect(result).not.toBeNull();
+    expect(result?.resource.name).toBe("EssentialsX");
+    expect(result?.resource.downloadCount).toBe(5818964);
+    expect(result?.resource.rating.average).toBe(4.5);
+    expect(result?.resource.rating.count).toBe(627);
+    expect(result?.resource.price).toBeNull();
+    expect(result?.resource.logoBase64).not.toBeNull();
+    expect(result?.author.name).toBe("md678685");
   });
 
   it("returns null logoBase64 when icon_link is empty", async () => {
