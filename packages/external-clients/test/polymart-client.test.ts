@@ -60,6 +60,23 @@ const TEAM_OWNER_JSON = makeResourceJson({
   }
 });
 
+const TEAM_JSON = JSON.stringify({
+  response: {
+    team: {
+      id: 789,
+      username: "PluginTeam",
+      type: "team",
+      profilePictureURL: THUMBNAIL_URL,
+      statistics: {
+        resourceCount: 12,
+        resourceDownloads: 250000,
+        resourceRatings: 3400,
+        resourceAverageRating: 4
+      }
+    }
+  }
+});
+
 describe("PolymartResourceClient", () => {
   // ---- nominal free resource ----
 
@@ -236,5 +253,45 @@ describe("PolymartResourceClient", () => {
     const result = await client.getResourceBannerData("123");
 
     expect(result).toBeNull();
+  });
+
+  it("returns TeamBannerData for a Polymart team", async () => {
+    const mockFetch = makeMockFetch({
+      [`${POLYMART_BASE}getAccountInfo/?team_id=789`]: { status: 200, body: TEAM_JSON },
+      [THUMBNAIL_URL]: { status: 200, body: TINY_PNG }
+    });
+
+    const client = new PolymartResourceClient({}, mockFetch);
+    const result = await client.getTeamBannerData("789");
+
+    expect(result).not.toBeNull();
+    expect(result?.team.name).toBe("PluginTeam");
+    expect(result?.team.resourceCount).toBe(12);
+    expect(result?.team.resourceDownloads).toBe(250000);
+    expect(result?.team.resourceRatings).toBe(3400);
+    expect(result?.team.resourceAverageRating).toBe(4);
+    expect(result?.team.logoBase64).not.toBeNull();
+  });
+
+  it("returns null for missing Polymart teams", async () => {
+    const mockFetch = makeMockFetch({
+      [`${POLYMART_BASE}getAccountInfo/?team_id=404`]: { status: 404, body: "" }
+    });
+
+    const client = new PolymartResourceClient({}, mockFetch);
+    expect(await client.getTeamBannerData("404")).toBeNull();
+  });
+
+  it("keeps Polymart team logo failures non-fatal", async () => {
+    const mockFetch = makeMockFetch({
+      [`${POLYMART_BASE}getAccountInfo/?team_id=789`]: { status: 200, body: TEAM_JSON },
+      [THUMBNAIL_URL]: { status: 500, body: "" }
+    });
+
+    const client = new PolymartResourceClient({}, mockFetch);
+    const result = await client.getTeamBannerData("789");
+
+    expect(result).not.toBeNull();
+    expect(result?.team.logoBase64).toBeNull();
   });
 });

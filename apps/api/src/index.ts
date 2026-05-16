@@ -39,6 +39,18 @@ const authorBannerImageCache = new MemoryCache({
   maxEntries: 200,
   maxBytes: 50_000_000
 });
+const memberDataCache = new MemoryCache({ ttlMs: 30_000, maxEntries: 500 });
+const memberBannerImageCache = new MemoryCache({
+  ttlMs: 60_000,
+  maxEntries: 200,
+  maxBytes: 50_000_000
+});
+const teamDataCache = new MemoryCache({ ttlMs: 30_000, maxEntries: 500 });
+const teamBannerImageCache = new MemoryCache({
+  ttlMs: 60_000,
+  maxEntries: 200,
+  maxBytes: 50_000_000
+});
 
 const resourceClients = {
   SPIGOT: new SpigotResourceClient(),
@@ -86,12 +98,18 @@ const app = createApp(
     bannerImage: bannerImageCache,
     resourceBannerImage: resourceBannerImageCache,
     authorData: authorDataCache,
-    authorBannerImage: authorBannerImageCache
+    authorBannerImage: authorBannerImageCache,
+    memberData: memberDataCache,
+    memberBannerImage: memberBannerImageCache,
+    teamData: teamDataCache,
+    teamBannerImage: teamBannerImageCache
   },
   {
     savedBanners: savedBannerRepository
   },
-  resourceClients
+  resourceClients,
+  { BUILTBYBIT: resourceClients.BUILTBYBIT },
+  { POLYMART: resourceClients.POLYMART }
 );
 
 export default app;

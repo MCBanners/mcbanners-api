@@ -4,23 +4,36 @@ import {
   buildResourceBannerNodes,
   buildServerBannerNodes,
   buildAuthorBannerNodes,
+  buildMemberBannerNodes,
+  buildTeamBannerNodes,
   createCanvasSurface,
   encodeJpg,
   encodePng,
   mapStatusToServerBannerData,
   parseAuthorBannerSettings,
+  parseMemberBannerSettings,
   parseResourceBannerSettings,
   parseServerBannerSettings,
+  parseTeamBannerSettings,
   AUTHOR_BANNER_HEIGHT,
   AUTHOR_BANNER_WIDTH,
+  MEMBER_BANNER_HEIGHT,
+  MEMBER_BANNER_WIDTH,
   registerRendererFonts,
   renderNode,
   RESOURCE_BANNER_HEIGHT,
   RESOURCE_BANNER_WIDTH,
   SERVER_BANNER_HEIGHT,
-  SERVER_BANNER_WIDTH
+  SERVER_BANNER_WIDTH,
+  TEAM_BANNER_HEIGHT,
+  TEAM_BANNER_WIDTH
 } from "@mcbanners/banner-renderer";
-import type { AuthorClient, ResourceClient } from "@mcbanners/external-clients";
+import type {
+  AuthorClient,
+  MemberClient,
+  ResourceClient,
+  TeamClient
+} from "@mcbanners/external-clients";
 import type { MinecraftStatusAdapter } from "@mcbanners/minecraft-status";
 import {
   decodeBannerTypeOrdinal,
@@ -34,6 +47,8 @@ import { bannerTypeSchema, type BannerType, type ServiceBackend } from "@mcbanne
 
 import type { ResourceClients } from "./resource-banner";
 import type { AuthorClients } from "./author-banner";
+import type { MemberClients } from "./member-banner";
+import type { TeamClients } from "./team-banner";
 
 const SAVED_BANNER_FILENAME_RE = /^([A-Za-z]{14})\.(png|jpg)$/i;
 
@@ -201,7 +216,9 @@ export class SavedBannerRecallService {
   constructor(
     private readonly minecraftAdapter: MinecraftStatusAdapter,
     private readonly resourceClients: ResourceClients,
-    private readonly authorClients: AuthorClients
+    private readonly authorClients: AuthorClients,
+    private readonly memberClients: MemberClients,
+    private readonly teamClients: TeamClients
   ) {}
 
   async render(row: SavedBannerRow, outputType: SavedBannerOutputType): Promise<Buffer | null> {
@@ -229,6 +246,14 @@ export class SavedBannerRecallService {
     const authorBackend = backendForAuthorBannerType(bannerType);
     if (authorBackend !== null) {
       return await this.renderAuthor(authorBackend, metadata, settings, outputType);
+    }
+
+    if (bannerType === "BUILTBYBIT_MEMBER") {
+      return await this.renderMember(metadata, settings, outputType);
+    }
+
+    if (bannerType === "POLYMART_TEAM") {
+      return await this.renderTeam(metadata, settings, outputType);
     }
 
     throw new UnsupportedSavedBannerTypeError(bannerType);
@@ -324,16 +349,84 @@ export class SavedBannerRecallService {
 
     return await encodeSurface(surface, outputType);
   }
+
+  private async renderMember(
+    metadata: SavedBannerJsonMap,
+    settings: SavedBannerJsonMap,
+    outputType: SavedBannerOutputType
+  ): Promise<Buffer | null> {
+    const memberId = metadata["member_id"];
+    if (memberId === undefined || memberId === "") {
+      throw new SavedBannerDataError("Saved member banner is missing member_id");
+    }
+
+    const client: MemberClient | undefined = this.memberClients["BUILTBYBIT"];
+    if (client === undefined) {
+      return null;
+    }
+
+    const data = await client.getMemberBannerData(memberId);
+    if (data === null) {
+      return null;
+    }
+
+    ensureFonts();
+    const nodes = buildMemberBannerNodes(data, parseMemberBannerSettings(settings));
+    const surface = createCanvasSurface(MEMBER_BANNER_WIDTH, MEMBER_BANNER_HEIGHT);
+    for (const node of nodes) {
+      await renderNode(surface, node);
+    }
+
+    return await encodeSurface(surface, outputType);
+  }
+
+  private async renderTeam(
+    metadata: SavedBannerJsonMap,
+    settings: SavedBannerJsonMap,
+    outputType: SavedBannerOutputType
+  ): Promise<Buffer | null> {
+    const teamId = metadata["team_id"];
+    if (teamId === undefined || teamId === "") {
+      throw new SavedBannerDataError("Saved team banner is missing team_id");
+    }
+
+    const client: TeamClient | undefined = this.teamClients["POLYMART"];
+    if (client === undefined) {
+      return null;
+    }
+
+    const data = await client.getTeamBannerData(teamId);
+    if (data === null) {
+      return null;
+    }
+
+    ensureFonts();
+    const nodes = buildTeamBannerNodes(data, parseTeamBannerSettings(settings));
+    const surface = createCanvasSurface(TEAM_BANNER_WIDTH, TEAM_BANNER_HEIGHT);
+    for (const node of nodes) {
+      await renderNode(surface, node);
+    }
+
+    return await encodeSurface(surface, outputType);
+  }
 }
 
 export const createSavedBannerRoute = (
   repository: SavedBannerRepository,
   minecraftAdapter: MinecraftStatusAdapter,
   resourceClients: ResourceClients,
-  authorClients: AuthorClients = {}
+  authorClients: AuthorClients = {},
+  memberClients: MemberClients = {},
+  teamClients: TeamClients = {}
 ): Hono => {
   const route = new Hono();
-  const recall = new SavedBannerRecallService(minecraftAdapter, resourceClients, authorClients);
+  const recall = new SavedBannerRecallService(
+    minecraftAdapter,
+    resourceClients,
+    authorClients,
+    memberClients,
+    teamClients
+  );
 
   route.post("/save", async (c) => {
     let body: unknown;

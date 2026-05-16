@@ -55,9 +55,18 @@ const NOMINAL_MEMBER_JSON = JSON.stringify({
     member_id: 99,
     username: "DevUser",
     resource_count: 5,
-    avatar_url: "https://builtbybit.com/avatars/99.jpg"
+    join_date: 1_715_731_200,
+    premium: true,
+    supreme: false,
+    ultimate: false,
+    avatar_url: "https://builtbybit.com/avatars/99.jpg",
+    post_count: 1250,
+    feedback_positive: 40,
+    feedback_negative: 5
   }
 });
+
+const TINY_PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
 describe("BuiltByBitResourceClient", () => {
   // ---- nominal free resource ----
@@ -219,5 +228,49 @@ describe("BuiltByBitResourceClient", () => {
     const result = await client.getResourceBannerData("12345");
 
     expect(result).toBeNull();
+  });
+
+  it("returns MemberBannerData for a BuiltByBit member", async () => {
+    const mockFetch = makeMockFetch({
+      [`${BBB_BASE}members/99`]: { status: 200, body: NOMINAL_MEMBER_JSON },
+      "https://builtbybit.com/avatars/99.jpg": {
+        status: 200,
+        body: String.fromCharCode(...TINY_PNG)
+      }
+    });
+
+    const client = new BuiltByBitResourceClient({ apiKey: "test-key" }, mockFetch);
+    const result = await client.getMemberBannerData("99");
+
+    expect(result).not.toBeNull();
+    expect(result?.member.name).toBe("DevUser");
+    expect(result?.member.rank).toBe("Premium");
+    expect(result?.member.joinDate).toBe("5/15/2024");
+    expect(result?.member.posts).toBe(1250);
+    expect(result?.member.positiveFeedback).toBe(40);
+    expect(result?.member.negativeFeedback).toBe(5);
+    expect(result?.member.logoBase64).not.toBeNull();
+  });
+
+  it("returns null for missing BuiltByBit members", async () => {
+    const mockFetch = makeMockFetch({
+      [`${BBB_BASE}members/404`]: { status: 404, body: "" }
+    });
+
+    const client = new BuiltByBitResourceClient({ apiKey: "test-key" }, mockFetch);
+    expect(await client.getMemberBannerData("404")).toBeNull();
+  });
+
+  it("keeps BuiltByBit member avatar failures non-fatal", async () => {
+    const mockFetch = makeMockFetch({
+      [`${BBB_BASE}members/99`]: { status: 200, body: NOMINAL_MEMBER_JSON },
+      "https://builtbybit.com/avatars/99.jpg": { status: 500, body: "" }
+    });
+
+    const client = new BuiltByBitResourceClient({ apiKey: "test-key" }, mockFetch);
+    const result = await client.getMemberBannerData("99");
+
+    expect(result).not.toBeNull();
+    expect(result?.member.logoBase64).toBeNull();
   });
 });

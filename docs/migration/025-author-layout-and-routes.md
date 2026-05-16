@@ -94,8 +94,8 @@ metadata:
 - `POLYMART_AUTHOR`
 - `HANGAR_AUTHOR`
 
-Unsupported saved types such as `DISCORD_USER`, member, and team rows remain
-explicitly unsupported.
+Unsupported saved types such as `DISCORD_USER` remain explicitly unsupported.
+Member and team saved rows are covered separately in milestone 20.
 
 ## Known Java Differences
 

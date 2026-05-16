@@ -1,6 +1,10 @@
 import { z } from "zod";
-import type { AuthorBannerData, ResourceBannerData } from "@mcbanners/banner-renderer";
-import type { AuthorClient, ResourceClient } from "./resource-client";
+import type {
+  AuthorBannerData,
+  MemberBannerData,
+  ResourceBannerData
+} from "@mcbanners/banner-renderer";
+import type { AuthorClient, MemberClient, ResourceClient } from "./resource-client";
 import { fetchImageBase64, fetchJson, type FetchFn, type HttpClientOptions } from "./http-client";
 import { normalizeResourceId } from "./resource-id";
 
@@ -35,7 +39,14 @@ const BbbMemberSchema = z.object({
     member_id: z.number(),
     username: z.string(),
     resource_count: z.number(),
-    avatar_url: z.string()
+    join_date: z.number().optional(),
+    premium: z.boolean().optional(),
+    supreme: z.boolean().optional(),
+    ultimate: z.boolean().optional(),
+    avatar_url: z.string(),
+    post_count: z.number().optional(),
+    feedback_positive: z.number().optional(),
+    feedback_negative: z.number().optional()
   })
 });
 
@@ -65,7 +76,7 @@ export interface BuiltByBitClientOptions extends HttpClientOptions {
  * - If free: `downloadCount = download_count`, price = null.
  * - Author name comes from the member endpoint (`members/{author_id}`).
  */
-export class BuiltByBitResourceClient implements ResourceClient, AuthorClient {
+export class BuiltByBitResourceClient implements ResourceClient, AuthorClient, MemberClient {
   private readonly apiKey: string;
 
   constructor(
@@ -160,6 +171,35 @@ export class BuiltByBitResourceClient implements ResourceClient, AuthorClient {
     };
   }
 
+  async getMemberBannerData(id: string): Promise<MemberBannerData | null> {
+    const authFetch = this.makeAuthFetchFn();
+    const memberId = normalizeResourceId("BUILTBYBIT", id);
+    const member = await fetchJson(
+      `${BBB_BASE_URL}members/${encodeURIComponent(memberId)}`,
+      BbbMemberSchema,
+      this.options,
+      authFetch
+    );
+    if (member === null) return null;
+
+    const m = member.data;
+    const logoBase64 = m.avatar_url
+      ? await fetchImageBase64(m.avatar_url, this.options, this.fetchFn)
+      : null;
+
+    return {
+      member: {
+        name: m.username,
+        rank: rankForBuiltByBitMember(m),
+        joinDate: formatBuiltByBitJoinDate(m.join_date ?? 0),
+        logoBase64,
+        posts: m.post_count ?? 0,
+        positiveFeedback: m.feedback_positive ?? 0,
+        negativeFeedback: m.feedback_negative ?? 0
+      }
+    };
+  }
+
   /** Returns a fetch wrapper that injects `Authorization: Private {key}`. */
   private makeAuthFetchFn(): FetchFn {
     const key = this.apiKey;
@@ -182,3 +222,24 @@ export class BuiltByBitResourceClient implements ResourceClient, AuthorClient {
     };
   }
 }
+
+const rankForBuiltByBitMember = (member: {
+  readonly premium?: boolean | undefined;
+  readonly supreme?: boolean | undefined;
+  readonly ultimate?: boolean | undefined;
+}): string => {
+  if (member.ultimate === true) return "Ultimate";
+  if (member.supreme === true) return "Supreme";
+  if (member.premium === true) return "Premium";
+  return "";
+};
+
+const formatBuiltByBitJoinDate = (epochSeconds: number): string => {
+  const date = new Date(epochSeconds * 1000);
+  const month = String(date.getUTCMonth() + 1);
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  const year = String(date.getUTCFullYear());
+  return `${month}/${day}/${year}`;
+};
+
+export class BuiltByBitMemberClient extends BuiltByBitResourceClient {}

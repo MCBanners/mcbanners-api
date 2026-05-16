@@ -77,6 +77,8 @@ Supported saved recall types:
 - `SPONGE_RESOURCE` as Ore resource
 - `BUILTBYBIT_RESOURCE`
 - `POLYMART_RESOURCE`
+- `BUILTBYBIT_MEMBER`
+- `POLYMART_TEAM`
 
 Supported outputs:
 
@@ -89,8 +91,8 @@ returns `404`.
 ## Unsupported And Corrupt Stored Data
 
 Unsupported saved banner types return `501` with an explicit error. This avoids
-silently guessing behavior for saved member/team/Discord rows before those
-render paths are implemented.
+silently guessing behavior for saved Discord rows before that render path is
+implemented.
 
 Corrupt stored rows return a safe `500`:
 
@@ -113,5 +115,5 @@ Before enabling saved banners against the live database:
 - wire the MariaDB dialect/driver and environment configuration,
 - add integration tests for the real repository,
 - decide whether to retry mnemonic generation on unique-key collisions,
-- implement or explicitly migrate unsupported saved member/team rows,
+- implement or explicitly migrate unsupported Discord rows,
 - add operational logging around corrupt legacy saved rows.

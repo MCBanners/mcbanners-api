@@ -1,6 +1,10 @@
 import { z } from "zod";
-import type { AuthorBannerData, ResourceBannerData } from "@mcbanners/banner-renderer";
-import type { AuthorClient, ResourceClient } from "./resource-client";
+import type {
+  AuthorBannerData,
+  ResourceBannerData,
+  TeamBannerData
+} from "@mcbanners/banner-renderer";
+import type { AuthorClient, ResourceClient, TeamClient } from "./resource-client";
 import { fetchJson, fetchImageBase64, type FetchFn, type HttpClientOptions } from "./http-client";
 import { normalizeResourceId } from "./resource-id";
 
@@ -88,7 +92,7 @@ const PolymartAuthorSchema = z.object({
  * - Rating: `{ count: reviews.count, average: reviews.stars }`.
  *   Java: `new RatingInformation(reviewCount, (double) resource.stars())`.
  */
-export class PolymartResourceClient implements ResourceClient, AuthorClient {
+export class PolymartResourceClient implements ResourceClient, AuthorClient, TeamClient {
   constructor(
     private readonly options: HttpClientOptions = {},
     private readonly fetchFn: FetchFn = fetch
@@ -156,4 +160,35 @@ export class PolymartResourceClient implements ResourceClient, AuthorClient {
       backend: "POLYMART"
     };
   }
+
+  async getTeamBannerData(id: string): Promise<TeamBannerData | null> {
+    const teamId = normalizeResourceId("POLYMART", id);
+    const data = await fetchJson(
+      `${POLYMART_BASE_URL}getAccountInfo/?team_id=${encodeURIComponent(teamId)}`,
+      PolymartAuthorSchema,
+      this.options,
+      this.fetchFn
+    );
+    if (data === null) return null;
+
+    const team = data.response.team ?? data.response.user;
+    if (team === undefined) return null;
+
+    const logoBase64 = team.profilePictureURL
+      ? await fetchImageBase64(team.profilePictureURL, this.options, this.fetchFn)
+      : null;
+
+    return {
+      team: {
+        name: team.username,
+        logoBase64,
+        resourceCount: team.statistics.resourceCount,
+        resourceDownloads: team.statistics.resourceDownloads,
+        resourceRatings: team.statistics.resourceRatings,
+        resourceAverageRating: team.statistics.resourceAverageRating
+      }
+    };
+  }
 }
+
+export class PolymartTeamClient extends PolymartResourceClient {}

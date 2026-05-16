@@ -6,7 +6,12 @@ import {
   MC_STATUS_FIXTURES,
   type MinecraftStatusAdapter
 } from "@mcbanners/minecraft-status";
-import { registerRendererFonts, type ResourceBannerData } from "@mcbanners/banner-renderer";
+import {
+  registerRendererFonts,
+  type MemberBannerData,
+  type ResourceBannerData,
+  type TeamBannerData
+} from "@mcbanners/banner-renderer";
 import {
   decodeBannerTypeOrdinal,
   prepareSavedBannerInsert,
@@ -61,6 +66,29 @@ const FIXTURE_SPIGOT_AUTHOR: AuthorBannerData = {
   backend: "SPIGOT"
 };
 
+const FIXTURE_BUILTBYBIT_MEMBER: MemberBannerData = {
+  member: {
+    name: "DevUser",
+    rank: "Premium",
+    joinDate: "5/15/2024",
+    logoBase64: null,
+    posts: 1250,
+    positiveFeedback: 40,
+    negativeFeedback: 5
+  }
+};
+
+const FIXTURE_POLYMART_TEAM: TeamBannerData = {
+  team: {
+    name: "PluginTeam",
+    logoBase64: null,
+    resourceCount: 12,
+    resourceDownloads: 250_000,
+    resourceRatings: 3400,
+    resourceAverageRating: 4
+  }
+};
+
 class FixtureResourceClient {
   constructor(private readonly data: ResourceBannerData | null) {}
 
@@ -73,6 +101,22 @@ class FixtureAuthorClient {
   constructor(private readonly data: AuthorBannerData | null) {}
 
   getAuthorBannerData(): Promise<AuthorBannerData | null> {
+    return Promise.resolve(this.data);
+  }
+}
+
+class FixtureMemberClient {
+  constructor(private readonly data: MemberBannerData | null) {}
+
+  getMemberBannerData(): Promise<MemberBannerData | null> {
+    return Promise.resolve(this.data);
+  }
+}
+
+class FixtureTeamClient {
+  constructor(private readonly data: TeamBannerData | null) {}
+
+  getTeamBannerData(): Promise<TeamBannerData | null> {
     return Promise.resolve(this.data);
   }
 }
@@ -122,14 +166,18 @@ const makeSavedApp = (
     MODRINTH: new FixtureResourceClient(FIXTURE_MODRINTH_RESOURCE)
   },
   minecraftAdapter: MinecraftStatusAdapter = createFixtureAdapter(MC_STATUS_FIXTURES),
-  authorClients = { SPIGOT: new FixtureAuthorClient(FIXTURE_SPIGOT_AUTHOR) }
+  authorClients = { SPIGOT: new FixtureAuthorClient(FIXTURE_SPIGOT_AUTHOR) },
+  memberClients = { BUILTBYBIT: new FixtureMemberClient(FIXTURE_BUILTBYBIT_MEMBER) },
+  teamClients = { POLYMART: new FixtureTeamClient(FIXTURE_POLYMART_TEAM) }
 ) =>
   createApp(
     minecraftAdapter,
     resourceClients,
     undefined,
     { savedBanners: repository },
-    authorClients
+    authorClients,
+    memberClients,
+    teamClients
   );
 
 const savedRow = (
@@ -438,6 +486,50 @@ describe("GET /banner/saved/:mnemonic.:outputType", () => {
 
     expect(res.status).toBe(200);
     expect(res.headers.get("Content-Type")).toBe("image/png");
+  });
+
+  it("recalls a BuiltByBit member saved banner", async () => {
+    const repository = new InMemorySavedBannerRepository([
+      savedRow({
+        mnemonic: "abcdefghijklmn",
+        type: 11,
+        metadata: '{"member_id":"99"}'
+      })
+    ]);
+    const res = await makeSavedApp(repository).request("/banner/saved/abcdefghijklmn.png");
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toBe("image/png");
+  });
+
+  it("recalls a Polymart team saved banner", async () => {
+    const repository = new InMemorySavedBannerRepository([
+      savedRow({
+        mnemonic: "abcdefghijklmn",
+        type: 14,
+        metadata: '{"team_id":"789"}'
+      })
+    ]);
+    const res = await makeSavedApp(repository).request("/banner/saved/abcdefghijklmn.jpg");
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toBe("image/jpeg");
+  });
+
+  it("returns a safe 500 when member or team saved metadata is missing", async () => {
+    const missingMember = new InMemorySavedBannerRepository([
+      savedRow({ mnemonic: "abcdefghijklmn", type: 11, metadata: "{}" })
+    ]);
+    const missingTeam = new InMemorySavedBannerRepository([
+      savedRow({ mnemonic: "abcdefghijklmz", type: 14, metadata: "{}" })
+    ]);
+
+    expect(
+      (await makeSavedApp(missingMember).request("/banner/saved/abcdefghijklmn.png")).status
+    ).toBe(500);
+    expect(
+      (await makeSavedApp(missingTeam).request("/banner/saved/abcdefghijklmz.png")).status
+    ).toBe(500);
   });
 
   it("returns 400 for unsupported output format", async () => {

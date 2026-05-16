@@ -7,6 +7,8 @@ import { createMcServerRoute } from "./routes/mc-server";
 import { createServerBannerRoute } from "./routes/server-banner";
 import { createResourceBannerRoute, type ResourceClients } from "./routes/resource-banner";
 import { createAuthorBannerRoute, type AuthorClients } from "./routes/author-banner";
+import { createMemberBannerRoute, type MemberClients } from "./routes/member-banner";
+import { createTeamBannerRoute, type TeamClients } from "./routes/team-banner";
 import { createSavedBannerRoute, createUnavailableSavedBannerRoute } from "./routes/saved-banner";
 
 /**
@@ -24,10 +26,20 @@ export interface AppCaches {
   authorData?: MemoryCache;
   /** In-memory cache for rendered author banner image Buffers (TTL 60 s). */
   authorBannerImage?: MemoryCache;
+  /** In-memory cache for BuiltByBit member lookup responses (TTL 30 s). */
+  memberData?: MemoryCache;
+  /** In-memory cache for rendered member banner image Buffers (TTL 60 s). */
+  memberBannerImage?: MemoryCache;
+  /** In-memory cache for Polymart team lookup responses (TTL 30 s). */
+  teamData?: MemoryCache;
+  /** In-memory cache for rendered team banner image Buffers (TTL 60 s). */
+  teamBannerImage?: MemoryCache;
 }
 
 export type { ResourceClients };
 export type { AuthorClients };
+export type { MemberClients };
+export type { TeamClients };
 
 export interface AppRepositories {
   savedBanners?: SavedBannerRepository | null;
@@ -46,7 +58,9 @@ export const createApp = (
   resourceClients: ResourceClients,
   caches?: AppCaches,
   repositories?: AppRepositories,
-  authorClients?: AuthorClients
+  authorClients?: AuthorClients,
+  memberClients?: MemberClients,
+  teamClients?: TeamClients
 ): Hono => {
   const app = new Hono();
 
@@ -81,6 +95,16 @@ export const createApp = (
     createAuthorBannerRoute(authorClients ?? {}, caches?.authorData, caches?.authorBannerImage)
   );
 
+  app.route(
+    "/banner/member",
+    createMemberBannerRoute(memberClients ?? {}, caches?.memberData, caches?.memberBannerImage)
+  );
+
+  app.route(
+    "/banner/team",
+    createTeamBannerRoute(teamClients ?? {}, caches?.teamData, caches?.teamBannerImage)
+  );
+
   if (repositories?.savedBanners === null) {
     app.route("/banner/saved", createUnavailableSavedBannerRoute());
   } else if (repositories?.savedBanners !== undefined) {
@@ -90,7 +114,9 @@ export const createApp = (
         repositories.savedBanners,
         mcAdapter,
         resourceClients,
-        authorClients ?? {}
+        authorClients ?? {},
+        memberClients ?? {},
+        teamClients ?? {}
       )
     );
   }
