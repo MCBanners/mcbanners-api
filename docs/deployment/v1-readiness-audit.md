@@ -1,6 +1,6 @@
 # v1 Readiness Audit
 
-Audit date: 2026-05-16. Reflects test suite at commit `77c3fa1` (M25 complete, M26 hardening).
+Audit date: 2026-05-16. Reflects test suite at commit `77c3fa1` (M25 complete, M26 hardening). Updated for M27 (production observability and edge-safety hardening).
 
 ## Current Evidence
 
@@ -53,14 +53,14 @@ All 17 legacy `BannerType` ordinals are handled. 16 are supported for recall. `D
 
 ## Unsupported / De-Scoped in v1
 
-| Feature                                            | Reason                                                                                                                        |
-| -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `DISCORD_USER` banner                              | No Discord API client planned; legacy recall already threw; product no longer relies on Discord. Returns 501 on saved recall. |
-| Discord banner direct routes (`/banner/discord/*`) | Not mounted. No Discord client.                                                                                               |
-| Pixel-perfect visual diff in compat-runner         | Not implemented; byte hashes recorded but not a pass/fail criterion.                                                          |
-| Redis / external cache                             | In-process memory cache only; intentional for v1.                                                                             |
-| Rate limiting                                      | Not implemented; expected at proxy/CDN layer.                                                                                 |
-| Authentication on public banner routes             | Not implemented; matches legacy behavior.                                                                                     |
+| Feature                                            | Reason                                                                                                                                                  |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DISCORD_USER` banner                              | No Discord API client planned; legacy recall already threw; product no longer relies on Discord. Returns 501 on saved recall.                           |
+| Discord banner direct routes (`/banner/discord/*`) | Not mounted. No Discord client.                                                                                                                         |
+| Pixel-perfect visual diff in compat-runner         | Not implemented; byte hashes recorded but not a pass/fail criterion.                                                                                    |
+| Redis / external cache                             | In-process memory cache only; intentional for v1.                                                                                                       |
+| Rate limiting                                      | Optional in-process per-IP rate limiting added (M27). Disabled by default (`RATE_LIMIT_ENABLED=false`). Cloudflare WAF recommended for DDoS protection. |
+| Authentication on public banner routes             | Not implemented; matches legacy behavior.                                                                                                               |
 
 ## DISCORD_USER Decision
 
@@ -78,19 +78,23 @@ See `docs/migration/027-bannertype-coverage.md` for the full coverage matrix.
 
 ## Environment Variables
 
-| Variable                   | Required                     | Default | Purpose                                                          |
-| -------------------------- | ---------------------------- | ------- | ---------------------------------------------------------------- |
-| `PORT`                     | no                           | `3000`  | HTTP listen port                                                 |
-| `SAVED_BANNER_DB_ENABLED`  | no                           | auto    | Force-enable (`true`) or force-disable (`false`) saved-banner DB |
-| `DATABASE_URL`             | if using saved banners       | —       | MariaDB/MySQL connection URL                                     |
-| `DB_HOST`                  | if using saved banners (alt) | —       | MariaDB host                                                     |
-| `DB_PORT`                  | no                           | `3306`  | MariaDB port                                                     |
-| `DB_USER`                  | if using saved banners (alt) | —       | MariaDB user                                                     |
-| `DB_PASSWORD`              | no                           | —       | MariaDB password                                                 |
-| `DB_NAME`                  | if using saved banners (alt) | —       | Database name                                                    |
-| `DB_SSL`                   | no                           | `false` | Enable MariaDB TLS                                               |
-| `DB_POOL_CONNECTION_LIMIT` | no                           | `10`    | Connection pool size                                             |
-| `BUILTBYBIT_API_KEY`       | no                           | —       | BuiltByBit API key; required for live BuiltByBit coverage        |
+| Variable                   | Required                     | Default | Purpose                                                                                         |
+| -------------------------- | ---------------------------- | ------- | ----------------------------------------------------------------------------------------------- |
+| `PORT`                     | no                           | `3000`  | HTTP listen port                                                                                |
+| `SAVED_BANNER_DB_ENABLED`  | no                           | auto    | Force-enable (`true`) or force-disable (`false`) saved-banner DB                                |
+| `DATABASE_URL`             | if using saved banners       | —       | MariaDB/MySQL connection URL                                                                    |
+| `DB_HOST`                  | if using saved banners (alt) | —       | MariaDB host                                                                                    |
+| `DB_PORT`                  | no                           | `3306`  | MariaDB port                                                                                    |
+| `DB_USER`                  | if using saved banners (alt) | —       | MariaDB user                                                                                    |
+| `DB_PASSWORD`              | no                           | —       | MariaDB password                                                                                |
+| `DB_NAME`                  | if using saved banners (alt) | —       | Database name                                                                                   |
+| `DB_SSL`                   | no                           | `false` | Enable MariaDB TLS                                                                              |
+| `DB_POOL_CONNECTION_LIMIT` | no                           | `10`    | Connection pool size                                                                            |
+| `BUILTBYBIT_API_KEY`       | no                           | —       | BuiltByBit API key; required for live BuiltByBit coverage                                       |
+| `RATE_LIMIT_ENABLED`       | no                           | `false` | Enable in-process per-IP rate limiting (disabled by default)                                    |
+| `RATE_LIMIT_WINDOW_MS`     | no                           | `60000` | Rate limit window duration in milliseconds                                                      |
+| `RATE_LIMIT_MAX_REQUESTS`  | no                           | `300`   | Max requests per IP per window before 429                                                       |
+| `METRICS_ENABLED`          | no                           | `false` | Expose `GET /metrics` with uptime and cache stats (disabled by default; do not expose publicly) |
 
 No secrets are baked into the image. Do not commit `.env` files.
 

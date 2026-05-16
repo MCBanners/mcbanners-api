@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import type { MinecraftStatusAdapter } from "@mcbanners/minecraft-status";
-import type { MemoryCache } from "@mcbanners/cache";
+import type { MemoryCache, CacheStats } from "@mcbanners/cache";
 import type { SavedBannerRepository } from "@mcbanners/db";
 import { validateAssetFiles } from "@mcbanners/banner-renderer/assets";
 import { CachedMinecraftStatusAdapter } from "./cached-mc-adapter";
@@ -11,6 +11,8 @@ import { createAuthorBannerRoute, type AuthorClients } from "./routes/author-ban
 import { createMemberBannerRoute, type MemberClients } from "./routes/member-banner";
 import { createTeamBannerRoute, type TeamClients } from "./routes/team-banner";
 import { createSavedBannerRoute, createUnavailableSavedBannerRoute } from "./routes/saved-banner";
+import { requestLoggerMiddleware } from "./middleware/request-logger";
+import { createRateLimitMiddleware, type RateLimitOptions } from "./middleware/rate-limit";
 
 /**
  * Optional caches injected into the app for production use.
@@ -41,6 +43,19 @@ export type { ResourceClients };
 export type { AuthorClients };
 export type { MemberClients };
 export type { TeamClients };
+
+export interface MetricsSnapshot {
+  readonly uptimeSeconds: number;
+  readonly caches?: Record<string, CacheStats>;
+}
+
+export interface AppMetrics {
+  readonly getSnapshot: () => MetricsSnapshot;
+}
+
+export interface AppOptions {
+  readonly rateLimit?: RateLimitOptions;
+}
 
 export interface AppRepositories {
   savedBanners?: SavedBannerRepository | null;
@@ -74,9 +89,16 @@ export const createApp = (
   authorClients?: AuthorClients,
   memberClients?: MemberClients,
   teamClients?: TeamClients,
-  readiness?: AppReadiness
+  readiness?: AppReadiness,
+  metrics?: AppMetrics,
+  options?: AppOptions
 ): Hono => {
   const app = new Hono();
+
+  app.use("*", requestLoggerMiddleware);
+  if (options?.rateLimit !== undefined) {
+    app.use("*", createRateLimitMiddleware(options.rateLimit));
+  }
 
   // Wrap adapter with cache when provided.
   const mcAdapter: MinecraftStatusAdapter =
@@ -130,6 +152,10 @@ export const createApp = (
       ready ? 200 : 503
     );
   });
+
+  if (metrics !== undefined) {
+    app.get("/metrics", (c) => c.json(metrics.getSnapshot()));
+  }
 
   app.route("/mc", createMcServerRoute(mcAdapter));
 

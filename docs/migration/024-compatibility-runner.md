@@ -56,12 +56,12 @@ An optional field marking that the legacy API is known to fail on this route in
 production. When present, the runner applies a 4-case decision matrix instead of
 the normal pass/fail:
 
-| Legacy | Candidate | Outcome | Exit |
-|--------|-----------|---------|------|
-| fails  | passes    | `candidate_improvement` — reported as CANDIDATE_IMPROVEMENT | 0 |
-| fails  | fails     | `both_failing` — reported as KNOWN_LEGACY_FAILURE_ALSO_BROKEN | 1 |
-| passes | passes    | `legacy_unexpectedly_passed` — reported with a warning | 0 |
-| passes | fails     | `regression` — reported as REGRESSION | 1 |
+| Legacy | Candidate | Outcome                                                       | Exit |
+| ------ | --------- | ------------------------------------------------------------- | ---- |
+| fails  | passes    | `candidate_improvement` — reported as CANDIDATE_IMPROVEMENT   | 0    |
+| fails  | fails     | `both_failing` — reported as KNOWN_LEGACY_FAILURE_ALSO_BROKEN | 1    |
+| passes | passes    | `legacy_unexpectedly_passed` — reported with a warning        | 0    |
+| passes | fails     | `regression` — reported as REGRESSION                         | 1    |
 
 "Fails" means a network error, a null status, or an HTTP status ≥ 400.
 

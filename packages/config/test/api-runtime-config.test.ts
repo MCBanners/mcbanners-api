@@ -9,7 +9,13 @@ describe("API runtime database config", () => {
       savedBannerDb: {
         enabled: false,
         reason: "missing-config"
-      }
+      },
+      rateLimit: {
+        enabled: false,
+        windowMs: 60000,
+        maxRequests: 300
+      },
+      metricsEnabled: false
     });
   });
 

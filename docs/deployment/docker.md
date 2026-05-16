@@ -53,6 +53,16 @@ Saved-banner MariaDB wiring:
 - `DB_SSL`: boolean-like flag, defaults to `false`.
 - `DB_POOL_CONNECTION_LIMIT`: pool size, defaults to `10`.
 
+Rate limiting (disabled by default):
+
+- `RATE_LIMIT_ENABLED`: boolean-like flag. Defaults to `false`. Set to `true` to enable in-process per-IP rate limiting.
+- `RATE_LIMIT_WINDOW_MS`: sliding window duration in milliseconds. Defaults to `60000` (1 minute).
+- `RATE_LIMIT_MAX_REQUESTS`: maximum requests per IP per window before `429` is returned. Defaults to `300`.
+
+Observability:
+
+- `METRICS_ENABLED`: boolean-like flag. Defaults to `false`. Set to `true` to expose `GET /metrics` with uptime and cache statistics. Do not expose this endpoint publicly.
+
 Marketplace clients:
 
 - `BUILTBYBIT_API_KEY`: optional BuiltByBit API key. Do not log or bake it into the image.
@@ -141,3 +151,13 @@ bun install --frozen-lockfile --production
 - Do not commit `.env` files or secrets.
 - Keep `../banner-api`, `../mc-api`, and `../discord-api` outside the image. They are compatibility references only.
 - The container is self-hosted Bun. Do not pivot this service to Cloudflare Workers without a separate compatibility review.
+
+## Graceful Shutdown
+
+The API uses `Bun.serve()` and registers `SIGTERM` and `SIGINT` handlers for graceful shutdown. When Docker sends `docker stop` (which delivers `SIGTERM`):
+
+1. The signal handler calls `server.stop(true)` — waits for in-flight requests to complete before closing the listener.
+2. If the saved-banner DB pool is open, it is closed via `destroySavedBannerDb`.
+3. The process exits cleanly with code `0`.
+
+To tune the Docker stop grace period, use `docker stop --time=<seconds>`. The default is 10 seconds. For high-traffic deployments, consider increasing this to 30 seconds.

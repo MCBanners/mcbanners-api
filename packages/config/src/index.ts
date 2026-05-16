@@ -10,7 +10,11 @@ const envSchema = z.object({
   DB_NAME: z.string().trim().min(1).optional(),
   DB_SSL: z.string().trim().min(1).optional(),
   DB_POOL_CONNECTION_LIMIT: z.string().trim().min(1).optional(),
-  SAVED_BANNER_DB_ENABLED: z.string().trim().min(1).optional()
+  SAVED_BANNER_DB_ENABLED: z.string().trim().min(1).optional(),
+  RATE_LIMIT_ENABLED: z.string().trim().min(1).optional(),
+  RATE_LIMIT_WINDOW_MS: z.string().trim().min(1).optional(),
+  RATE_LIMIT_MAX_REQUESTS: z.string().trim().min(1).optional(),
+  METRICS_ENABLED: z.string().trim().min(1).optional()
 });
 
 export interface MariaDbConnectionConfig {
@@ -34,9 +38,17 @@ export type SavedBannerDbConfig =
       readonly connection: MariaDbConnectionConfig;
     };
 
+export interface RateLimitConfig {
+  readonly enabled: boolean;
+  readonly windowMs: number;
+  readonly maxRequests: number;
+}
+
 export interface ApiRuntimeConfig {
   readonly port: number;
   readonly savedBannerDb: SavedBannerDbConfig;
+  readonly rateLimit: RateLimitConfig;
+  readonly metricsEnabled: boolean;
 }
 
 const parseBooleanFlag = (value: string | undefined): boolean | undefined => {
@@ -150,6 +162,16 @@ export const loadApiRuntimeConfig = (
 
   return {
     port: parsePositiveInteger(parsed.PORT, 3000, "PORT"),
-    savedBannerDb: buildSavedBannerDbConfig(parsed)
+    savedBannerDb: buildSavedBannerDbConfig(parsed),
+    rateLimit: {
+      enabled: parseBooleanFlag(parsed.RATE_LIMIT_ENABLED) ?? false,
+      windowMs: parsePositiveInteger(parsed.RATE_LIMIT_WINDOW_MS, 60000, "RATE_LIMIT_WINDOW_MS"),
+      maxRequests: parsePositiveInteger(
+        parsed.RATE_LIMIT_MAX_REQUESTS,
+        300,
+        "RATE_LIMIT_MAX_REQUESTS"
+      )
+    },
+    metricsEnabled: parseBooleanFlag(parsed.METRICS_ENABLED) ?? false
   };
 };

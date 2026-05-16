@@ -112,6 +112,16 @@ Saved-banner DB:
 - `DB_SSL`, optional
 - `DB_POOL_CONNECTION_LIMIT`, optional
 
+Rate limiting (disabled by default):
+
+- `RATE_LIMIT_ENABLED`: optional, defaults to `false`. Set to `true` to enable in-process per-IP rate limiting.
+- `RATE_LIMIT_WINDOW_MS`: optional, defaults to `60000` (1 minute window).
+- `RATE_LIMIT_MAX_REQUESTS`: optional, defaults to `300` requests per window per IP.
+
+Observability:
+
+- `METRICS_ENABLED`: optional, defaults to `false`. Set to `true` to expose `GET /metrics`. Keep this endpoint behind a firewall or proxy block in production.
+
 External clients:
 
 - `BUILTBYBIT_API_KEY`, optional but recommended for BuiltByBit live resource coverage.

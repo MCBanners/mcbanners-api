@@ -1,4 +1,4 @@
-import { createApp } from "./app";
+import { createApp, type AppMetrics, type AppOptions, type MetricsSnapshot } from "./app";
 import { createFixtureAdapter, LiveMinecraftStatusAdapter } from "@mcbanners/minecraft-status";
 import { MC_STATUS_FIXTURES } from "@mcbanners/minecraft-status";
 import { MemoryCache } from "@mcbanners/cache";
@@ -80,25 +80,35 @@ const savedBannerDb = runtimeConfig.savedBannerDb.enabled
 const savedBannerRepository: SavedBannerRepository | null =
   savedBannerDb === null ? null : createSavedBannerRepository(savedBannerDb);
 
-if (savedBannerDb !== null) {
-  const shutdown = async (): Promise<void> => {
-    await destroySavedBannerDb(savedBannerDb);
-  };
+const startTime = Date.now();
 
-  process.once("beforeExit", () => {
-    void shutdown();
-  });
-  process.once("SIGINT", () => {
-    void shutdown().finally(() => {
-      process.exit(0);
-    });
-  });
-  process.once("SIGTERM", () => {
-    void shutdown().finally(() => {
-      process.exit(0);
-    });
-  });
-}
+const appMetrics: AppMetrics | undefined = runtimeConfig.metricsEnabled
+  ? {
+      getSnapshot: (): MetricsSnapshot => ({
+        uptimeSeconds: Math.floor((Date.now() - startTime) / 1000),
+        caches: {
+          mcStatus: mcStatusCache.stats(),
+          bannerImage: bannerImageCache.stats(),
+          resourceBannerImage: resourceBannerImageCache.stats(),
+          authorData: authorDataCache.stats(),
+          authorBannerImage: authorBannerImageCache.stats(),
+          memberData: memberDataCache.stats(),
+          memberBannerImage: memberBannerImageCache.stats(),
+          teamData: teamDataCache.stats(),
+          teamBannerImage: teamBannerImageCache.stats()
+        }
+      })
+    }
+  : undefined;
+
+const appOptions: AppOptions | undefined = runtimeConfig.rateLimit.enabled
+  ? {
+      rateLimit: {
+        windowMs: runtimeConfig.rateLimit.windowMs,
+        maxRequests: runtimeConfig.rateLimit.maxRequests
+      }
+    }
+  : undefined;
 
 const app = createApp(
   minecraftAdapter,
@@ -134,7 +144,9 @@ const app = createApp(
             }
           })
     }
-  }
+  },
+  appMetrics,
+  appOptions
 );
 
 logger.info(
@@ -142,12 +154,35 @@ logger.info(
     port: runtimeConfig.port,
     savedBannerDbEnabled: runtimeConfig.savedBannerDb.enabled,
     rendererAssetsValidated: true,
-    savedRouteDbAvailability: savedBannerRepository === null ? "unavailable" : "configured"
+    savedRouteDbAvailability: savedBannerRepository === null ? "unavailable" : "configured",
+    rateLimitEnabled: runtimeConfig.rateLimit.enabled,
+    metricsEnabled: runtimeConfig.metricsEnabled
   },
   "API runtime configured"
 );
 
-export default {
+const server = Bun.serve({
   port: runtimeConfig.port,
   fetch: app.fetch
+});
+
+const shutdown = async (): Promise<void> => {
+  logger.info("Shutdown signal received, stopping server");
+  await server.stop(true);
+  if (savedBannerDb !== null) {
+    await destroySavedBannerDb(savedBannerDb);
+  }
+  logger.info("Shutdown complete");
 };
+
+process.once("SIGINT", () => {
+  void shutdown().finally(() => {
+    process.exit(0);
+  });
+});
+
+process.once("SIGTERM", () => {
+  void shutdown().finally(() => {
+    process.exit(0);
+  });
+});
