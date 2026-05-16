@@ -3,6 +3,17 @@ dist
 *.tsbuildinfo
 .env
 .env.*
+!.env.example
+*.sql
+*.sql.gz
+*.zip
+*.tar
+*.tar.gz
+*.7z
+*.log
+logs/
+npm-debug.log*
+bun-debug.log*
 packages/banner-renderer/output/
 apps/compat-runner/output/
 compat-output/

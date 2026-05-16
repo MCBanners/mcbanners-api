@@ -24,8 +24,15 @@ mc-api
 discord-api
 
 *.zip
+*.sql
+*.sql.gz
+*.log
 *.tar
 *.tar.gz
 *.7z
+*.tgz
+logs
+npm-debug.log*
+bun-debug.log*
 
 docs

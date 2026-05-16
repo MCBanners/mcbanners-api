@@ -263,17 +263,11 @@ describe("aggregateSummary", () => {
     expect(summary.failCount).toBe(1);
   });
 
-  it("samples failures up to maxSampledFailures", () => {
+  it("does not expose raw sampled failures in aggregate summary", () => {
     const results = Array.from({ length: 10 }, () => makeResult("RENDER_404"));
     const summary = aggregateSummary(results, 3);
-    expect(summary.sampledFailures.length).toBe(3);
+    expect(Object.hasOwn(summary, "sampledFailures")).toBe(false);
     expect(summary.failCount).toBe(10);
-  });
-
-  it("includes all failures when fewer than maxSampledFailures", () => {
-    const results = [makeResult("RENDER_404"), makeResult("RENDER_500")];
-    const summary = aggregateSummary(results, 25);
-    expect(summary.sampledFailures.length).toBe(2);
   });
 
   it("aggregates byBannerType correctly", () => {
@@ -587,23 +581,33 @@ describe("classifyHttpStatus with bannerType", () => {
   });
 
   it("MINECRAFT_SERVER + 404 + dns hint => RENDER_404_DNS_FAILURE", () => {
-    expect(classifyHttpStatus(404, "dns resolution failed", "MINECRAFT_SERVER")).toBe("RENDER_404_DNS_FAILURE");
+    expect(classifyHttpStatus(404, "dns resolution failed", "MINECRAFT_SERVER")).toBe(
+      "RENDER_404_DNS_FAILURE"
+    );
   });
 
   it("MINECRAFT_SERVER + 404 + unknown host hint => RENDER_404_DNS_FAILURE", () => {
-    expect(classifyHttpStatus(404, "unknown host: play.example.com", "MINECRAFT_SERVER")).toBe("RENDER_404_DNS_FAILURE");
+    expect(classifyHttpStatus(404, "unknown host: play.example.com", "MINECRAFT_SERVER")).toBe(
+      "RENDER_404_DNS_FAILURE"
+    );
   });
 
   it("MINECRAFT_SERVER + 404 + connection refused => RENDER_404_CONNECTION_FAILURE", () => {
-    expect(classifyHttpStatus(404, "connection refused", "MINECRAFT_SERVER")).toBe("RENDER_404_CONNECTION_FAILURE");
+    expect(classifyHttpStatus(404, "connection refused", "MINECRAFT_SERVER")).toBe(
+      "RENDER_404_CONNECTION_FAILURE"
+    );
   });
 
   it("MINECRAFT_SERVER + 404 + timeout => RENDER_404_CONNECTION_FAILURE", () => {
-    expect(classifyHttpStatus(404, "request timeout", "MINECRAFT_SERVER")).toBe("RENDER_404_CONNECTION_FAILURE");
+    expect(classifyHttpStatus(404, "request timeout", "MINECRAFT_SERVER")).toBe(
+      "RENDER_404_CONNECTION_FAILURE"
+    );
   });
 
   it("MINECRAFT_SERVER + 404 + offline => RENDER_404_SERVER_OFFLINE", () => {
-    expect(classifyHttpStatus(404, "server is offline", "MINECRAFT_SERVER")).toBe("RENDER_404_SERVER_OFFLINE");
+    expect(classifyHttpStatus(404, "server is offline", "MINECRAFT_SERVER")).toBe(
+      "RENDER_404_SERVER_OFFLINE"
+    );
   });
 
   it("SPIGOT_RESOURCE + 404 => RENDER_404_RESOURCE_REMOVED", () => {
@@ -624,7 +628,9 @@ describe("classifyHttpStatus with bannerType", () => {
 
   it("bannerType-specific 404 still respects body keyword for missing-upstream hint", () => {
     // "upstream" keyword takes priority over bannerType inference
-    expect(classifyHttpStatus(404, "upstream not found", "MINECRAFT_SERVER")).toBe("RENDER_404_MISSING_UPSTREAM");
+    expect(classifyHttpStatus(404, "upstream not found", "MINECRAFT_SERVER")).toBe(
+      "RENDER_404_MISSING_UPSTREAM"
+    );
   });
 
   it("500 is unaffected by bannerType", () => {
@@ -659,11 +665,19 @@ describe("parseClassificationFilter", () => {
   });
 
   it("returns new M30 classification values", () => {
-    expect(parseClassificationFilter("RENDER_404_UPSTREAM_NOT_FOUND")).toBe("RENDER_404_UPSTREAM_NOT_FOUND");
+    expect(parseClassificationFilter("RENDER_404_UPSTREAM_NOT_FOUND")).toBe(
+      "RENDER_404_UPSTREAM_NOT_FOUND"
+    );
     expect(parseClassificationFilter("RENDER_404_DNS_FAILURE")).toBe("RENDER_404_DNS_FAILURE");
-    expect(parseClassificationFilter("RENDER_404_CONNECTION_FAILURE")).toBe("RENDER_404_CONNECTION_FAILURE");
-    expect(parseClassificationFilter("RENDER_404_SERVER_OFFLINE")).toBe("RENDER_404_SERVER_OFFLINE");
-    expect(parseClassificationFilter("RENDER_404_RESOURCE_REMOVED")).toBe("RENDER_404_RESOURCE_REMOVED");
+    expect(parseClassificationFilter("RENDER_404_CONNECTION_FAILURE")).toBe(
+      "RENDER_404_CONNECTION_FAILURE"
+    );
+    expect(parseClassificationFilter("RENDER_404_SERVER_OFFLINE")).toBe(
+      "RENDER_404_SERVER_OFFLINE"
+    );
+    expect(parseClassificationFilter("RENDER_404_RESOURCE_REMOVED")).toBe(
+      "RENDER_404_RESOURCE_REMOVED"
+    );
   });
 });
 
@@ -706,10 +720,7 @@ const makeDeadResult = (
 
 describe("aggregateSummary dead-upstream fields", () => {
   it("deadUpstreamCount is 0 when no dead-upstream classifications", () => {
-    const results: CorpusResult[] = [
-      makeDeadResult("PASS_RENDERED"),
-      makeDeadResult("RENDER_404")
-    ];
+    const results: CorpusResult[] = [makeDeadResult("PASS_RENDERED"), makeDeadResult("RENDER_404")];
     const s = aggregateSummary(results, 10);
     expect(s.deadUpstreamCount).toBe(0);
     expect(s.actualCompatibilityFailures).toBe(1); // RENDER_404 is a real failure
@@ -760,15 +771,11 @@ describe("aggregateSummary dead-upstream fields", () => {
 describe("runConcurrentQueue", () => {
   it("processes all items and returns results in original order", async () => {
     const items = [3, 1, 2];
-    const results = await runConcurrentQueue(
-      items,
-      2,
-      async (n) => {
-        // Simulate different latencies
-        await new Promise((r) => setTimeout(r, n * 5));
-        return n * 10;
-      }
-    );
+    const results = await runConcurrentQueue(items, 2, async (n) => {
+      // Simulate different latencies
+      await new Promise((r) => setTimeout(r, n * 5));
+      return n * 10;
+    });
     expect(results).toEqual([30, 10, 20]);
   });
 
@@ -788,21 +795,19 @@ describe("runConcurrentQueue", () => {
       [1, 2, 3],
       2,
       async (x) => x,
-      (index, _result) => { done.push(index); }
+      (index, _result) => {
+        done.push(index);
+      }
     );
     expect(done.sort((a, b) => a - b)).toEqual([0, 1, 2]);
   });
 
   it("respects concurrency (does not start all at once with concurrency=1)", async () => {
     const order: number[] = [];
-    await runConcurrentQueue(
-      [1, 2, 3],
-      1,
-      async (x) => {
-        order.push(x);
-        return x;
-      }
-    );
+    await runConcurrentQueue([1, 2, 3], 1, async (x) => {
+      order.push(x);
+      return x;
+    });
     // With concurrency=1, items run sequentially in order
     expect(order).toEqual([1, 2, 3]);
   });

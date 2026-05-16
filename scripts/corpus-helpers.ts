@@ -76,7 +76,6 @@ export interface CorpusSummary {
   readonly candidateCompatibleHistoricalFailures: number;
   readonly byClassification: Partial<Record<CorpusClassification, number>>;
   readonly byBannerType: Record<string, number>;
-  readonly sampledFailures: readonly CorpusResult[];
   readonly failureGroups: FailureGroups;
 }
 
@@ -197,10 +196,7 @@ export const classifyPreFlight = (row: RawRow): PreFlightResult => {
 export const truncateStr = (str: string, maxLen: number): string =>
   str.length <= maxLen ? str : `${str.slice(0, maxLen)}…`;
 
-export const buildMetadataPreview = (
-  metadata: Record<string, string>,
-  maxLen = 200
-): string => {
+export const buildMetadataPreview = (metadata: Record<string, string>, maxLen = 200): string => {
   const pairs = Object.entries(metadata)
     .map(([k, v]) => `${k}=${truncateStr(v, 40)}`)
     .join(", ");
@@ -257,11 +253,7 @@ export const classifyHttpStatus = (
       if (lower.includes("upstream") || lower.includes("not found in upstream")) {
         return "RENDER_404_MISSING_UPSTREAM";
       }
-      if (
-        lower.includes("missing") ||
-        lower.includes("metadata") ||
-        lower.includes("required")
-      ) {
+      if (lower.includes("missing") || lower.includes("metadata") || lower.includes("required")) {
         return "RENDER_404_MISSING_METADATA";
       }
       if (bannerType === "MINECRAFT_SERVER") {
@@ -480,7 +472,7 @@ export const redactDbUrl = (databaseUrl: string): string => {
 
 export const aggregateSummary = (
   results: readonly CorpusResult[],
-  maxSampledFailures: number
+  _maxSampledFailures: number
 ): CorpusSummary => {
   const byClassification: Partial<Record<CorpusClassification, number>> = {};
   const byBannerType: Record<string, number> = {};
@@ -490,8 +482,7 @@ export const aggregateSummary = (
   const allFailures: CorpusResult[] = [];
 
   for (const result of results) {
-    byClassification[result.classification] =
-      (byClassification[result.classification] ?? 0) + 1;
+    byClassification[result.classification] = (byClassification[result.classification] ?? 0) + 1;
 
     const typeKey = result.bannerType ?? `ordinal:${result.typeOrdinal}`;
     byBannerType[typeKey] = (byBannerType[typeKey] ?? 0) + 1;
@@ -520,7 +511,6 @@ export const aggregateSummary = (
     candidateCompatibleHistoricalFailures: deadUpstreamCount,
     byClassification,
     byBannerType,
-    sampledFailures: allFailures.slice(0, maxSampledFailures),
     failureGroups: groupFailures(results)
   };
 };

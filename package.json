@@ -21,6 +21,7 @@
     "docker:smoke": "bun -e \"const r=await fetch('http://localhost:3000/health'); console.log(r.status, await r.text()); process.exit(r.ok ? 0 : 1)\"",
     "smoke:local": "bun run scripts/smoke-local-api.ts",
     "saved:validate-corpus": "bun run scripts/validate-saved-banner-corpus.ts",
+    "public:check": "bun run scripts/public-readiness-check.ts",
     "typecheck": "tsc -b tsconfig.build.json --pretty",
     "lint": "eslint .",
     "format": "prettier --write \"apps/**/*.{json,ts}\" \"packages/**/*.{json,ts}\" \"scripts/**/*.ts\" \"test/**/*.{json,ts}\" \"tests/**/*.{json,ts}\" \"docs/**/*.md\" \"*.json\" \"*.js\"",

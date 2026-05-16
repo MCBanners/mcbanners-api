@@ -22,11 +22,11 @@ Recommended Cloudflare Page Rule or Cache Rule:
 
 These TTLs align with the in-process memory cache TTLs (30 s for status/data, 60 s for rendered images). Setting Cloudflare edge TTL equal to or shorter than the in-process TTL avoids serving stale content after the API cache has refreshed.
 
-### No-Cache / Bypass for POST /banner/saved
+### No-Cache / Bypass for POST /banner/saved/save
 
-`POST /banner/saved` creates a new saved banner record and must never be served from cache. Cloudflare bypasses cache for non-GET/HEAD requests by default, but to be explicit:
+`POST /banner/saved/save` creates a new saved banner record and must never be served from cache. Cloudflare bypasses cache for non-GET/HEAD requests by default, but to be explicit:
 
-- Set a Cache Rule matching `*/banner/saved` with method `POST` → **Bypass Cache**.
+- Set a Cache Rule matching `*/banner/saved/save` with method `POST` -> **Bypass Cache**.
 - `GET /banner/saved/:mnemonic.png|jpg` is a recall route. It can be cached at the edge if desired; recommended edge TTL is 60 seconds or longer since saved banners do not change after creation.
 
 ### Cache Key
@@ -80,7 +80,7 @@ For DDoS protection and coordinated abuse prevention, use Cloudflare WAF rate li
 
 - **Banner routes**: Limit per IP to ~100–300 requests per minute on `*/banner/*`.
 - **Minecraft status routes**: Limit per IP to ~60–120 requests per minute on `*/mc/*`.
-- **Saved banner POST**: Limit per IP to ~10–30 requests per minute on `POST */banner/saved`.
+- **Saved banner POST**: Limit per IP to 10-30 requests per minute on `POST */banner/saved/save`.
 
 Cloudflare WAF rules apply before traffic reaches the origin, protecting the server from volumetric attacks that would bypass in-process limiting.
 

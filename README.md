@@ -1,91 +1,119 @@
 # MCBanners API Next
 
-Compatibility-first Bun + TypeScript monorepo for the next MCBanners backend.
+Bun + TypeScript implementation of the MCBanners HTTP API. The project is built around compatibility with existing public banner URLs while moving rendering, Minecraft status checks, external marketplace clients, caching, and saved-banner persistence into a typed monorepo.
 
-This repo is the future home for a consolidated API that will eventually replace the legacy `banner-api` and `mc-api` services while keeping the Discord bot as a separate app/process. Milestone 1 is scaffold and compatibility contracts only; it does not implement API routes, rendering, database access, or external service clients.
+## Stack
 
-## Repo Layout
+- Runtime: Bun 1.3.x
+- Language: TypeScript
+- HTTP framework: Hono
+- Database access: Kysely with optional MariaDB for saved banners
+- Logging: pino
+- Validation: zod
+- Container target: self-hosted Docker image
 
-- `apps/api`: future HTTP API.
-- `apps/discord-bot`: future Discord bot process.
-- `apps/compat-runner`: future compatibility runner.
-- `apps/bench-runner`: future benchmark runner.
-- `packages/banner-renderer`: future renderer package.
-- `packages/domain`: shared domain contracts and compatibility manifest.
-- `packages/external-clients`: future upstream service clients.
-- `packages/minecraft-status`: future Minecraft status package.
-- `packages/db`: future database layer.
-- `packages/cache`: future cache layer.
-- `packages/config`: future config parsing.
-- `packages/logger`: shared logging.
-- `docs/migration`: migration decisions and compatibility policy.
+## Repository Layout
+
+- `apps/api`: active HTTP API.
+- `apps/compat-runner`: compatibility runner for comparing API output.
+- `apps/bench-runner`: placeholder for future benchmark tooling; excluded from the v1 build.
+- `apps/discord-bot`: de-scoped from the v1 API repository readiness target.
+- `packages/banner-renderer`: banner image rendering and assets.
+- `packages/cache`: cache interfaces and implementations.
+- `packages/config`: environment and runtime configuration.
+- `packages/db`: saved-banner database access.
+- `packages/domain`: public route contracts, compatibility metadata, and shared domain types.
+- `packages/external-clients`: upstream marketplace clients.
+- `packages/logger`: logging utilities.
+- `packages/minecraft-status`: Minecraft server status lookup.
+- `docs/deployment`: current deployment, staging, release, and public-readiness notes.
+- `docs/migration`: historical migration reference only.
+
+## Requirements
+
+- Bun matching `packageManager` in `package.json`
+- Docker, only for container builds or smoke tests
+- MariaDB, only when enabling saved-banner persistence
+
+## Configuration
+
+Copy `.env.example` for local development and fill in environment-specific values. Do not commit real `.env` files, database dumps, generated output, local logs, or validation artifacts.
+
+Important variables:
+
+- `PORT`: HTTP port, default `3000`.
+- `SAVED_BANNER_DB_ENABLED`: enables saved-banner database-backed routes.
+- `DATABASE_URL`: MariaDB URL used when saved-banner persistence is enabled.
+- `BUILTBYBIT_API_KEY`: optional upstream API key for BuiltByBit lookups.
+- `RATE_LIMIT_ENABLED`: enables API rate limiting when configured.
+- `CACHE_ENABLED`: enables cache backends when configured.
+
+See `.env.example` and `docs/deployment/docker.md` for the full local/container surface.
 
 ## Commands
 
 ```powershell
 bun install --frozen-lockfile
 bun run dev
-bun run build
-bun run test
-bun run test:compat
-bun run test:visual
-bun run test:integration
-bun run typecheck
-bun run lint
-bun run format
 bun run check
 ```
 
-## Deployment Quickstart
+Useful targeted commands:
 
-Build and run the self-hosted Bun container:
+```powershell
+bun run build
+bun run test
+bun run test:compat
+bun run test:integration
+bun run format
+bun run public:check
+```
+
+Docker:
 
 ```powershell
 bun run docker:build
 bun run docker:run
+bun run docker:smoke
 ```
 
-Operational checks:
+## Public API Compatibility
+
+The v1 API preserves the established `/banner/*`, `/banner/saved/*`, and `/mc/*` route families. Saved-banner creation uses `POST /banner/saved/save`; saved-banner recall uses `/banner/saved/{mnemonic}.{format}`.
+
+Compatibility-sensitive areas include:
+
+- Java `BannerType` ordinal mapping.
+- `namespace__query_key` settings names.
+- `png` and `jpg` output behavior.
+- Existing saved-banner mnemonic recall URLs.
+- Browser image/embed usage through direct banner image URLs.
+
+Treat `packages/domain/src/compatibility/manifest.ts` as the compatibility contract before changing public routes or query parameter behavior.
+
+## Public Repository Hygiene
+
+Run this before publishing or cutting a release:
 
 ```powershell
-bun run docker:smoke
-Invoke-WebRequest http://localhost:3000/health
-Invoke-WebRequest http://localhost:3000/ready
+bun run public:check
+bun run format
+bun run check
+docker build -t mcbanners-api-next:local .
 ```
 
-`/health` is a simple alive check. `/ready` validates renderer assets and checks the saved-banner MariaDB connection only when the saved-banner DB is configured. See `docs/deployment/docker.md` for environment variables and Docker notes.
+The public-readiness check rejects tracked output directories, SQL dumps, zip archives, `.env` files, logs, local Windows profile paths, private IP literals, and known raw saved-banner corpus fields.
 
-## Deployment Docs
+## Documentation
 
-| Document | Purpose |
-|---|---|
-| [`docs/deployment/v1-readiness-audit.md`](docs/deployment/v1-readiness-audit.md) | v1 readiness audit: supported routes, env vars, Docker status, compat-runner results, known differences, rollback plan |
-| [`docs/deployment/staging-plan.md`](docs/deployment/staging-plan.md) | Step-by-step staging workflow before production cutover |
-| [`docs/deployment/cutover-plan.md`](docs/deployment/cutover-plan.md) | Production cutover procedure and rollback steps |
-| [`docs/deployment/docker.md`](docs/deployment/docker.md) | Docker image strategy, env vars, troubleshooting |
-| [`docs/deployment/release-checklist.md`](docs/deployment/release-checklist.md) | Pre-release local verification checklist |
+Current operational docs live in `docs/deployment`.
 
-## Workspace Imports
+Migration notes in `docs/migration` are historical reference material. They document decisions made while porting from the legacy services and are not a current setup guide.
 
-Use `@mcbanners/<package>` workspace imports for cross-package code:
+## Security
 
-```ts
-import { compatibilityManifest } from "@mcbanners/domain";
-import { parseIntegerParameter } from "@mcbanners/domain/compatibility/settings";
-```
+See `SECURITY.md` for reporting guidance. Do not include secrets, private database URLs, raw saved-banner rows, mnemonics, or production dumps in public issues or pull requests.
 
-The root TypeScript paths mirror package `exports`, so aliases are valid in typecheck and Bun runtime. Keep relative imports for files within the same package when they are clearer.
+## License
 
-## Compatibility Warning
-
-Existing public banner URLs, saved banner mnemonic URLs, Java `BannerType` ordinals, `namespace__query_key` settings, `png`/`jpg` output behavior, and `/banner/*` plus `/mc/*` route families are compatibility boundaries. Treat `packages/domain/src/compatibility/manifest.ts` as the Milestone 1 contract.
-
-## Legacy Repos Are Read-Only
-
-The sibling repos are compatibility references only:
-
-- `../banner-api`
-- `../mc-api`
-- `../discord-api`
-
-Do not modify them from this repo.
+MIT. See `LICENSE`.
