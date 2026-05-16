@@ -19,9 +19,10 @@
     "docker:build": "docker build -t mcbanners-api-next:local .",
     "docker:run": "docker run --rm -p 3000:3000 --env PORT=3000 mcbanners-api-next:local",
     "docker:smoke": "bun -e \"const r=await fetch('http://localhost:3000/health'); console.log(r.status, await r.text()); process.exit(r.ok ? 0 : 1)\"",
+    "smoke:local": "bun run scripts/smoke-local-api.ts",
     "typecheck": "tsc -b tsconfig.build.json --pretty",
     "lint": "eslint .",
-    "format": "prettier --write \"apps/**/*.{json,ts}\" \"packages/**/*.{json,ts}\" \"test/**/*.{json,ts}\" \"tests/**/*.{json,ts}\" \"docs/**/*.md\" \"*.json\" \"*.js\"",
+    "format": "prettier --write \"apps/**/*.{json,ts}\" \"packages/**/*.{json,ts}\" \"scripts/**/*.ts\" \"test/**/*.{json,ts}\" \"tests/**/*.{json,ts}\" \"docs/**/*.md\" \"*.json\" \"*.js\"",
     "check": "bun run typecheck && bun run lint && bun run test"
   },
   "trustedDependencies": [],

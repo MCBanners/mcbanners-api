@@ -33,22 +33,28 @@ import {
   renderNode
 } from "../packages/banner-renderer/src";
 
-const FIXTURES: Record<string, () => Promise<import("../packages/banner-renderer/src/layouts/resource").ResourceBannerData>> = {
+const FIXTURES: Record<
+  string,
+  () => Promise<import("../packages/banner-renderer/src/layouts/resource").ResourceBannerData>
+> = {
   "spigot-free": async () =>
-    (await import("../packages/banner-renderer/test/fixtures/resource-fixtures")).FIXTURE_SPIGOT_FREE,
+    (await import("../packages/banner-renderer/test/fixtures/resource-fixtures"))
+      .FIXTURE_SPIGOT_FREE,
   "spigot-premium": async () =>
-    (await import("../packages/banner-renderer/test/fixtures/resource-fixtures")).FIXTURE_SPIGOT_PREMIUM,
-  "modrinth": async () =>
+    (await import("../packages/banner-renderer/test/fixtures/resource-fixtures"))
+      .FIXTURE_SPIGOT_PREMIUM,
+  modrinth: async () =>
     (await import("../packages/banner-renderer/test/fixtures/resource-fixtures")).FIXTURE_MODRINTH,
-  "curseforge": async () =>
-    (await import("../packages/banner-renderer/test/fixtures/resource-fixtures")).FIXTURE_CURSEFORGE,
-  "hangar": async () =>
+  curseforge: async () =>
+    (await import("../packages/banner-renderer/test/fixtures/resource-fixtures"))
+      .FIXTURE_CURSEFORGE,
+  hangar: async () =>
     (await import("../packages/banner-renderer/test/fixtures/resource-fixtures")).FIXTURE_HANGAR,
   "no-logo": async () =>
     (await import("../packages/banner-renderer/test/fixtures/resource-fixtures")).FIXTURE_NO_LOGO,
   "long-name": async () =>
     (await import("../packages/banner-renderer/test/fixtures/resource-fixtures")).FIXTURE_LONG_NAME,
-  "unicode": async () =>
+  unicode: async () =>
     (await import("../packages/banner-renderer/test/fixtures/resource-fixtures")).FIXTURE_UNICODE
 };
 

@@ -33,8 +33,7 @@ import {
 } from "../packages/banner-renderer/src";
 import { ALL_RESOURCE_FIXTURES } from "../packages/banner-renderer/test/fixtures/resource-fixtures";
 
-const outputDir =
-  process.argv[2] ?? join(import.meta.dir, "..", "output", "resource-corpus");
+const outputDir = process.argv[2] ?? join(import.meta.dir, "..", "output", "resource-corpus");
 
 registerRendererFonts();
 await mkdir(outputDir, { recursive: true });

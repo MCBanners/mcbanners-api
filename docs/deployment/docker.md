@@ -56,6 +56,8 @@ Readiness returns:
 ## Build And Run
 
 ```powershell
+bun install --frozen-lockfile
+bun run check
 bun run docker:build
 bun run docker:run
 ```
@@ -64,8 +66,48 @@ Smoke check from another shell:
 
 ```powershell
 bun run docker:smoke
+bun run smoke:local
 Invoke-WebRequest http://localhost:3000/ready
 ```
+
+The fuller smoke script writes downloaded image responses under `output/smoke-local-api`, which is ignored by git.
+
+## Tested Local Flow
+
+The current expected local release flow is:
+
+```powershell
+bun install --frozen-lockfile
+bun run check
+docker build -t mcbanners-api-next:local .
+docker run --rm -p 3000:3000 --env PORT=3000 mcbanners-api-next:local
+bun run smoke:local
+```
+
+The smoke script checks `/health`, `/ready`, Minecraft status/icon, a server banner, Modrinth Sodium, and the documented Spigot EssentialsX fixture. The Spigot check is optional because live upstream/API-shape drift should not block release smoke for unrelated routes until Spigot live parity is reviewed.
+
+## Troubleshooting
+
+### Frozen Runtime Lockfile
+
+If the runtime stage fails with `lockfile had changes, but lockfile is frozen`, do not remove `--frozen-lockfile`.
+
+Check these first:
+
+- Every workspace package used at runtime declares its own runtime dependencies.
+- `bun.lock` includes the current dependency edges from all workspace `package.json` files.
+- The Docker runtime stage copies every workspace `package.json` before `bun install --frozen-lockfile --production`.
+- The runtime stage does not expose a different workspace graph than the lockfile was generated from.
+
+To reproduce outside Docker, create a temp directory with root `package.json`, `bun.lock`, `bunfig.toml`, and every workspace `package.json`, then run:
+
+```powershell
+bun install --frozen-lockfile --production
+```
+
+### Native Canvas
+
+`@napi-rs/canvas` is a native dependency used by the renderer. The Dockerfile uses the standard glibc-based `oven/bun:1.3.14` image instead of Alpine to reduce native binding risk. If image rendering fails only in Docker, check the canvas package install, Linux native binary support, and renderer asset readiness before changing API behavior.
 
 ## Production Notes
 

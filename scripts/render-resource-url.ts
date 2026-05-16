@@ -60,8 +60,12 @@ import {
 const [, , rawPlatform, rawId, rawOutputType, rawOutputDir] = process.argv;
 
 if (!rawPlatform || !rawId) {
-  console.error("Usage: bun run scripts/render-resource-url.ts <platform> <id> [png|jpg] [outputDir]");
-  console.error("  platform: spigot | modrinth | curseforge | hangar | ore | builtbybit | polymart");
+  console.error(
+    "Usage: bun run scripts/render-resource-url.ts <platform> <id> [png|jpg] [outputDir]"
+  );
+  console.error(
+    "  platform: spigot | modrinth | curseforge | hangar | ore | builtbybit | polymart"
+  );
   process.exit(1);
 }
 

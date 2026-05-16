@@ -6,6 +6,7 @@ dist
 packages/banner-renderer/output/
 apps/compat-runner/output/
 compat-output/
+output/
 
 # Generated TypeScript compilation outputs in src/ (tsc project-reference artifacts)
 apps/**/src/**/*.js
