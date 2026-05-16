@@ -32,8 +32,11 @@
       "dependencies": {
         "@mcbanners/banner-renderer": "workspace:*",
         "@mcbanners/cache": "workspace:*",
+        "@mcbanners/config": "workspace:*",
+        "@mcbanners/db": "workspace:*",
         "@mcbanners/domain": "workspace:*",
         "@mcbanners/external-clients": "workspace:*",
+        "@mcbanners/logger": "workspace:*",
         "@mcbanners/minecraft-status": "workspace:*",
         "hono": "^4.12.18",
       },
@@ -67,6 +70,7 @@
     "packages/db": {
       "name": "@mcbanners/db",
       "dependencies": {
+        "@mcbanners/config": "workspace:*",
         "kysely": "^0.29.0",
         "mysql2": "^3.22.3",
       },
