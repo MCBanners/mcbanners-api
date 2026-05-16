@@ -44,7 +44,7 @@ export const runCli = async (
     cliConsole.log(`Candidate: ${sanitizeUrl(options.candidateBaseUrl)}`);
     cliConsole.log(`Report: ${options.outputDir}`);
     cliConsole.log(
-      `Result: ${String(summary.totals.passed)}/${String(summary.totals.enabled)} enabled cases passed, ${String(summary.totals.skipped)} skipped`
+      `Result: ${String(summary.totals.passed)}/${String(summary.totals.enabled)} enabled cases passed, ${String(summary.totals.skipped)} skipped, ${String(summary.totals.candidateImprovements)} candidate improvements`
     );
     cliConsole.log("");
     cliConsole.log(renderMarkdownSummary(summary));

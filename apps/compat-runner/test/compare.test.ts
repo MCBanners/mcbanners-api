@@ -347,4 +347,125 @@ describe("compat comparison helpers", () => {
 
     expect(exitCode).toBe(1);
   });
+
+  describe("expectedLegacyFailure behavior", () => {
+    const knownLegacyCase = {
+      id: "known-legacy-failure",
+      enabled: true,
+      type: "image" as const,
+      method: "GET" as const,
+      path: "/mc/server?host=mc.hypixel.net",
+      expectedLegacyFailure: { reason: "Legacy returns 400" }
+    };
+
+    it("legacy fails + candidate passes => candidate_improvement, exit 0", async () => {
+      let calls = 0;
+      const result = await compareCase(
+        knownLegacyCase,
+        "http://legacy.test",
+        "http://candidate.test",
+        outputDir,
+        () => {
+          calls += 1;
+          return Promise.resolve(
+            new Response(PNG_1X1, {
+              status: calls === 1 ? 400 : 200,
+              headers: { "Content-Type": "image/png" }
+            })
+          );
+        }
+      );
+
+      expect(result.passed).toBe(true);
+      expect(result.knownLegacyFailureOutcome).toBe("candidate_improvement");
+    });
+
+    it("legacy fails + candidate fails + expectedLegacyFailure => both_failing, exit 1", async () => {
+      const result = await compareCase(
+        knownLegacyCase,
+        "http://legacy.test",
+        "http://candidate.test",
+        outputDir,
+        () =>
+          Promise.resolve(
+            new Response(PNG_1X1, {
+              status: 400,
+              headers: { "Content-Type": "image/png" }
+            })
+          )
+      );
+
+      expect(result.passed).toBe(false);
+      expect(result.knownLegacyFailureOutcome).toBe("both_failing");
+    });
+
+    it("legacy passes + candidate passes + expectedLegacyFailure => legacy_unexpectedly_passed, exit 0 with warn", async () => {
+      const result = await compareCase(
+        knownLegacyCase,
+        "http://legacy.test",
+        "http://candidate.test",
+        outputDir,
+        () =>
+          Promise.resolve(
+            new Response(PNG_1X1, {
+              status: 200,
+              headers: { "Content-Type": "image/png" }
+            })
+          )
+      );
+
+      expect(result.passed).toBe(true);
+      expect(result.knownLegacyFailureOutcome).toBe("legacy_unexpectedly_passed");
+    });
+
+    it("legacy passes + candidate fails + expectedLegacyFailure => regression, exit 1", async () => {
+      let calls = 0;
+      const result = await compareCase(
+        knownLegacyCase,
+        "http://legacy.test",
+        "http://candidate.test",
+        outputDir,
+        () => {
+          calls += 1;
+          return Promise.resolve(
+            new Response(PNG_1X1, {
+              status: calls === 1 ? 200 : 500,
+              headers: { "Content-Type": "image/png" }
+            })
+          );
+        }
+      );
+
+      expect(result.passed).toBe(false);
+      expect(result.knownLegacyFailureOutcome).toBe("regression");
+    });
+
+    it("candidateImprovements totals count candidate_improvement outcomes", async () => {
+      const summary = await compareFixture(
+        {
+          name: "improvements-fixture",
+          cases: [knownLegacyCase]
+        },
+        "http://legacy.test",
+        "http://candidate.test",
+        outputDir,
+        (() => {
+          let calls = 0;
+          return () => {
+            calls += 1;
+            return Promise.resolve(
+              new Response(PNG_1X1, {
+                status: calls === 1 ? 400 : 200,
+                headers: { "Content-Type": "image/png" }
+              })
+            );
+          };
+        })()
+      );
+
+      expect(summary.totals.candidateImprovements).toBe(1);
+      expect(summary.totals.passed).toBe(1);
+      expect(summary.totals.failed).toBe(0);
+    });
+  });
 });

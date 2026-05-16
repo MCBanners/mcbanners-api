@@ -41,4 +41,40 @@ describe("parseCompatFixture", () => {
       })
     ).toThrow("Duplicate");
   });
+
+  it("parses expectedLegacyFailure reason", () => {
+    const fixture = parseCompatFixture({
+      name: "compat",
+      cases: [
+        {
+          id: "known-failure",
+          enabled: true,
+          type: "json",
+          method: "GET",
+          path: "/mc/server?host=mc.hypixel.net",
+          expectedLegacyFailure: { reason: "Legacy returns 400" }
+        }
+      ]
+    });
+
+    expect(fixture.cases[0]?.expectedLegacyFailure?.reason).toBe("Legacy returns 400");
+  });
+
+  it("ignores malformed expectedLegacyFailure (missing reason)", () => {
+    const fixture = parseCompatFixture({
+      name: "compat",
+      cases: [
+        {
+          id: "bad-failure",
+          enabled: true,
+          type: "json",
+          method: "GET",
+          path: "/mc/server?host=example.org",
+          expectedLegacyFailure: { notReason: 123 }
+        }
+      ]
+    });
+
+    expect(fixture.cases[0]?.expectedLegacyFailure).toBeUndefined();
+  });
 });

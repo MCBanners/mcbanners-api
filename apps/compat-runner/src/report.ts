@@ -7,6 +7,18 @@ const statusIcon = (result: CaseComparisonResult): string => {
   if (result.skipped) {
     return "SKIP";
   }
+  if (result.knownLegacyFailureOutcome !== undefined) {
+    switch (result.knownLegacyFailureOutcome) {
+      case "candidate_improvement":
+        return "CANDIDATE_IMPROVEMENT";
+      case "both_failing":
+        return "KNOWN_LEGACY_FAILURE_ALSO_BROKEN";
+      case "legacy_unexpectedly_passed":
+        return "LEGACY_UNEXPECTEDLY_PASSED";
+      case "regression":
+        return "REGRESSION";
+    }
+  }
 
   return result.passed ? "PASS" : "FAIL";
 };
@@ -40,12 +52,11 @@ export const renderMarkdownSummary = (summary: CompatSummary): string => {
     `Skipped: ${String(summary.totals.skipped)}`,
     `Passed: ${String(summary.totals.passed)}`,
     `Failed: ${String(summary.totals.failed)}`,
-    "",
-    "## Cases",
+    `Candidate improvements: ${String(summary.totals.candidateImprovements)}`,
     ""
   ];
 
-  for (const result of summary.cases) {
+  const renderCase = (result: CaseComparisonResult): void => {
     lines.push(`### ${statusIcon(result)} ${result.id}`);
     lines.push("");
     lines.push(`Path: \`${result.path}\``);
@@ -60,6 +71,11 @@ export const renderMarkdownSummary = (summary: CompatSummary): string => {
     if (result.skipped && result.skipReason !== undefined) {
       lines.push("");
       lines.push(`Skip reason: ${result.skipReason}`);
+    }
+
+    if (result.knownLegacyFailureOutcome !== undefined) {
+      lines.push("");
+      lines.push(`Known legacy failure outcome: \`${result.knownLegacyFailureOutcome}\``);
     }
 
     if (result.failures.length > 0) {
@@ -85,6 +101,39 @@ export const renderMarkdownSummary = (summary: CompatSummary): string => {
     }
 
     lines.push("");
+  };
+
+  const normalPass = summary.cases.filter(
+    (c) => !c.skipped && c.knownLegacyFailureOutcome === undefined && c.passed
+  );
+  const normalFail = summary.cases.filter(
+    (c) => !c.skipped && c.knownLegacyFailureOutcome === undefined && !c.passed
+  );
+  const skipped = summary.cases.filter((c) => c.skipped);
+  const knownLegacy = summary.cases.filter((c) => c.knownLegacyFailureOutcome !== undefined);
+
+  if (normalPass.length > 0) {
+    lines.push("## PASS");
+    lines.push("");
+    for (const result of normalPass) renderCase(result);
+  }
+
+  if (normalFail.length > 0) {
+    lines.push("## FAIL");
+    lines.push("");
+    for (const result of normalFail) renderCase(result);
+  }
+
+  if (skipped.length > 0) {
+    lines.push("## SKIP");
+    lines.push("");
+    for (const result of skipped) renderCase(result);
+  }
+
+  if (knownLegacy.length > 0) {
+    lines.push("## KNOWN LEGACY FAILURE CASES");
+    lines.push("");
+    for (const result of knownLegacy) renderCase(result);
   }
 
   return `${lines.join("\n").trimEnd()}\n`;

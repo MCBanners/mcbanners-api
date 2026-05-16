@@ -32,7 +32,10 @@ Fixtures are JSON files with a name and route cases:
       "enabled": true,
       "type": "json",
       "method": "GET",
-      "path": "/mc/server?host=mc.hypixel.net"
+      "path": "/mc/server?host=mc.hypixel.net",
+      "expectedLegacyFailure": {
+        "reason": "Legacy Java production returns 400 for this route"
+      }
     }
   ]
 }
@@ -47,6 +50,24 @@ Supported case types:
 Disabled cases are reported as skipped. Saved-banner examples should stay
 disabled until the same mnemonic exists in both legacy and candidate databases.
 
+### expectedLegacyFailure
+
+An optional field marking that the legacy API is known to fail on this route in
+production. When present, the runner applies a 4-case decision matrix instead of
+the normal pass/fail:
+
+| Legacy | Candidate | Outcome | Exit |
+|--------|-----------|---------|------|
+| fails  | passes    | `candidate_improvement` — reported as CANDIDATE_IMPROVEMENT | 0 |
+| fails  | fails     | `both_failing` — reported as KNOWN_LEGACY_FAILURE_ALSO_BROKEN | 1 |
+| passes | passes    | `legacy_unexpectedly_passed` — reported with a warning | 0 |
+| passes | fails     | `regression` — reported as REGRESSION | 1 |
+
+"Fails" means a network error, a null status, or an HTTP status ≥ 400.
+
+This allows compat-runner to track routes where legacy Java has known production
+failures without polluting the normal FAIL section.
+
 ## Known-Good Live Fixture IDs
 
 - Spigot resource `9089` is EssentialsX. Legacy Java production returns
@@ -58,12 +79,23 @@ disabled until the same mnemonic exists in both legacy and candidate databases.
 The runner writes:
 
 - `summary.json`: machine-readable comparison result.
-- `summary.md`: human-readable summary.
+- `summary.md`: human-readable summary with grouped sections.
 - `artifacts/<case-id>/legacy.*`: downloaded legacy response body.
 - `artifacts/<case-id>/candidate.*`: downloaded candidate response body.
 
 The default output location should be under `apps/compat-runner/output/` or
 `compat-output/`; both are ignored by git.
+
+The markdown summary groups cases into sections:
+
+- **PASS** — normal cases that matched
+- **FAIL** — normal cases that did not match
+- **SKIP** — disabled cases
+- **KNOWN LEGACY FAILURE CASES** — cases with `expectedLegacyFailure` set,
+  showing `candidate_improvement`, `both_failing`, `legacy_unexpectedly_passed`,
+  or `regression` outcomes
+
+The `summary.json` totals include a `candidateImprovements` count.
 
 ## Pass And Fail Rules
 

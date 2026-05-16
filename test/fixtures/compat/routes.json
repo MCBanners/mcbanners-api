@@ -7,7 +7,10 @@
       "enabled": true,
       "type": "json",
       "method": "GET",
-      "path": "/mc/server?host=mc.hypixel.net"
+      "path": "/mc/server?host=mc.hypixel.net",
+      "expectedLegacyFailure": {
+        "reason": "Legacy Java production returns 400 for /mc/server on mc.hypixel.net"
+      }
     },
     {
       "id": "mc-icon-hypixel-png",
@@ -15,7 +18,10 @@
       "enabled": true,
       "type": "image",
       "method": "GET",
-      "path": "/mc/icon?host=mc.hypixel.net"
+      "path": "/mc/icon?host=mc.hypixel.net",
+      "expectedLegacyFailure": {
+        "reason": "Legacy Java production returns 400 for /mc/icon on mc.hypixel.net"
+      }
     },
     {
       "id": "server-banner-hypixel-png",
@@ -39,7 +45,10 @@
       "enabled": true,
       "type": "image",
       "method": "GET",
-      "path": "/banner/resource/modrinth/sodium/banner.png"
+      "path": "/banner/resource/modrinth/sodium/banner.png",
+      "expectedLegacyFailure": {
+        "reason": "Legacy Java has a JsonNode.asText null bug on modrinth/sodium that may cause a 500 or malformed response"
+      }
     },
     {
       "id": "saved-banner-placeholder-png",

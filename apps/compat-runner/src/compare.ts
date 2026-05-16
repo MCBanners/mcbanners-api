@@ -10,7 +10,8 @@ import type {
   CompatRouteCase,
   CompatSummary,
   FetchedResponse,
-  ImageSideSummary
+  ImageSideSummary,
+  KnownLegacyFailureOutcome
 } from "./types";
 
 export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
@@ -166,6 +167,22 @@ const compareImageBodies = (
   };
 };
 
+const isHttpFailure = (response: FetchedResponse): boolean =>
+  response.error !== undefined || response.status === null || response.status >= 400;
+
+const determineKnownLegacyFailureOutcome = (
+  legacy: FetchedResponse,
+  candidate: FetchedResponse
+): KnownLegacyFailureOutcome => {
+  const legacyFailed = isHttpFailure(legacy);
+  const candidateFailed = isHttpFailure(candidate);
+
+  if (legacyFailed && !candidateFailed) return "candidate_improvement";
+  if (legacyFailed && candidateFailed) return "both_failing";
+  if (!legacyFailed && candidateFailed) return "regression";
+  return "legacy_unexpectedly_passed";
+};
+
 const buildFailures = (
   routeCase: CompatRouteCase,
   legacy: FetchedResponse,
@@ -226,6 +243,17 @@ export const compareCase = async (
   const legacyArtifact = await writeArtifact(outputDir, routeCase, "legacy", legacy);
   const candidateArtifact = await writeArtifact(outputDir, routeCase, "candidate", candidate);
 
+  const knownLegacyFailureOutcome =
+    routeCase.expectedLegacyFailure !== undefined
+      ? determineKnownLegacyFailureOutcome(legacy, candidate)
+      : undefined;
+
+  const passed =
+    knownLegacyFailureOutcome !== undefined
+      ? knownLegacyFailureOutcome === "candidate_improvement" ||
+        knownLegacyFailureOutcome === "legacy_unexpectedly_passed"
+      : failures.length === 0;
+
   return {
     id: routeCase.id,
     ...(routeCase.description === undefined ? {} : { description: routeCase.description }),
@@ -233,8 +261,9 @@ export const compareCase = async (
     path: routeCase.path,
     enabled: routeCase.enabled,
     skipped: false,
-    passed: failures.length === 0,
+    passed,
     failures,
+    ...(knownLegacyFailureOutcome !== undefined ? { knownLegacyFailureOutcome } : {}),
     legacy,
     candidate,
     comparison,
@@ -278,6 +307,9 @@ export const compareFixture = async (
 
   const enabled = cases.filter((result) => !result.skipped);
   const passed = enabled.filter((result) => result.passed);
+  const candidateImprovements = cases.filter(
+    (result) => result.knownLegacyFailureOutcome === "candidate_improvement"
+  );
 
   return {
     fixtureName: fixture.name,
@@ -287,7 +319,8 @@ export const compareFixture = async (
       enabled: enabled.length,
       skipped: cases.length - enabled.length,
       passed: passed.length,
-      failed: enabled.length - passed.length
+      failed: enabled.length - passed.length,
+      candidateImprovements: candidateImprovements.length
     },
     cases
   };

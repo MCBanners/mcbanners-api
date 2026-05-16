@@ -1,6 +1,12 @@
 export type CompatCaseType = "json" | "image";
 export type CompatHttpMethod = "GET";
 
+export type KnownLegacyFailureOutcome =
+  | "candidate_improvement"
+  | "both_failing"
+  | "legacy_unexpectedly_passed"
+  | "regression";
+
 export interface CompatFixture {
   readonly name: string;
   readonly cases: readonly CompatRouteCase[];
@@ -14,6 +20,7 @@ export interface CompatRouteCase {
   readonly type: CompatCaseType;
   readonly method: CompatHttpMethod;
   readonly path: string;
+  readonly expectedLegacyFailure?: { readonly reason: string };
 }
 
 export interface CliOptions {
@@ -72,6 +79,7 @@ export interface CaseComparisonResult {
   readonly skipReason?: string;
   readonly passed: boolean;
   readonly failures: readonly string[];
+  readonly knownLegacyFailureOutcome?: KnownLegacyFailureOutcome;
   readonly legacy: FetchedResponse;
   readonly candidate: FetchedResponse;
   readonly comparison?: BodyComparison;
@@ -90,6 +98,7 @@ export interface CompatSummary {
     readonly skipped: number;
     readonly passed: number;
     readonly failed: number;
+    readonly candidateImprovements: number;
   };
   readonly cases: readonly CaseComparisonResult[];
 }

@@ -15,6 +15,7 @@ const parseCase = (value: unknown, index: number): CompatRouteCase => {
   const enabled = value["enabled"];
   const description = value["description"];
   const disabledReason = value["disabledReason"];
+  const expectedLegacyFailure = value["expectedLegacyFailure"];
 
   if (typeof id !== "string" || id.trim() === "") {
     throw new Error(`Fixture case ${String(index)} is missing id`);
@@ -39,7 +40,10 @@ const parseCase = (value: unknown, index: number): CompatRouteCase => {
     path,
     enabled,
     ...(typeof description === "string" ? { description } : {}),
-    ...(typeof disabledReason === "string" ? { disabledReason } : {})
+    ...(typeof disabledReason === "string" ? { disabledReason } : {}),
+    ...(isRecord(expectedLegacyFailure) && typeof expectedLegacyFailure["reason"] === "string"
+      ? { expectedLegacyFailure: { reason: expectedLegacyFailure["reason"] } }
+      : {})
   };
 };
 
