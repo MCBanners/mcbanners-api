@@ -70,7 +70,7 @@ non-empty `namespace__display` replaces the computed text.
 
 | Platform   | Status      | Notes                                                                |
 | ---------- | ----------- | -------------------------------------------------------------------- |
-| Spigot     | implemented | author endpoint plus first resource page aggregation                 |
+| Spigot     | implemented | author endpoint plus paginated resource aggregation until empty page |
 | CurseForge | implemented | cfwidget author endpoint, project download aggregation               |
 | Modrinth   | implemented | user endpoint plus user projects aggregation                         |
 | Ore        | implemented | authenticated project owner query and auth avatar URL                |
@@ -99,9 +99,9 @@ explicitly unsupported.
 
 ## Known Java Differences
 
-- Spigot author aggregation currently requests the first author resource page.
-  Java paginates all pages until empty. This needs deeper extraction before
-  large Spigot authors are treated as exact.
+- Spigot author aggregation now mirrors Java pagination: request page `1`,
+  append each non-empty page, stop on the first empty page, and return `null`
+  when any resource page fails or has malformed JSON.
 - Hangar user/project endpoint shapes are based on the Hangar API shape used by
   the Java wrapper and should be live-verified before cutover.
 - BuiltByBit author avatar fetching is implemented for author banners; resource

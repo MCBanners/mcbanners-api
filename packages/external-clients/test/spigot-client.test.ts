@@ -13,6 +13,7 @@ const makeMockFetch =
   };
 
 const SPIGOT_BASE = "https://api.spigotmc.org/simple/0.2/index.php?action=getResource&id=";
+const SPIGOT_ACTION_BASE = "https://api.spigotmc.org/simple/0.2/index.php?action=";
 
 const FREE_RESOURCE_JSON = JSON.stringify({
   id: "12345",
@@ -44,6 +45,30 @@ const PREMIUM_RESOURCE_JSON = JSON.stringify({
     reviews: { unique: "730", total: "750" }
   },
   author: { id: "2", username: "Ruany" }
+});
+
+const AUTHOR_JSON = JSON.stringify({
+  id: "1",
+  username: "md_5",
+  resource_count: "3",
+  resourceCount: "3",
+  avatar: "https://static.spigotmc.org/img/md_5.png?v=1"
+});
+
+const authorResource = (id: string, downloads: string, reviews: string) => ({
+  id,
+  title: `Plugin ${id}`,
+  tag: "",
+  current_version: "1.0",
+  icon_link: "",
+  premium: { price: "0.00", currency: "" },
+  stats: {
+    downloads,
+    updates: "0",
+    rating: "0",
+    reviews: { unique: reviews, total: reviews }
+  },
+  author: { id: "1", username: "md_5" }
 });
 
 const TINY_PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
@@ -162,5 +187,89 @@ describe("SpigotResourceClient", () => {
     const result = await client.getResourceBannerData("1");
     expect(result).not.toBeNull();
     expect(result?.resource.logoBase64).toBeNull();
+  });
+
+  it("aggregates Spigot author resources across all pages until an empty page", async () => {
+    const fetchedUrls: string[] = [];
+    const mockFetch: FetchFn = (input) => {
+      const url = input instanceof URL ? input.href : input instanceof Request ? input.url : input;
+      fetchedUrls.push(url);
+
+      if (url === `${SPIGOT_ACTION_BASE}getAuthor&id=1`) {
+        return Promise.resolve(new Response(AUTHOR_JSON, { status: 200 }));
+      }
+      if (url === `${SPIGOT_ACTION_BASE}getResourcesByAuthor&id=1&page=1`) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify([authorResource("a", "10", "2"), authorResource("b", "25", "4")]),
+            { status: 200 }
+          )
+        );
+      }
+      if (url === `${SPIGOT_ACTION_BASE}getResourcesByAuthor&id=1&page=2`) {
+        return Promise.resolve(
+          new Response(JSON.stringify([authorResource("c", "15", "1")]), { status: 200 })
+        );
+      }
+      if (url === `${SPIGOT_ACTION_BASE}getResourcesByAuthor&id=1&page=3`) {
+        return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+      }
+      if (url === "https://static.spigotmc.org/img/md_5.png") {
+        return Promise.resolve(new Response(TINY_PNG, { status: 200 }));
+      }
+
+      throw new Error(`Unexpected URL: ${url}`);
+    };
+
+    const client = new SpigotResourceClient({}, mockFetch);
+    const result = await client.getAuthorBannerData("1");
+
+    expect(result).not.toBeNull();
+    expect(result?.author.name).toBe("md_5");
+    expect(result?.author.resourceCount).toBe(3);
+    expect(result?.author.downloadCount).toBe(50);
+    expect(result?.author.reviews).toBe(7);
+    expect(result?.author.logoBase64).not.toBeNull();
+    expect(result?.author.likes).toBeNull();
+    expect(fetchedUrls).toContain(`${SPIGOT_ACTION_BASE}getResourcesByAuthor&id=1&page=3`);
+  });
+
+  it("returns a Spigot author with zero totals when the first resource page is empty", async () => {
+    const mockFetch = makeMockFetch({
+      [`${SPIGOT_ACTION_BASE}getAuthor&id=1`]: { status: 200, body: AUTHOR_JSON },
+      [`${SPIGOT_ACTION_BASE}getResourcesByAuthor&id=1&page=1`]: {
+        status: 200,
+        body: JSON.stringify([])
+      },
+      "https://static.spigotmc.org/img/md_5.png": { status: 500, body: "" }
+    });
+
+    const client = new SpigotResourceClient({}, mockFetch);
+    const result = await client.getAuthorBannerData("1");
+
+    expect(result).not.toBeNull();
+    expect(result?.author.resourceCount).toBe(3);
+    expect(result?.author.downloadCount).toBe(0);
+    expect(result?.author.reviews).toBe(0);
+    expect(result?.author.logoBase64).toBeNull();
+  });
+
+  it("returns null when a Spigot author resource page is malformed", async () => {
+    const mockFetch = makeMockFetch({
+      [`${SPIGOT_ACTION_BASE}getAuthor&id=1`]: { status: 200, body: AUTHOR_JSON },
+      [`${SPIGOT_ACTION_BASE}getResourcesByAuthor&id=1&page=1`]: {
+        status: 200,
+        body: JSON.stringify([authorResource("a", "10", "2")])
+      },
+      [`${SPIGOT_ACTION_BASE}getResourcesByAuthor&id=1&page=2`]: {
+        status: 200,
+        body: "not-json"
+      }
+    });
+
+    const client = new SpigotResourceClient({}, mockFetch);
+    const result = await client.getAuthorBannerData("1");
+
+    expect(result).toBeNull();
   });
 });

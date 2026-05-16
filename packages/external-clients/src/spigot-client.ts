@@ -99,12 +99,7 @@ export class SpigotResourceClient implements ResourceClient, AuthorClient {
     );
     if (author === null) return null;
 
-    const resources = await fetchJson(
-      `${SPIGOT_BASE_URL}getResourcesByAuthor&id=${encodeURIComponent(authorId)}&page=1`,
-      SpigotResourceArraySchema,
-      this.options,
-      this.fetchFn
-    );
+    const resources = await this.getAllResourcesByAuthor(authorId);
     if (resources === null) return null;
 
     const logoUrl = author.avatar.split("?")[0] ?? "";
@@ -129,5 +124,34 @@ export class SpigotResourceClient implements ResourceClient, AuthorClient {
       },
       backend: "SPIGOT"
     };
+  }
+
+  private async getAllResourcesByAuthor(
+    authorId: string
+  ): Promise<z.infer<typeof SpigotResourceArraySchema> | null> {
+    const resources: z.infer<typeof SpigotResourceArraySchema> = [];
+    let page = 1;
+
+    while (page <= Number.MAX_SAFE_INTEGER) {
+      const pageResources = await fetchJson(
+        `${SPIGOT_BASE_URL}getResourcesByAuthor&id=${encodeURIComponent(authorId)}&page=${String(page)}`,
+        SpigotResourceArraySchema,
+        this.options,
+        this.fetchFn
+      );
+
+      if (pageResources === null) {
+        return null;
+      }
+
+      if (pageResources.length === 0) {
+        return resources;
+      }
+
+      resources.push(...pageResources);
+      page += 1;
+    }
+
+    return null;
   }
 }

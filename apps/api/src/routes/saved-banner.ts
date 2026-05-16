@@ -67,11 +67,27 @@ export class UnsupportedSavedBannerTypeError extends Error {
   }
 }
 
-const isStringRecord = (value: unknown): value is Record<string, string> =>
-  value !== null &&
-  typeof value === "object" &&
-  !Array.isArray(value) &&
-  Object.values(value).every((entry) => typeof entry === "string");
+const coerceLegacyStringMap = (value: unknown): SavedBannerJsonMap | null => {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+
+  const entries: [string, string][] = [];
+  for (const [key, entry] of Object.entries(value)) {
+    if (
+      entry !== null &&
+      typeof entry !== "string" &&
+      typeof entry !== "number" &&
+      typeof entry !== "boolean"
+    ) {
+      return null;
+    }
+
+    entries.push([key, String(entry)]);
+  }
+
+  return Object.freeze(Object.fromEntries(entries) as Record<string, string>);
+};
 
 const parseBannerType = (value: unknown): BannerType | null => {
   if (typeof value === "string") {
@@ -104,18 +120,20 @@ const parseSaveBody = (body: unknown): SaveBody | null => {
   const metadata = raw["metadata"];
   const settings = raw["settings"];
 
-  if (!isStringRecord(metadata) || Object.keys(metadata).length === 0) {
+  const parsedMetadata = coerceLegacyStringMap(metadata);
+  if (parsedMetadata === null || Object.keys(parsedMetadata).length === 0) {
     return null;
   }
 
-  if (settings !== undefined && !isStringRecord(settings)) {
+  const parsedSettings = settings === undefined ? {} : coerceLegacyStringMap(settings);
+  if (parsedSettings === null) {
     return null;
   }
 
   return {
     type,
-    metadata,
-    settings: settings ?? {}
+    metadata: parsedMetadata,
+    settings: parsedSettings
   };
 };
 

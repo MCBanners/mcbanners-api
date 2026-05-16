@@ -186,6 +186,48 @@ describe("POST /banner/saved/save", () => {
     expect(repository.inserted[0]?.owner).toBeNull();
   });
 
+  it("coerces numeric metadata values to strings for legacy DB storage", async () => {
+    const repository = new InMemorySavedBannerRepository();
+    const app = makeSavedApp(repository);
+    const res = await app.request("/banner/saved/save", {
+      method: "POST",
+      body: JSON.stringify({
+        type: "MINECRAFT_SERVER",
+        metadata: { server_host: "mc.hypixel.net", server_port: 25565 },
+        settings: {}
+      }),
+      headers: { "Content-Type": "application/json" }
+    });
+
+    expect(res.status).toBe(200);
+    expect(repository.inserted[0]?.metadata).toBe(
+      '{"server_host":"mc.hypixel.net","server_port":"25565"}'
+    );
+  });
+
+  it("coerces numeric, boolean, and null settings values to strings", async () => {
+    const repository = new InMemorySavedBannerRepository();
+    const app = makeSavedApp(repository);
+    const res = await app.request("/banner/saved/save", {
+      method: "POST",
+      body: JSON.stringify({
+        type: "SPIGOT_RESOURCE",
+        metadata: { resource_id: "12345" },
+        settings: {
+          reviews__enable: false,
+          author_name__font_size: 18,
+          author_name__display: null
+        }
+      }),
+      headers: { "Content-Type": "application/json" }
+    });
+
+    expect(res.status).toBe(200);
+    expect(repository.inserted[0]?.settings).toBe(
+      '{"reviews__enable":"false","author_name__font_size":"18","author_name__display":"null"}'
+    );
+  });
+
   it("accepts compatible numeric BannerType ordinals", async () => {
     const repository = new InMemorySavedBannerRepository();
     const app = makeSavedApp(repository);
@@ -221,6 +263,32 @@ describe("POST /banner/saved/save", () => {
     expect(empty.status).toBe(400);
   });
 
+  it("returns 400 for nested metadata or settings values", async () => {
+    const app = makeSavedApp();
+
+    const nestedMetadata = await app.request("/banner/saved/save", {
+      method: "POST",
+      body: JSON.stringify({
+        type: "SPIGOT_RESOURCE",
+        metadata: { resource_id: { value: "12345" } },
+        settings: {}
+      }),
+      headers: { "Content-Type": "application/json" }
+    });
+    const nestedSettings = await app.request("/banner/saved/save", {
+      method: "POST",
+      body: JSON.stringify({
+        type: "SPIGOT_RESOURCE",
+        metadata: { resource_id: "12345" },
+        settings: { author_name__display: ["EssentialsX"] }
+      }),
+      headers: { "Content-Type": "application/json" }
+    });
+
+    expect(nestedMetadata.status).toBe(400);
+    expect(nestedSettings.status).toBe(400);
+  });
+
   it("defaults missing settings to an empty JSON object", async () => {
     const repository = new InMemorySavedBannerRepository();
     const app = makeSavedApp(repository);
@@ -250,6 +318,27 @@ describe("POST /banner/saved/save", () => {
     });
 
     expect(res.status).toBe(400);
+  });
+
+  it("recalls a banner saved with primitive metadata after values are stringified", async () => {
+    const repository = new InMemorySavedBannerRepository();
+    const app = makeSavedApp(repository);
+    const save = await app.request("/banner/saved/save", {
+      method: "POST",
+      body: JSON.stringify({
+        type: "MINECRAFT_SERVER",
+        metadata: { server_host: "mc.hypixel.net", server_port: 25565 },
+        settings: { server_version__enable: true }
+      }),
+      headers: { "Content-Type": "application/json" }
+    });
+
+    expect(save.status).toBe(200);
+    const row = repository.inserted[0]!;
+    const recall = await app.request(`/banner/saved/${row.mnemonic}.png`);
+
+    expect(recall.status).toBe(200);
+    expect(recall.headers.get("Content-Type")).toBe("image/png");
   });
 });
 

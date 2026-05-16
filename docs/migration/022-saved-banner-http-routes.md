@@ -31,8 +31,12 @@ The save route accepts the legacy body shape:
 ```
 
 `type` may be a `BannerType` string or a compatible legacy ordinal number.
-`metadata` is required, must be a non-empty object, and must contain string
-values. Missing `settings` defaults to `{}`.
+`metadata` is required and must be a non-empty object. `metadata` and `settings`
+accept primitive JSON values (`string`, `number`, `boolean`, or `null`) and
+coerce them to strings before legacy DB storage, matching the Java
+`Map<String, String>` boundary as closely as practical for website save bodies.
+Nested arrays or objects are rejected with `400` because recall reads the stored
+JSON as flat string maps. Missing `settings` defaults to `{}`.
 
 New saves are anonymous/public in v1:
 
@@ -59,6 +63,13 @@ renderer paths.
 Supported saved recall types:
 
 - `MINECRAFT_SERVER`
+- `SPIGOT_AUTHOR`
+- `MODRINTH_AUTHOR`
+- `CURSEFORGE_AUTHOR`
+- `HANGAR_AUTHOR`
+- `SPONGE_AUTHOR` as Ore author
+- `BUILTBYBIT_AUTHOR`
+- `POLYMART_AUTHOR`
 - `SPIGOT_RESOURCE`
 - `MODRINTH_RESOURCE`
 - `CURSEFORGE_RESOURCE`
@@ -78,8 +89,8 @@ returns `404`.
 ## Unsupported And Corrupt Stored Data
 
 Unsupported saved banner types return `501` with an explicit error. This avoids
-silently guessing behavior for saved author/member/team/Discord rows before
-those render paths are implemented.
+silently guessing behavior for saved member/team/Discord rows before those
+render paths are implemented.
 
 Corrupt stored rows return a safe `500`:
 
@@ -102,5 +113,5 @@ Before enabling saved banners against the live database:
 - wire the MariaDB dialect/driver and environment configuration,
 - add integration tests for the real repository,
 - decide whether to retry mnemonic generation on unique-key collisions,
-- implement or explicitly migrate unsupported saved author/member/team rows,
+- implement or explicitly migrate unsupported saved member/team rows,
 - add operational logging around corrupt legacy saved rows.
