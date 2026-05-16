@@ -1,13 +1,11 @@
 import { MemoryCache } from "@mcbanners/cache";
 import type { MinecraftStatusAdapter, MinecraftServerStatus } from "@mcbanners/minecraft-status";
 
-/** Default TTL for Minecraft server status cache entries (30 seconds). */
-const STATUS_TTL_MS = 30_000;
-
 /**
  * Wraps any {@link MinecraftStatusAdapter} with an in-memory TTL cache.
  *
- * - Successful status responses are cached for {@link STATUS_TTL_MS}.
+ * - Successful status responses are cached for the TTL configured on the
+ *   provided {@link MemoryCache} instance (default 30 seconds).
  * - Null (server not found) results are NOT cached so the next request retries.
  * - Concurrent requests for the same host:port are coalesced into one underlying
  *   ping via {@link MemoryCache.getOrSet}'s request-coalescing behaviour.
@@ -27,7 +25,7 @@ export class CachedMinecraftStatusAdapter implements MinecraftStatusAdapter {
     return this.cache.getOrSet<MinecraftServerStatus | null>(
       key,
       () => this.inner.getStatus(normalizedHost, port),
-      { ttlMs: STATUS_TTL_MS, cacheNull: false }
+      { cacheNull: false }
     );
   }
 }

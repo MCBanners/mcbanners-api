@@ -17,9 +17,6 @@ import { parseResourceRoutePath, extractRouteRemainder } from "./resource-route-
 /** Matches `banner.png` or `banner.jpg` (case-insensitive). */
 const BANNER_FILENAME_RE = /^banner\.(png|jpg)$/i;
 
-/** TTL for cached rendered banner images (60 seconds). */
-const BANNER_CACHE_TTL_MS = 60_000;
-
 const buildBannerCacheKey = (
   platform: string,
   id: string,
@@ -125,7 +122,7 @@ export const createResourceBannerRoute = (
         ? await bannerCache.getOrSet<Buffer>(
             buildBannerCacheKey(platform, normalizedId, outputType, rawQuery),
             renderBanner,
-            { ttlMs: BANNER_CACHE_TTL_MS, byteEstimate: (b) => b.length }
+            { byteEstimate: (b) => b.length }
           )
         : await renderBanner();
 

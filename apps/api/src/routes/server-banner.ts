@@ -18,9 +18,6 @@ import type { MemoryCache } from "@mcbanners/cache";
 /** Matches `banner.png` or `banner.jpg` (case-insensitive). */
 const BANNER_FILENAME_RE = /^banner\.(png|jpg)$/i;
 
-/** TTL for cached rendered banner images (60 seconds). */
-const BANNER_CACHE_TTL_MS = 60_000;
-
 let fontsRegistered = false;
 const ensureFonts = (): void => {
   if (!fontsRegistered) {
@@ -130,7 +127,7 @@ export const createServerBannerRoute = (
         ? await bannerCache.getOrSet<Buffer>(
             buildBannerCacheKey(host, port, outputType, rawQuery),
             renderBanner,
-            { ttlMs: BANNER_CACHE_TTL_MS, byteEstimate: (b) => b.length }
+            { byteEstimate: (b) => b.length }
           )
         : await renderBanner();
 

@@ -60,4 +60,32 @@ describe("rate limit middleware", () => {
     const res = await app.request("/test", { headers: { "cf-connecting-ip": "10.0.2.2" } });
     expect(res.status).toBe(200);
   });
+
+  it("expired entries are cleaned up when store reaches maxKeys", async () => {
+    const app = new Hono();
+    // maxKeys=2: fill with 2 IPs, let them expire, then a 3rd IP should be tracked normally
+    app.use("*", createRateLimitMiddleware({ windowMs: 1, maxRequests: 10, maxKeys: 2 }));
+    app.get("/test", (c) => c.text("ok"));
+
+    await app.request("/test", { headers: { "cf-connecting-ip": "10.1.0.1" } });
+    await app.request("/test", { headers: { "cf-connecting-ip": "10.1.0.2" } });
+    // Wait for window to expire
+    await new Promise((r) => setTimeout(r, 5));
+    // 3rd IP: store is at maxKeys but entries are expired, so cleanup makes room
+    const res = await app.request("/test", { headers: { "cf-connecting-ip": "10.1.0.3" } });
+    expect(res.status).toBe(200);
+  });
+
+  it("fails open when store is at maxKeys and no entries can be expired", async () => {
+    const app = new Hono();
+    app.use("*", createRateLimitMiddleware({ windowMs: 60000, maxRequests: 10, maxKeys: 2 }));
+    app.get("/test", (c) => c.text("ok"));
+
+    // Fill store with 2 active IPs
+    await app.request("/test", { headers: { "cf-connecting-ip": "10.2.0.1" } });
+    await app.request("/test", { headers: { "cf-connecting-ip": "10.2.0.2" } });
+    // 3rd IP: at capacity, nothing expired → fail open (allow)
+    const res = await app.request("/test", { headers: { "cf-connecting-ip": "10.2.0.3" } });
+    expect(res.status).toBe(200);
+  });
 });

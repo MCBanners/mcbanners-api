@@ -15,7 +15,18 @@ describe("API runtime database config", () => {
         windowMs: 60000,
         maxRequests: 300
       },
-      metricsEnabled: false
+      metricsEnabled: false,
+      cacheTtl: {
+        minecraftStatusMs: 30_000,
+        serverBannerImageMs: 60_000,
+        resourceBannerImageMs: 300_000,
+        marketplaceAuthorMs: 900_000,
+        authorBannerImageMs: 300_000,
+        marketplaceMemberMs: 900_000,
+        memberBannerImageMs: 300_000,
+        marketplaceTeamMs: 900_000,
+        teamBannerImageMs: 300_000
+      }
     });
   });
 
@@ -84,5 +95,40 @@ describe("API runtime database config", () => {
         DB_USER: "mcbanners"
       })
     ).toThrow("DB_NAME");
+  });
+});
+
+describe("API runtime cache TTL config", () => {
+  it("uses defaults when no CACHE_* env vars are set", () => {
+    expect(loadApiRuntimeConfig({}).cacheTtl).toEqual({
+      minecraftStatusMs: 30_000,
+      serverBannerImageMs: 60_000,
+      resourceBannerImageMs: 300_000,
+      marketplaceAuthorMs: 900_000,
+      authorBannerImageMs: 300_000,
+      marketplaceMemberMs: 900_000,
+      memberBannerImageMs: 300_000,
+      marketplaceTeamMs: 900_000,
+      teamBannerImageMs: 300_000
+    });
+  });
+
+  it("respects CACHE_MINECRAFT_STATUS_TTL_MS env override", () => {
+    expect(
+      loadApiRuntimeConfig({ CACHE_MINECRAFT_STATUS_TTL_MS: "10000" }).cacheTtl.minecraftStatusMs
+    ).toBe(10_000);
+  });
+
+  it("respects CACHE_MARKETPLACE_AUTHOR_TTL_MS env override", () => {
+    expect(
+      loadApiRuntimeConfig({ CACHE_MARKETPLACE_AUTHOR_TTL_MS: "60000" }).cacheTtl.marketplaceAuthorMs
+    ).toBe(60_000);
+  });
+
+  it("respects CACHE_RENDERED_RESOURCE_BANNER_TTL_MS env override", () => {
+    expect(
+      loadApiRuntimeConfig({ CACHE_RENDERED_RESOURCE_BANNER_TTL_MS: "600000" }).cacheTtl
+        .resourceBannerImageMs
+    ).toBe(600_000);
   });
 });

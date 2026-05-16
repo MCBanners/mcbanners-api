@@ -26,4 +26,22 @@ describe("request logger middleware", () => {
     const res = await app.request("/not-found-route-that-does-not-exist");
     expect(res.headers.get("x-request-id")).toBeTruthy();
   });
+
+  it("rejects X-Request-ID longer than 128 characters and generates a UUID", async () => {
+    const app = createApp(adapter, {});
+    const oversized = "a".repeat(129);
+    const res = await app.request("/health", { headers: { "x-request-id": oversized } });
+    const returned = res.headers.get("x-request-id");
+    expect(returned).not.toBe(oversized);
+    expect(returned).toMatch(/^[0-9a-f-]{36}$/);
+  });
+
+  it("rejects X-Request-ID containing control characters and generates a UUID", async () => {
+    const app = createApp(adapter, {});
+    const withControl = "valid-prefix\x01bad";
+    const res = await app.request("/health", { headers: { "x-request-id": withControl } });
+    const returned = res.headers.get("x-request-id");
+    expect(returned).not.toBe(withControl);
+    expect(returned).toMatch(/^[0-9a-f-]{36}$/);
+  });
 });

@@ -15,7 +15,6 @@ import { normalizeResourceId, type MemberClient } from "@mcbanners/external-clie
 import { extractRouteRemainder, parseResourceRoutePath } from "./resource-route-parser";
 
 const BANNER_FILENAME_RE = /^banner\.(png|jpg)$/i;
-const BANNER_CACHE_TTL_MS = 60_000;
 
 export type MemberClients = Record<string, MemberClient>;
 
@@ -68,7 +67,7 @@ export const createMemberBannerRoute = (
           ? memberCache.getOrSet(
               `member:${platform.toLowerCase()}:${normalizedId}`,
               () => client.getMemberBannerData(normalizedId),
-              { ttlMs: 30_000, cacheNull: false }
+              { cacheNull: false }
             )
           : client.getMemberBannerData(normalizedId);
 
@@ -107,7 +106,7 @@ export const createMemberBannerRoute = (
         ? await bannerCache.getOrSet(
             buildMemberBannerCacheKey(platform, normalizedId, outputType, rawQuery),
             renderBanner,
-            { ttlMs: BANNER_CACHE_TTL_MS, byteEstimate: (b) => b.length }
+            { byteEstimate: (b) => b.length }
           )
         : await renderBanner();
 

@@ -36,28 +36,33 @@ const minecraftAdapter = isDev
   ? createFixtureAdapter(MC_STATUS_FIXTURES)
   : new LiveMinecraftStatusAdapter();
 
-const mcStatusCache = new MemoryCache({ ttlMs: 30_000, maxEntries: 500 });
-const bannerImageCache = new MemoryCache({ ttlMs: 60_000, maxEntries: 200, maxBytes: 50_000_000 });
+const { cacheTtl } = runtimeConfig;
+const mcStatusCache = new MemoryCache({ ttlMs: cacheTtl.minecraftStatusMs, maxEntries: 500 });
+const bannerImageCache = new MemoryCache({
+  ttlMs: cacheTtl.serverBannerImageMs,
+  maxEntries: 200,
+  maxBytes: 50_000_000
+});
 const resourceBannerImageCache = new MemoryCache({
-  ttlMs: 60_000,
+  ttlMs: cacheTtl.resourceBannerImageMs,
   maxEntries: 200,
   maxBytes: 50_000_000
 });
-const authorDataCache = new MemoryCache({ ttlMs: 30_000, maxEntries: 500 });
+const authorDataCache = new MemoryCache({ ttlMs: cacheTtl.marketplaceAuthorMs, maxEntries: 500 });
 const authorBannerImageCache = new MemoryCache({
-  ttlMs: 60_000,
+  ttlMs: cacheTtl.authorBannerImageMs,
   maxEntries: 200,
   maxBytes: 50_000_000
 });
-const memberDataCache = new MemoryCache({ ttlMs: 30_000, maxEntries: 500 });
+const memberDataCache = new MemoryCache({ ttlMs: cacheTtl.marketplaceMemberMs, maxEntries: 500 });
 const memberBannerImageCache = new MemoryCache({
-  ttlMs: 60_000,
+  ttlMs: cacheTtl.memberBannerImageMs,
   maxEntries: 200,
   maxBytes: 50_000_000
 });
-const teamDataCache = new MemoryCache({ ttlMs: 30_000, maxEntries: 500 });
+const teamDataCache = new MemoryCache({ ttlMs: cacheTtl.marketplaceTeamMs, maxEntries: 500 });
 const teamBannerImageCache = new MemoryCache({
-  ttlMs: 60_000,
+  ttlMs: cacheTtl.teamBannerImageMs,
   maxEntries: 200,
   maxBytes: 50_000_000
 });

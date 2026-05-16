@@ -35,11 +35,28 @@ Cloudflare's default cache key includes the full URL including query string. Thi
 
 ## Cache-Control Headers
 
-The API does not currently emit explicit `Cache-Control` response headers. Cloudflare will fall back to its default caching behavior (typically does not cache responses without `Cache-Control: public` or explicit Page Rules).
+The API emits explicit `Cache-Control` response headers on all cacheable routes. Cloudflare respects `Cache-Control: public` by default and will cache these routes at the edge without requiring additional Page Rules.
 
-To enable edge caching without modifying the API, use Cloudflare **Cache Rules** (formerly Page Rules) with **Cache Everything** and an explicit edge TTL. This overrides the missing `Cache-Control` header at the CDN layer without requiring API changes.
+| Route pattern                                   | Cache-Control value                              |
+| ----------------------------------------------- | ------------------------------------------------ |
+| `GET /mc/server`                                | `public, max-age=30, stale-while-revalidate=60`  |
+| `GET /mc/icon`                                  | `public, max-age=300, stale-while-revalidate=600`|
+| `GET /banner/server/*/isValid`                  | `public, max-age=30, stale-while-revalidate=60`  |
+| `GET /banner/server/*/banner.png\|jpg`          | `public, max-age=60, stale-while-revalidate=300` |
+| `GET /banner/resource/*/isValid`                | `public, max-age=30, stale-while-revalidate=60`  |
+| `GET /banner/resource/*/banner.png\|jpg`        | `public, max-age=60, stale-while-revalidate=300` |
+| `GET /banner/author/*/isValid`                  | `public, max-age=30, stale-while-revalidate=60`  |
+| `GET /banner/author/*/banner.png\|jpg`          | `public, max-age=60, stale-while-revalidate=300` |
+| `GET /banner/member/*/isValid`                  | `public, max-age=30, stale-while-revalidate=60`  |
+| `GET /banner/member/*/banner.png\|jpg`          | `public, max-age=60, stale-while-revalidate=300` |
+| `GET /banner/team/*/isValid`                    | `public, max-age=30, stale-while-revalidate=60`  |
+| `GET /banner/team/*/banner.png\|jpg`            | `public, max-age=60, stale-while-revalidate=300` |
+| `GET /banner/saved/*.png\|jpg`                  | `public, max-age=60, stale-while-revalidate=300` |
+| `GET /health`, `GET /ready`, error responses    | no `Cache-Control` header                        |
 
-If `Cache-Control` headers are added to the API in a future milestone, ensure they are consistent with the Cloudflare Page Rule / Cache Rule settings.
+**Alignment with Cloudflare page rule table:** The CDN TTL recommendations in the table above (60 s for images, 30 s for status/data) match the `max-age` values the API already emits. No explicit Cache Rules are needed unless you want a longer edge TTL than the API's `max-age` — Cloudflare will honor the API's `Cache-Control: public` header automatically.
+
+**Cache TTL env vars:** The API's in-process cache TTLs are configurable via environment variables (see `docs/deployment/docker.md`). If you change them, ensure the Cloudflare CDN TTL is not longer than the new in-process TTL to avoid stale responses.
 
 ## WAF and Rate Limiting
 

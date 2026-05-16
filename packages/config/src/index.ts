@@ -14,7 +14,16 @@ const envSchema = z.object({
   RATE_LIMIT_ENABLED: z.string().trim().min(1).optional(),
   RATE_LIMIT_WINDOW_MS: z.string().trim().min(1).optional(),
   RATE_LIMIT_MAX_REQUESTS: z.string().trim().min(1).optional(),
-  METRICS_ENABLED: z.string().trim().min(1).optional()
+  METRICS_ENABLED: z.string().trim().min(1).optional(),
+  CACHE_MINECRAFT_STATUS_TTL_MS: z.string().trim().min(1).optional(),
+  CACHE_RENDERED_SERVER_BANNER_TTL_MS: z.string().trim().min(1).optional(),
+  CACHE_RENDERED_RESOURCE_BANNER_TTL_MS: z.string().trim().min(1).optional(),
+  CACHE_MARKETPLACE_AUTHOR_TTL_MS: z.string().trim().min(1).optional(),
+  CACHE_RENDERED_AUTHOR_BANNER_TTL_MS: z.string().trim().min(1).optional(),
+  CACHE_MARKETPLACE_MEMBER_TTL_MS: z.string().trim().min(1).optional(),
+  CACHE_RENDERED_MEMBER_BANNER_TTL_MS: z.string().trim().min(1).optional(),
+  CACHE_MARKETPLACE_TEAM_TTL_MS: z.string().trim().min(1).optional(),
+  CACHE_RENDERED_TEAM_BANNER_TTL_MS: z.string().trim().min(1).optional()
 });
 
 export interface MariaDbConnectionConfig {
@@ -44,11 +53,33 @@ export interface RateLimitConfig {
   readonly maxRequests: number;
 }
 
+export interface CacheTtlConfig {
+  /** Minecraft server status data cache TTL (default 30 s). */
+  readonly minecraftStatusMs: number;
+  /** Rendered server banner image cache TTL (default 60 s). */
+  readonly serverBannerImageMs: number;
+  /** Rendered resource banner image cache TTL (default 300 s). */
+  readonly resourceBannerImageMs: number;
+  /** Marketplace author data cache TTL (default 900 s). */
+  readonly marketplaceAuthorMs: number;
+  /** Rendered author banner image cache TTL (default 300 s). */
+  readonly authorBannerImageMs: number;
+  /** Marketplace member data cache TTL (default 900 s). */
+  readonly marketplaceMemberMs: number;
+  /** Rendered member banner image cache TTL (default 300 s). */
+  readonly memberBannerImageMs: number;
+  /** Marketplace team data cache TTL (default 900 s). */
+  readonly marketplaceTeamMs: number;
+  /** Rendered team banner image cache TTL (default 300 s). */
+  readonly teamBannerImageMs: number;
+}
+
 export interface ApiRuntimeConfig {
   readonly port: number;
   readonly savedBannerDb: SavedBannerDbConfig;
   readonly rateLimit: RateLimitConfig;
   readonly metricsEnabled: boolean;
+  readonly cacheTtl: CacheTtlConfig;
 }
 
 const parseBooleanFlag = (value: string | undefined): boolean | undefined => {
@@ -172,6 +203,53 @@ export const loadApiRuntimeConfig = (
         "RATE_LIMIT_MAX_REQUESTS"
       )
     },
-    metricsEnabled: parseBooleanFlag(parsed.METRICS_ENABLED) ?? false
+    metricsEnabled: parseBooleanFlag(parsed.METRICS_ENABLED) ?? false,
+    cacheTtl: {
+      minecraftStatusMs: parsePositiveInteger(
+        parsed.CACHE_MINECRAFT_STATUS_TTL_MS,
+        30_000,
+        "CACHE_MINECRAFT_STATUS_TTL_MS"
+      ),
+      serverBannerImageMs: parsePositiveInteger(
+        parsed.CACHE_RENDERED_SERVER_BANNER_TTL_MS,
+        60_000,
+        "CACHE_RENDERED_SERVER_BANNER_TTL_MS"
+      ),
+      resourceBannerImageMs: parsePositiveInteger(
+        parsed.CACHE_RENDERED_RESOURCE_BANNER_TTL_MS,
+        300_000,
+        "CACHE_RENDERED_RESOURCE_BANNER_TTL_MS"
+      ),
+      marketplaceAuthorMs: parsePositiveInteger(
+        parsed.CACHE_MARKETPLACE_AUTHOR_TTL_MS,
+        900_000,
+        "CACHE_MARKETPLACE_AUTHOR_TTL_MS"
+      ),
+      authorBannerImageMs: parsePositiveInteger(
+        parsed.CACHE_RENDERED_AUTHOR_BANNER_TTL_MS,
+        300_000,
+        "CACHE_RENDERED_AUTHOR_BANNER_TTL_MS"
+      ),
+      marketplaceMemberMs: parsePositiveInteger(
+        parsed.CACHE_MARKETPLACE_MEMBER_TTL_MS,
+        900_000,
+        "CACHE_MARKETPLACE_MEMBER_TTL_MS"
+      ),
+      memberBannerImageMs: parsePositiveInteger(
+        parsed.CACHE_RENDERED_MEMBER_BANNER_TTL_MS,
+        300_000,
+        "CACHE_RENDERED_MEMBER_BANNER_TTL_MS"
+      ),
+      marketplaceTeamMs: parsePositiveInteger(
+        parsed.CACHE_MARKETPLACE_TEAM_TTL_MS,
+        900_000,
+        "CACHE_MARKETPLACE_TEAM_TTL_MS"
+      ),
+      teamBannerImageMs: parsePositiveInteger(
+        parsed.CACHE_RENDERED_TEAM_BANNER_TTL_MS,
+        300_000,
+        "CACHE_RENDERED_TEAM_BANNER_TTL_MS"
+      )
+    }
   };
 };

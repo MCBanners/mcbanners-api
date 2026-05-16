@@ -15,7 +15,6 @@ import {
 import { extractRouteRemainder, parseResourceRoutePath } from "./resource-route-parser";
 
 const BANNER_FILENAME_RE = /^banner\.(png|jpg)$/i;
-const BANNER_CACHE_TTL_MS = 60_000;
 
 export type AuthorClients = Record<string, AuthorClient>;
 
@@ -72,7 +71,7 @@ export const createAuthorBannerRoute = (
           ? authorCache.getOrSet(
               `author:${platform.toLowerCase()}:${normalizedId}`,
               () => client.getAuthorBannerData(normalizedId),
-              { ttlMs: 30_000, cacheNull: false }
+              { cacheNull: false }
             )
           : client.getAuthorBannerData(normalizedId);
 
@@ -117,7 +116,7 @@ export const createAuthorBannerRoute = (
         ? await bannerCache.getOrSet(
             buildAuthorBannerCacheKey(platform, normalizedId, outputType, rawQuery),
             renderBanner,
-            { ttlMs: BANNER_CACHE_TTL_MS, byteEstimate: (b) => b.length }
+            { byteEstimate: (b) => b.length }
           )
         : await renderBanner();
 
