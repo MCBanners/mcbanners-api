@@ -1,4 +1,4 @@
-import { MysqlDialect, type Dialect, type Kysely } from "kysely";
+import { MysqlDialect, sql, type Dialect, type Kysely } from "kysely";
 import { createPool, type PoolOptions } from "mysql2";
 
 import type { MariaDbConnectionConfig } from "@mcbanners/config";
@@ -51,4 +51,8 @@ export const createSavedBannerDb = (config: MariaDbConnectionConfig): Kysely<MCB
 
 export const destroySavedBannerDb = async (db: Kysely<MCBannersDatabase>): Promise<void> => {
   await db.destroy();
+};
+
+export const checkSavedBannerDb = async (db: Kysely<MCBannersDatabase>): Promise<void> => {
+  await sql`select 1`.execute(db);
 };

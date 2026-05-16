@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import type { MinecraftStatusAdapter } from "@mcbanners/minecraft-status";
 import type { MemoryCache } from "@mcbanners/cache";
 import type { SavedBannerRepository } from "@mcbanners/db";
+import { validateAssetFiles } from "@mcbanners/banner-renderer/assets";
 import { CachedMinecraftStatusAdapter } from "./cached-mc-adapter";
 import { createMcServerRoute } from "./routes/mc-server";
 import { createServerBannerRoute } from "./routes/server-banner";
@@ -45,6 +46,18 @@ export interface AppRepositories {
   savedBanners?: SavedBannerRepository | null;
 }
 
+export interface AppReadiness {
+  rendererAssets?: () => Promise<void>;
+  savedBannerDb?: {
+    readonly enabled: boolean;
+    readonly check?: () => Promise<void>;
+  };
+}
+
+interface ReadinessCheckStatus {
+  readonly status: "ok" | "disabled" | "unavailable";
+}
+
 /**
  * Creates the main Hono application with all routes mounted.
  *
@@ -60,7 +73,8 @@ export const createApp = (
   repositories?: AppRepositories,
   authorClients?: AuthorClients,
   memberClients?: MemberClients,
-  teamClients?: TeamClients
+  teamClients?: TeamClients,
+  readiness?: AppReadiness
 ): Hono => {
   const app = new Hono();
 
@@ -76,6 +90,46 @@ export const createApp = (
       status: "ok"
     })
   );
+
+  app.get("/ready", async (c) => {
+    const checks: {
+      rendererAssets: ReadinessCheckStatus;
+      savedBannerDb: ReadinessCheckStatus;
+    } = {
+      rendererAssets: { status: "ok" },
+      savedBannerDb:
+        readiness?.savedBannerDb?.enabled === true ? { status: "ok" } : { status: "disabled" }
+    };
+
+    try {
+      if (readiness?.rendererAssets !== undefined) {
+        await readiness.rendererAssets();
+      } else {
+        await validateAssetFiles();
+      }
+    } catch {
+      checks.rendererAssets = { status: "unavailable" };
+    }
+
+    if (readiness?.savedBannerDb?.enabled === true) {
+      try {
+        await readiness.savedBannerDb.check?.();
+      } catch {
+        checks.savedBannerDb = { status: "unavailable" };
+      }
+    }
+
+    const ready = Object.values(checks).every((check) => check.status !== "unavailable");
+
+    return c.json(
+      {
+        service: "mcbanners-api-next",
+        status: ready ? "ready" : "not-ready",
+        checks
+      },
+      ready ? 200 : 503
+    );
+  });
 
   app.route("/mc", createMcServerRoute(mcAdapter));
 

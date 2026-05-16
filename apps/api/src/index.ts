@@ -3,7 +3,10 @@ import { createFixtureAdapter, LiveMinecraftStatusAdapter } from "@mcbanners/min
 import { MC_STATUS_FIXTURES } from "@mcbanners/minecraft-status";
 import { MemoryCache } from "@mcbanners/cache";
 import { loadApiRuntimeConfig } from "@mcbanners/config";
+import { logger } from "@mcbanners/logger";
+import { validateAssetFiles } from "@mcbanners/banner-renderer/assets";
 import {
+  checkSavedBannerDb,
   createSavedBannerDb,
   createSavedBannerRepository,
   destroySavedBannerDb,
@@ -21,6 +24,13 @@ import {
 
 const isDev = process.env.NODE_ENV !== "production";
 const runtimeConfig = loadApiRuntimeConfig();
+
+try {
+  await validateAssetFiles();
+} catch (error) {
+  logger.fatal({ error }, "Renderer asset validation failed during startup");
+  process.exit(1);
+}
 
 const minecraftAdapter = isDev
   ? createFixtureAdapter(MC_STATUS_FIXTURES)
@@ -109,7 +119,35 @@ const app = createApp(
   },
   resourceClients,
   { BUILTBYBIT: resourceClients.BUILTBYBIT },
-  { POLYMART: resourceClients.POLYMART }
+  { POLYMART: resourceClients.POLYMART },
+  {
+    rendererAssets: async () => {
+      await validateAssetFiles();
+    },
+    savedBannerDb: {
+      enabled: savedBannerDb !== null,
+      ...(savedBannerDb === null
+        ? {}
+        : {
+            check: async () => {
+              await checkSavedBannerDb(savedBannerDb);
+            }
+          })
+    }
+  }
 );
 
-export default app;
+logger.info(
+  {
+    port: runtimeConfig.port,
+    savedBannerDbEnabled: runtimeConfig.savedBannerDb.enabled,
+    rendererAssetsValidated: true,
+    savedRouteDbAvailability: savedBannerRepository === null ? "unavailable" : "configured"
+  },
+  "API runtime configured"
+);
+
+export default {
+  port: runtimeConfig.port,
+  fetch: app.fetch
+};

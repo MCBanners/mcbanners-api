@@ -4,10 +4,17 @@ import { loadApiRuntimeConfig } from "@mcbanners/config";
 
 describe("API runtime database config", () => {
   it("disables saved banner DB when no DB config is present", () => {
-    expect(loadApiRuntimeConfig({}).savedBannerDb).toEqual({
-      enabled: false,
-      reason: "missing-config"
+    expect(loadApiRuntimeConfig({})).toEqual({
+      port: 3000,
+      savedBannerDb: {
+        enabled: false,
+        reason: "missing-config"
+      }
     });
+  });
+
+  it("reads the API port from PORT", () => {
+    expect(loadApiRuntimeConfig({ PORT: "8080" }).port).toBe(8080);
   });
 
   it("explicitly disables saved banner DB", () => {

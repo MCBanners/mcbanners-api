@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 const envSchema = z.object({
+  PORT: z.string().trim().min(1).optional(),
   DATABASE_URL: z.string().trim().min(1).optional(),
   DB_HOST: z.string().trim().min(1).optional(),
   DB_PORT: z.string().trim().min(1).optional(),
@@ -34,6 +35,7 @@ export type SavedBannerDbConfig =
     };
 
 export interface ApiRuntimeConfig {
+  readonly port: number;
   readonly savedBannerDb: SavedBannerDbConfig;
 }
 
@@ -147,6 +149,7 @@ export const loadApiRuntimeConfig = (
   const parsed = envSchema.parse(env);
 
   return {
+    port: parsePositiveInteger(parsed.PORT, 3000, "PORT"),
     savedBannerDb: buildSavedBannerDbConfig(parsed)
   };
 };

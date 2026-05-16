@@ -36,6 +36,25 @@ bun run format
 bun run check
 ```
 
+## Deployment Quickstart
+
+Build and run the self-hosted Bun container:
+
+```powershell
+bun run docker:build
+bun run docker:run
+```
+
+Operational checks:
+
+```powershell
+bun run docker:smoke
+Invoke-WebRequest http://localhost:3000/health
+Invoke-WebRequest http://localhost:3000/ready
+```
+
+`/health` is a simple alive check. `/ready` validates renderer assets and checks the saved-banner MariaDB connection only when the saved-banner DB is configured. See `docs/deployment/docker.md` for environment variables and Docker notes.
+
 ## Workspace Imports
 
 Use `@mcbanners/<package>` workspace imports for cross-package code:
