@@ -39,11 +39,15 @@ import {
   buildMetadataPreview,
   parseBannerTypeFilter,
   parseConcurrency,
+  parseClassificationFilter,
   truncateStr,
+  runConcurrentQueue,
+  DEAD_UPSTREAM_CLASSIFICATIONS,
   type BannerType,
   type RawRow,
   type CorpusResult,
-  type CorpusSummary
+  type CorpusSummary,
+  type CorpusClassification
 } from "./corpus-helpers";
 
 // ---------------------------------------------------------------------------
@@ -63,43 +67,55 @@ interface CliOptions {
   readonly sampleFailures: number;
   readonly concurrency: number;
   readonly typeFilters: readonly BannerType[];
+  readonly classificationFilters: readonly CorpusClassification[];
   readonly saveFailedResponses: boolean;
+  readonly skipDeadUpstream: boolean;
   readonly allowProductionDb: boolean;
 }
 
-const HELP_TEXT = `validate-saved-banner-corpus � MCBanners saved-banner compatibility validator
+const HELP_TEXT = `validate-saved-banner-corpus -- MCBanners saved-banner compatibility validator
 
 Usage:
   bun run saved:validate-corpus -- [options]
 
 Options:
-  --base-url <url>          Bun API base URL (default: ${DEFAULT_BASE_URL})
-  --database-url <url>      MySQL/MariaDB connection URL (required)
-  --output-dir <path>       Output directory for reports
-                            (default: output/saved-banner-corpus)
-  --type <BannerType>       Only process rows of this banner type (repeatable)
-                            e.g. --type MINECRAFT_SERVER --type SPIGOT_RESOURCE
-  --limit <n>               Process at most N rows (before type filter)
-  --concurrency <n>         Parallel API calls (default: ${DEFAULT_CONCURRENCY})
-  --sample-failures <n>     Include up to N failures in the report
-                            (default: ${DEFAULT_SAMPLE_FAILURES})
-  --save-failed-responses   Write non-200 response bodies to output-dir/failed-responses/
-  --allow-production-db     Skip the DB name safety guard
-  --help                    Show this help text
+  --base-url <url>              Bun API base URL (default: ${DEFAULT_BASE_URL})
+  --database-url <url>          MySQL/MariaDB connection URL (required)
+  --output-dir <path>           Output directory for reports
+                                (default: output/saved-banner-corpus)
+  --type <BannerType>           Only process rows of this banner type (repeatable)
+                                e.g. --type MINECRAFT_SERVER --type SPIGOT_RESOURCE
+  --classification <cls>        Only include this classification in sampled failures
+                                (repeatable). Skips API calls when all filters are
+                                pre-flight types (INVALID_JSON, MISSING_METADATA).
+                                e.g. --classification INVALID_JSON
+  --limit <n>                   Process at most N rows (before type filter)
+  --concurrency <n>             Parallel API calls (default: ${DEFAULT_CONCURRENCY})
+  --sample-failures <n>         Include up to N failures in the report
+                                (default: ${DEFAULT_SAMPLE_FAILURES})
+  --save-failed-responses       Write non-200 response bodies and pre-flight artifacts
+                                to output-dir/failed-responses/
+  --skip-known-dead-upstream    Exclude dead-upstream 404s from the failure exit code
+                                (still recorded). Treated as dead upstream:
+                                RENDER_404_SERVER_OFFLINE, RENDER_404_DNS_FAILURE,
+                                RENDER_404_CONNECTION_FAILURE,
+                                RENDER_404_UPSTREAM_NOT_FOUND, RENDER_404_RESOURCE_REMOVED
+  --allow-production-db         Skip the DB name safety guard
+  --help                        Show this help text
 
 Safety:
   By default the script refuses to connect unless the database name contains
   "staging", "test", or "dev". Pass --allow-production-db to override.
 
 Output:
-  <output-dir>/summary.json  � machine-readable results
-  <output-dir>/summary.md    � human-readable markdown report
+  <output-dir>/summary.json  -- machine-readable results
+  <output-dir>/summary.md    -- human-readable markdown report
 
 Exit code:
-  0  all rows passed or were skipped (UNSUPPORTED_DISCORD / INVALID_ORDINAL)
-  1  at least one row was classified as a failure
+  0  all rows passed or were skipped
+     (or: actualCompatibilityFailures = 0 when --skip-known-dead-upstream)
+  1  at least one failure
 `;
-
 const readArg = (argv: readonly string[], name: string): string | undefined => {
   const idx = argv.indexOf(name);
   if (idx === -1) return undefined;
@@ -138,12 +154,20 @@ const parseArgs = (argv: readonly string[]): CliOptions | "help" => {
   const sampleRaw = readArg(argv, "--sample-failures");
   const concurrencyRaw = readArg(argv, "--concurrency");
   const typeRaws = readAllArgs(argv, "--type");
+  const classificationRaws = readAllArgs(argv, "--classification");
 
   const typeFilters: BannerType[] = [];
   for (const raw of typeRaws) {
     const t = parseBannerTypeFilter(raw);
     if (t === null) throw new Error(`unknown --type value: ${raw}`);
     typeFilters.push(t);
+  }
+
+  const classificationFilters: CorpusClassification[] = [];
+  for (const raw of classificationRaws) {
+    const c = parseClassificationFilter(raw);
+    if (c === null) throw new Error(`unknown --classification value: ${raw}`);
+    classificationFilters.push(c);
   }
 
   return {
@@ -155,7 +179,9 @@ const parseArgs = (argv: readonly string[]): CliOptions | "help" => {
       sampleRaw !== undefined ? Number.parseInt(sampleRaw, 10) : DEFAULT_SAMPLE_FAILURES,
     concurrency: parseConcurrency(concurrencyRaw, DEFAULT_CONCURRENCY),
     typeFilters,
+    classificationFilters,
     saveFailedResponses: argv.includes("--save-failed-responses"),
+    skipDeadUpstream: argv.includes("--skip-known-dead-upstream"),
     allowProductionDb: argv.includes("--allow-production-db")
   };
 };
@@ -201,11 +227,38 @@ const extractBodyPreview = (
 // Row processing
 // ---------------------------------------------------------------------------
 
+// Pre-flight classification types that don't require an API call
+const PREFLIGHT_ONLY_CLASSIFICATIONS: ReadonlySet<CorpusClassification> = new Set([
+  "INVALID_JSON",
+  "MISSING_METADATA",
+  "INVALID_ORDINAL",
+  "UNSUPPORTED_DISCORD"
+]);
+
+const savePreFlightArtifact = async (
+  saveDir: string,
+  row: SavedBannerRow,
+  classification: CorpusClassification,
+  extra: Record<string, unknown>
+): Promise<void> => {
+  const artifact = {
+    id: row.id,
+    mnemonic: row.mnemonic,
+    classification,
+    rawMetadata: row.metadata,
+    rawSettings: row.settings,
+    ...extra
+  };
+  const path = join(saveDir, `${row.mnemonic}_${classification}_preflight.json`);
+  await writeFile(path, JSON.stringify(artifact, null, 2)).catch(() => undefined);
+};
+
 const processRow = async (
   baseUrl: string,
   row: SavedBannerRow,
-  saveDir: string | null
-): Promise<CorpusResult> => {
+  saveDir: string | null,
+  skipApiCall: boolean
+): Promise<CorpusResult | null> => {
   const rawRow: RawRow = {
     id: row.id,
     type: row.type,
@@ -217,6 +270,22 @@ const processRow = async (
   const preFlight = classifyPreFlight(rawRow);
 
   if (preFlight.status !== "OK") {
+    if (saveDir !== null) {
+      const extra: Record<string, unknown> = { reason: preFlight.reason };
+      if (preFlight.status === "MISSING_METADATA" && preFlight.bannerType !== null) {
+        extra["actualMetadataKeys"] = Object.keys(
+          (() => {
+            try {
+              const p: unknown = JSON.parse(row.metadata);
+              return p !== null && typeof p === "object" && !Array.isArray(p) ? p : {};
+            } catch {
+              return {};
+            }
+          })()
+        );
+      }
+      await savePreFlightArtifact(saveDir, row, preFlight.status, extra);
+    }
     return {
       id: row.id,
       mnemonic: row.mnemonic,
@@ -226,6 +295,9 @@ const processRow = async (
       reason: preFlight.reason
     };
   }
+
+  // If only pre-flight classifications are filtered, skip API calls for passing rows
+  if (skipApiCall) return null;
 
   const metadata = preFlight.metadata!;
   const settings = preFlight.settings ?? {};
@@ -241,11 +313,18 @@ const processRow = async (
     );
 
     const responseBodyPreview = extractBodyPreview(contentType, bodyBytes);
-    const classification = classifyHttpStatus(httpStatus, responseBodyPreview ?? null);
+    const classification = classifyHttpStatus(
+      httpStatus,
+      responseBodyPreview ?? null,
+      preFlight.bannerType
+    );
 
     if (saveDir !== null && httpStatus !== 200) {
-      const ext =
-        contentType?.includes("json") ? "json" : contentType?.includes("text") ? "txt" : "bin";
+      const bodyText = responseBodyPreview ?? "";
+      const looksLikeJson = bodyText.trimStart().startsWith("{") || bodyText.trimStart().startsWith("[");
+      const ext = contentType?.includes("json") || looksLikeJson
+        ? "json"
+        : bodyText.length > 0 ? "txt" : "bin";
       const outPath = join(saveDir, `${row.mnemonic}_${httpStatus}.${ext}`);
       await writeFile(outPath, bodyBytes).catch(() => undefined);
     }
@@ -282,26 +361,6 @@ const processRow = async (
 };
 
 // ---------------------------------------------------------------------------
-// Concurrency runner
-// ---------------------------------------------------------------------------
-
-const runConcurrent = async (
-  rows: readonly SavedBannerRow[],
-  concurrency: number,
-  fn: (row: SavedBannerRow) => Promise<CorpusResult>,
-  onBatchDone: (processed: number, total: number) => void
-): Promise<CorpusResult[]> => {
-  const results: CorpusResult[] = [];
-  for (let i = 0; i < rows.length; i += concurrency) {
-    const batch = rows.slice(i, i + concurrency);
-    const batchResults = await Promise.all(batch.map(fn));
-    results.push(...batchResults);
-    onBatchDone(Math.min(i + concurrency, rows.length), rows.length);
-  }
-  return results;
-};
-
-// ---------------------------------------------------------------------------
 // Report formatting
 // ---------------------------------------------------------------------------
 
@@ -325,7 +384,9 @@ const formatGroupsSection = (label: string, groups: Record<string, number>): str
 const formatSummaryMarkdown = (
   summary: CorpusSummary,
   baseUrl: string,
-  typeFilters: readonly BannerType[]
+  typeFilters: readonly BannerType[],
+  classificationFilters: readonly CorpusClassification[],
+  skipDeadUpstream: boolean
 ): string => {
   const lines: string[] = [];
 
@@ -334,6 +395,9 @@ const formatSummaryMarkdown = (
   lines.push(`**Base URL:** ${baseUrl}`);
   if (typeFilters.length > 0) {
     lines.push(`**Type filter:** ${typeFilters.join(", ")}`);
+  }
+  if (classificationFilters.length > 0) {
+    lines.push(`**Classification filter:** ${classificationFilters.join(", ")}`);
   }
   lines.push(`**Total rows processed:** ${summary.totalRows}`);
   lines.push("");
@@ -345,6 +409,16 @@ const formatSummaryMarkdown = (
   lines.push(`| PASS (rendered) | ${summary.passCount} |`);
   lines.push(`| SKIP (unsupported / invalid ordinal) | ${summary.skipCount} |`);
   lines.push(`| FAIL | ${summary.failCount} |`);
+  if (summary.deadUpstreamCount > 0) {
+    lines.push(`| Dead upstream (historical) | ${summary.deadUpstreamCount} |`);
+    lines.push(`| Actual compatibility failures | ${summary.actualCompatibilityFailures} |`);
+    if (skipDeadUpstream) {
+      lines.push("");
+      lines.push(
+        `> **--skip-known-dead-upstream**: exit code based on ${summary.actualCompatibilityFailures} actual compatibility failure(s).`
+      );
+    }
+  }
   lines.push("");
 
   lines.push("## By Classification");
@@ -378,10 +452,10 @@ const formatSummaryMarkdown = (
     lines.push("| id | mnemonic | bannerType | classification | httpStatus | metadataPreview | recallUrl |");
     lines.push("|----|----------|------------|----------------|------------|-----------------|-----------|");
     for (const f of summary.sampledFailures) {
-      const status = f.httpStatus !== undefined ? String(f.httpStatus) : "�";
+      const status = f.httpStatus !== undefined ? String(f.httpStatus) : "n/a";
       const type = f.bannerType ?? `ordinal:${f.typeOrdinal}`;
-      const meta = (f.metadataPreview ?? f.reason ?? "�").replace(/\|/g, "/");
-      const url = f.recallUrl ?? "�";
+      const meta = (f.metadataPreview ?? f.reason ?? "n/a").replace(/\|/g, "/");
+      const url = f.recallUrl ?? "n/a";
       lines.push(
         `| ${f.id} | ${f.mnemonic} | ${type} | ${f.classification} | ${status} | ${meta} | ${url} |`
       );
@@ -415,6 +489,11 @@ const printSummaryTable = (summary: CorpusSummary): void => {
     for (const [key, count] of topGroups) {
       console.log(`  ${count}  ${key}`);
     }
+    if (summary.deadUpstreamCount > 0) {
+      console.log("");
+      console.log(`  Dead upstream (historical): ${summary.deadUpstreamCount}`);
+      console.log(`  Actual compatibility failures: ${summary.actualCompatibilityFailures}`);
+    }
   }
 };
 
@@ -437,16 +516,27 @@ const {
   sampleFailures,
   concurrency,
   typeFilters,
+  classificationFilters,
   saveFailedResponses,
+  skipDeadUpstream,
   allowProductionDb
 } = parsedArgs;
+
+// If all requested classification filters are pre-flight types, skip API calls entirely
+const preFlightOnlyFilters =
+  classificationFilters.length > 0 &&
+  classificationFilters.every((c) => PREFLIGHT_ONLY_CLASSIFICATIONS.has(c));
 
 console.log(`Base URL:    ${baseUrl}`);
 console.log(`Database:    ${redactDbUrl(databaseUrl)}`);
 console.log(`Output dir:  ${outputDir}`);
 if (typeFilters.length > 0) console.log(`Type filter: ${typeFilters.join(", ")}`);
+if (classificationFilters.length > 0)
+  console.log(`Class filter: ${classificationFilters.join(", ")}`);
 if (limit !== null) console.log(`Limit:       ${limit}`);
 console.log(`Concurrency: ${concurrency}`);
+if (skipDeadUpstream) console.log(`Skip dead upstream: enabled`);
+if (preFlightOnlyFilters) console.log(`Pre-flight only: skipping API calls`);
 console.log("");
 
 try {
@@ -486,21 +576,57 @@ if (saveDir !== null) {
   console.log(`Saving failed responses to: ${saveDir}`);
 }
 
-const results = await runConcurrent(
-  filteredRows,
+const startTimeMs = Date.now();
+let processedCount = 0;
+let passCount = 0;
+let failCount = 0;
+let skipCount = 0;
+
+const rawResults = await runConcurrentQueue(
+  filteredRows as SavedBannerRow[],
   concurrency,
-  (row) => processRow(baseUrl, row, saveDir),
-  (processed, total) => {
-    if (processed % 100 === 0 || processed === total) {
-      console.log(`  ${processed}/${total} processed...`);
+  (row) => processRow(baseUrl, row, saveDir, preFlightOnlyFilters),
+  (index, result) => {
+    processedCount++;
+    if (result === null) {
+      // Skipped due to skipApiCall
+      skipCount++;
+    } else {
+      const c = result.classification;
+      if (c === "PASS_RENDERED") passCount++;
+      else if (c === "UNSUPPORTED_DISCORD" || c === "INVALID_ORDINAL") skipCount++;
+      else failCount++;
+    }
+
+    const now = processedCount;
+    const total = filteredRows.length;
+    if (now % 100 === 0 || now === total) {
+      const elapsed = (Date.now() - startTimeMs) / 1000;
+      const rate = elapsed > 0 ? now / elapsed : 0;
+      const remaining = total - now;
+      const eta = rate > 0 ? Math.ceil(remaining / rate) : 0;
+      process.stdout.write(
+        `\r  ${now}/${total}  pass=${passCount} fail=${failCount} skip=${skipCount}  ${rate.toFixed(1)} rows/s  ETA ${eta}s    `
+      );
     }
   }
 );
 
-console.log(`All ${results.length} rows processed.`);
+process.stdout.write("\n");
+
+// Filter out null (api-skipped) results; for pre-flight-only runs those passing preflight are null
+const results = rawResults.filter((r): r is CorpusResult => r !== null);
+
+console.log(`\nAll ${filteredRows.length} rows processed (${results.length} with results).`);
 console.log("");
 
-const summary = aggregateSummary(results, sampleFailures);
+// Apply classification filter to sampled failures
+const filteredResults =
+  classificationFilters.length > 0
+    ? results.filter((r) => (classificationFilters as string[]).includes(r.classification))
+    : results;
+
+const summary = aggregateSummary(filteredResults, sampleFailures);
 printSummaryTable(summary);
 console.log("");
 
@@ -511,8 +637,10 @@ await writeFile(
     {
       meta: {
         baseUrl,
-        rowCount: results.length,
-        typeFilters: typeFilters.length > 0 ? typeFilters : undefined
+        rowCount: filteredRows.length,
+        typeFilters: typeFilters.length > 0 ? typeFilters : undefined,
+        classificationFilters: classificationFilters.length > 0 ? classificationFilters : undefined,
+        skipDeadUpstream
       },
       ...summary
     },
@@ -522,15 +650,24 @@ await writeFile(
 );
 
 const summaryMdPath = join(outputDir, "summary.md");
-await writeFile(summaryMdPath, formatSummaryMarkdown(summary, baseUrl, typeFilters));
+await writeFile(
+  summaryMdPath,
+  formatSummaryMarkdown(summary, baseUrl, typeFilters, classificationFilters, skipDeadUpstream)
+);
 
 console.log(`Reports written to: ${outputDir}`);
 console.log(`  ${summaryJsonPath}`);
 console.log(`  ${summaryMdPath}`);
 
-if (summary.failCount > 0) {
-  console.error(`\n${summary.failCount} failure(s). See sampledFailures in summary.json.`);
+const exitFailures = skipDeadUpstream
+  ? summary.actualCompatibilityFailures
+  : summary.failCount;
+
+if (exitFailures > 0) {
+  const label = skipDeadUpstream ? "actual compatibility failure(s)" : "failure(s)";
+  console.error(`\n${exitFailures} ${label}. See sampledFailures in summary.json.`);
   process.exit(1);
 }
 
 console.log("\nAll rows passed or skipped.");
+

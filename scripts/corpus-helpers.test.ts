@@ -14,6 +14,9 @@ import {
   guardDbSafety,
   redactDbUrl,
   aggregateSummary,
+  parseClassificationFilter,
+  runConcurrentQueue,
+  DEAD_UPSTREAM_CLASSIFICATIONS,
   type RawRow,
   type CorpusResult
 } from "./corpus-helpers";
@@ -567,5 +570,240 @@ describe("parseConcurrency", () => {
 
   it("accepts 1 as valid", () => {
     expect(parseConcurrency("1", 5)).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// M30: classifyHttpStatus with bannerType
+// ---------------------------------------------------------------------------
+
+describe("classifyHttpStatus with bannerType", () => {
+  it("MINECRAFT_SERVER + 404 + no body => RENDER_404_UPSTREAM_NOT_FOUND", () => {
+    expect(classifyHttpStatus(404, null, "MINECRAFT_SERVER")).toBe("RENDER_404_UPSTREAM_NOT_FOUND");
+  });
+
+  it("MINECRAFT_SERVER + 404 + empty body => RENDER_404_UPSTREAM_NOT_FOUND", () => {
+    expect(classifyHttpStatus(404, "", "MINECRAFT_SERVER")).toBe("RENDER_404_UPSTREAM_NOT_FOUND");
+  });
+
+  it("MINECRAFT_SERVER + 404 + dns hint => RENDER_404_DNS_FAILURE", () => {
+    expect(classifyHttpStatus(404, "dns resolution failed", "MINECRAFT_SERVER")).toBe("RENDER_404_DNS_FAILURE");
+  });
+
+  it("MINECRAFT_SERVER + 404 + unknown host hint => RENDER_404_DNS_FAILURE", () => {
+    expect(classifyHttpStatus(404, "unknown host: play.example.com", "MINECRAFT_SERVER")).toBe("RENDER_404_DNS_FAILURE");
+  });
+
+  it("MINECRAFT_SERVER + 404 + connection refused => RENDER_404_CONNECTION_FAILURE", () => {
+    expect(classifyHttpStatus(404, "connection refused", "MINECRAFT_SERVER")).toBe("RENDER_404_CONNECTION_FAILURE");
+  });
+
+  it("MINECRAFT_SERVER + 404 + timeout => RENDER_404_CONNECTION_FAILURE", () => {
+    expect(classifyHttpStatus(404, "request timeout", "MINECRAFT_SERVER")).toBe("RENDER_404_CONNECTION_FAILURE");
+  });
+
+  it("MINECRAFT_SERVER + 404 + offline => RENDER_404_SERVER_OFFLINE", () => {
+    expect(classifyHttpStatus(404, "server is offline", "MINECRAFT_SERVER")).toBe("RENDER_404_SERVER_OFFLINE");
+  });
+
+  it("SPIGOT_RESOURCE + 404 => RENDER_404_RESOURCE_REMOVED", () => {
+    expect(classifyHttpStatus(404, null, "SPIGOT_RESOURCE")).toBe("RENDER_404_RESOURCE_REMOVED");
+  });
+
+  it("MODRINTH_RESOURCE + 404 => RENDER_404_RESOURCE_REMOVED", () => {
+    expect(classifyHttpStatus(404, null, "MODRINTH_RESOURCE")).toBe("RENDER_404_RESOURCE_REMOVED");
+  });
+
+  it("HANGAR_RESOURCE + 404 => RENDER_404_RESOURCE_REMOVED", () => {
+    expect(classifyHttpStatus(404, null, "HANGAR_RESOURCE")).toBe("RENDER_404_RESOURCE_REMOVED");
+  });
+
+  it("null bannerType + 404 => RENDER_404 (fallback)", () => {
+    expect(classifyHttpStatus(404, null, null)).toBe("RENDER_404");
+  });
+
+  it("bannerType-specific 404 still respects body keyword for missing-upstream hint", () => {
+    // "upstream" keyword takes priority over bannerType inference
+    expect(classifyHttpStatus(404, "upstream not found", "MINECRAFT_SERVER")).toBe("RENDER_404_MISSING_UPSTREAM");
+  });
+
+  it("500 is unaffected by bannerType", () => {
+    expect(classifyHttpStatus(500, null, "MINECRAFT_SERVER")).toBe("RENDER_500_SERVER_ERROR");
+    expect(classifyHttpStatus(500, null, "SPIGOT_RESOURCE")).toBe("RENDER_500_SERVER_ERROR");
+  });
+
+  it("200 with bannerType => PASS_RENDERED", () => {
+    expect(classifyHttpStatus(200, null, "MINECRAFT_SERVER")).toBe("PASS_RENDERED");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// M30: parseClassificationFilter
+// ---------------------------------------------------------------------------
+
+describe("parseClassificationFilter", () => {
+  it("returns valid classification unchanged", () => {
+    expect(parseClassificationFilter("RENDER_404")).toBe("RENDER_404");
+    expect(parseClassificationFilter("INVALID_JSON")).toBe("INVALID_JSON");
+    expect(parseClassificationFilter("PASS_RENDERED")).toBe("PASS_RENDERED");
+  });
+
+  it("returns null for unknown value", () => {
+    expect(parseClassificationFilter("UNKNOWN_THING")).toBeNull();
+    expect(parseClassificationFilter("")).toBeNull();
+  });
+
+  it("is case-insensitive (normalizes to uppercase)", () => {
+    expect(parseClassificationFilter("render_404")).toBe("RENDER_404");
+    expect(parseClassificationFilter("invalid_json")).toBe("INVALID_JSON");
+  });
+
+  it("returns new M30 classification values", () => {
+    expect(parseClassificationFilter("RENDER_404_UPSTREAM_NOT_FOUND")).toBe("RENDER_404_UPSTREAM_NOT_FOUND");
+    expect(parseClassificationFilter("RENDER_404_DNS_FAILURE")).toBe("RENDER_404_DNS_FAILURE");
+    expect(parseClassificationFilter("RENDER_404_CONNECTION_FAILURE")).toBe("RENDER_404_CONNECTION_FAILURE");
+    expect(parseClassificationFilter("RENDER_404_SERVER_OFFLINE")).toBe("RENDER_404_SERVER_OFFLINE");
+    expect(parseClassificationFilter("RENDER_404_RESOURCE_REMOVED")).toBe("RENDER_404_RESOURCE_REMOVED");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// M30: DEAD_UPSTREAM_CLASSIFICATIONS set
+// ---------------------------------------------------------------------------
+
+describe("DEAD_UPSTREAM_CLASSIFICATIONS", () => {
+  it("includes all dead-upstream classification values", () => {
+    expect(DEAD_UPSTREAM_CLASSIFICATIONS.has("RENDER_404_SERVER_OFFLINE")).toBe(true);
+    expect(DEAD_UPSTREAM_CLASSIFICATIONS.has("RENDER_404_DNS_FAILURE")).toBe(true);
+    expect(DEAD_UPSTREAM_CLASSIFICATIONS.has("RENDER_404_CONNECTION_FAILURE")).toBe(true);
+    expect(DEAD_UPSTREAM_CLASSIFICATIONS.has("RENDER_404_UPSTREAM_NOT_FOUND")).toBe(true);
+    expect(DEAD_UPSTREAM_CLASSIFICATIONS.has("RENDER_404_RESOURCE_REMOVED")).toBe(true);
+  });
+
+  it("does not include non-dead classifications", () => {
+    expect(DEAD_UPSTREAM_CLASSIFICATIONS.has("RENDER_404")).toBe(false);
+    expect(DEAD_UPSTREAM_CLASSIFICATIONS.has("RENDER_500_SERVER_ERROR")).toBe(false);
+    expect(DEAD_UPSTREAM_CLASSIFICATIONS.has("PASS_RENDERED")).toBe(false);
+    expect(DEAD_UPSTREAM_CLASSIFICATIONS.has("INVALID_JSON")).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// M30: aggregateSummary dead-upstream fields
+// ---------------------------------------------------------------------------
+
+const makeDeadResult = (
+  classification: CorpusResult["classification"],
+  bannerType: CorpusResult["bannerType"] = "MINECRAFT_SERVER"
+): CorpusResult => ({
+  id: 1,
+  mnemonic: "abc",
+  typeOrdinal: 7,
+  bannerType,
+  classification,
+  httpStatus: 404
+});
+
+describe("aggregateSummary dead-upstream fields", () => {
+  it("deadUpstreamCount is 0 when no dead-upstream classifications", () => {
+    const results: CorpusResult[] = [
+      makeDeadResult("PASS_RENDERED"),
+      makeDeadResult("RENDER_404")
+    ];
+    const s = aggregateSummary(results, 10);
+    expect(s.deadUpstreamCount).toBe(0);
+    expect(s.actualCompatibilityFailures).toBe(1); // RENDER_404 is a real failure
+    expect(s.candidateCompatibleHistoricalFailures).toBe(0);
+  });
+
+  it("deadUpstreamCount counts dead-upstream classification rows", () => {
+    const results: CorpusResult[] = [
+      makeDeadResult("RENDER_404_SERVER_OFFLINE"),
+      makeDeadResult("RENDER_404_DNS_FAILURE"),
+      makeDeadResult("RENDER_404_RESOURCE_REMOVED", "SPIGOT_RESOURCE"),
+      makeDeadResult("RENDER_404"),
+      makeDeadResult("PASS_RENDERED")
+    ];
+    const s = aggregateSummary(results, 10);
+    expect(s.deadUpstreamCount).toBe(3);
+    expect(s.failCount).toBe(4); // 3 dead + 1 RENDER_404
+    expect(s.actualCompatibilityFailures).toBe(1); // only RENDER_404
+    expect(s.candidateCompatibleHistoricalFailures).toBe(3);
+  });
+
+  it("actualCompatibilityFailures = failCount - deadUpstreamCount", () => {
+    const results: CorpusResult[] = [
+      makeDeadResult("RENDER_404_UPSTREAM_NOT_FOUND"),
+      makeDeadResult("RENDER_404_CONNECTION_FAILURE"),
+      makeDeadResult("RENDER_500_SERVER_ERROR")
+    ];
+    const s = aggregateSummary(results, 10);
+    expect(s.deadUpstreamCount).toBe(2);
+    expect(s.failCount).toBe(3);
+    expect(s.actualCompatibilityFailures).toBe(1);
+  });
+
+  it("candidateCompatibleHistoricalFailures equals deadUpstreamCount", () => {
+    const results: CorpusResult[] = [
+      makeDeadResult("RENDER_404_SERVER_OFFLINE"),
+      makeDeadResult("PASS_RENDERED")
+    ];
+    const s = aggregateSummary(results, 10);
+    expect(s.candidateCompatibleHistoricalFailures).toBe(s.deadUpstreamCount);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// M30: runConcurrentQueue
+// ---------------------------------------------------------------------------
+
+describe("runConcurrentQueue", () => {
+  it("processes all items and returns results in original order", async () => {
+    const items = [3, 1, 2];
+    const results = await runConcurrentQueue(
+      items,
+      2,
+      async (n) => {
+        // Simulate different latencies
+        await new Promise((r) => setTimeout(r, n * 5));
+        return n * 10;
+      }
+    );
+    expect(results).toEqual([30, 10, 20]);
+  });
+
+  it("handles empty array", async () => {
+    const results = await runConcurrentQueue([], 3, async (x: number) => x);
+    expect(results).toEqual([]);
+  });
+
+  it("handles single item", async () => {
+    const results = await runConcurrentQueue([42], 3, async (x) => x + 1);
+    expect(results).toEqual([43]);
+  });
+
+  it("calls onItemDone for each completed item", async () => {
+    const done: number[] = [];
+    await runConcurrentQueue(
+      [1, 2, 3],
+      2,
+      async (x) => x,
+      (index, _result) => { done.push(index); }
+    );
+    expect(done.sort((a, b) => a - b)).toEqual([0, 1, 2]);
+  });
+
+  it("respects concurrency (does not start all at once with concurrency=1)", async () => {
+    const order: number[] = [];
+    await runConcurrentQueue(
+      [1, 2, 3],
+      1,
+      async (x) => {
+        order.push(x);
+        return x;
+      }
+    );
+    // With concurrency=1, items run sequentially in order
+    expect(order).toEqual([1, 2, 3]);
   });
 });

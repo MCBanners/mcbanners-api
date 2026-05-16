@@ -20,6 +20,11 @@ export type CorpusClassification =
   | "RENDER_404"
   | "RENDER_404_MISSING_UPSTREAM"
   | "RENDER_404_MISSING_METADATA"
+  | "RENDER_404_SERVER_OFFLINE"
+  | "RENDER_404_DNS_FAILURE"
+  | "RENDER_404_CONNECTION_FAILURE"
+  | "RENDER_404_UPSTREAM_NOT_FOUND"
+  | "RENDER_404_RESOURCE_REMOVED"
   | "RENDER_503_DB_UNAVAILABLE"
   | "RENDER_500_SERVER_ERROR"
   | "RENDER_500"
@@ -66,6 +71,9 @@ export interface CorpusSummary {
   readonly passCount: number;
   readonly skipCount: number;
   readonly failCount: number;
+  readonly deadUpstreamCount: number;
+  readonly actualCompatibilityFailures: number;
+  readonly candidateCompatibleHistoricalFailures: number;
   readonly byClassification: Partial<Record<CorpusClassification, number>>;
   readonly byBannerType: Record<string, number>;
   readonly sampledFailures: readonly CorpusResult[];
@@ -216,9 +224,29 @@ export const parseJsonKeys = (json: string): readonly string[] | null => {
 // HTTP status classification
 // ---------------------------------------------------------------------------
 
+const MARKETPLACE_BANNER_TYPES: ReadonlySet<BannerType> = new Set([
+  "SPONGE_AUTHOR",
+  "SPONGE_RESOURCE",
+  "SPIGOT_AUTHOR",
+  "SPIGOT_RESOURCE",
+  "CURSEFORGE_AUTHOR",
+  "CURSEFORGE_RESOURCE",
+  "MODRINTH_AUTHOR",
+  "MODRINTH_RESOURCE",
+  "BUILTBYBIT_AUTHOR",
+  "BUILTBYBIT_RESOURCE",
+  "BUILTBYBIT_MEMBER",
+  "POLYMART_AUTHOR",
+  "POLYMART_RESOURCE",
+  "POLYMART_TEAM",
+  "HANGAR_AUTHOR",
+  "HANGAR_RESOURCE"
+]);
+
 export const classifyHttpStatus = (
   status: number,
-  bodyText: string | null
+  bodyText: string | null,
+  bannerType?: BannerType | null
 ): CorpusClassification => {
   if (status === 200) return "PASS_RENDERED";
   if (status === 503) return "RENDER_503_DB_UNAVAILABLE";
@@ -236,6 +264,26 @@ export const classifyHttpStatus = (
       ) {
         return "RENDER_404_MISSING_METADATA";
       }
+      if (bannerType === "MINECRAFT_SERVER") {
+        if (lower.includes("dns") || lower.includes("unknown host") || lower.includes("resolve")) {
+          return "RENDER_404_DNS_FAILURE";
+        }
+        if (
+          lower.includes("connection") ||
+          lower.includes("refused") ||
+          lower.includes("timeout")
+        ) {
+          return "RENDER_404_CONNECTION_FAILURE";
+        }
+        if (lower.includes("offline") || lower.includes("unreachable")) {
+          return "RENDER_404_SERVER_OFFLINE";
+        }
+      }
+    }
+    // BannerType-based inference for empty/unhinted bodies
+    if (bannerType === "MINECRAFT_SERVER") return "RENDER_404_UPSTREAM_NOT_FOUND";
+    if (bannerType != null && MARKETPLACE_BANNER_TYPES.has(bannerType)) {
+      return "RENDER_404_RESOURCE_REMOVED";
     }
     return "RENDER_404";
   }
@@ -307,6 +355,75 @@ export const parseConcurrency = (raw: string | undefined, defaultValue: number):
   if (raw === undefined) return defaultValue;
   const n = Number.parseInt(raw, 10);
   return Number.isFinite(n) && n >= 1 ? n : defaultValue;
+};
+
+// ---------------------------------------------------------------------------
+// Classification filter helpers
+// ---------------------------------------------------------------------------
+
+const ALL_CLASSIFICATIONS: ReadonlySet<string> = new Set<CorpusClassification>([
+  "PASS_RENDERED",
+  "UNSUPPORTED_DISCORD",
+  "INVALID_ORDINAL",
+  "INVALID_JSON",
+  "MISSING_METADATA",
+  "RENDER_404",
+  "RENDER_404_MISSING_UPSTREAM",
+  "RENDER_404_MISSING_METADATA",
+  "RENDER_404_SERVER_OFFLINE",
+  "RENDER_404_DNS_FAILURE",
+  "RENDER_404_CONNECTION_FAILURE",
+  "RENDER_404_UPSTREAM_NOT_FOUND",
+  "RENDER_404_RESOURCE_REMOVED",
+  "RENDER_503_DB_UNAVAILABLE",
+  "RENDER_500_SERVER_ERROR",
+  "RENDER_500",
+  "OTHER_FAILURE"
+]);
+
+export const parseClassificationFilter = (name: string): CorpusClassification | null => {
+  const upper = name.toUpperCase();
+  return ALL_CLASSIFICATIONS.has(upper) ? (upper as CorpusClassification) : null;
+};
+
+export const DEAD_UPSTREAM_CLASSIFICATIONS: ReadonlySet<CorpusClassification> = new Set([
+  "RENDER_404_SERVER_OFFLINE",
+  "RENDER_404_DNS_FAILURE",
+  "RENDER_404_CONNECTION_FAILURE",
+  "RENDER_404_UPSTREAM_NOT_FOUND",
+  "RENDER_404_RESOURCE_REMOVED"
+]);
+
+// ---------------------------------------------------------------------------
+// Concurrent worker queue
+// ---------------------------------------------------------------------------
+
+/**
+ * Processes items using a true worker pool (not batch-based).
+ * Results are returned in the original item order regardless of completion order.
+ */
+export const runConcurrentQueue = async <R, T>(
+  items: readonly R[],
+  concurrency: number,
+  fn: (item: R) => Promise<T>,
+  onItemDone?: (index: number, result: T) => void
+): Promise<T[]> => {
+  if (items.length === 0) return [];
+  const results = new Array<T>(items.length);
+  let nextIndex = 0;
+
+  const worker = async (): Promise<void> => {
+    while (nextIndex < items.length) {
+      const index = nextIndex++;
+      const result = await fn(items[index]);
+      results[index] = result;
+      onItemDone?.(index, result);
+    }
+  };
+
+  const workerCount = Math.min(concurrency, items.length);
+  await Promise.all(Array.from({ length: workerCount }, worker));
+  return results;
 };
 
 // ---------------------------------------------------------------------------
@@ -389,11 +506,18 @@ export const aggregateSummary = (
     }
   }
 
+  const deadUpstreamCount = allFailures.filter((r) =>
+    DEAD_UPSTREAM_CLASSIFICATIONS.has(r.classification)
+  ).length;
+
   return {
     totalRows: results.length,
     passCount,
     skipCount,
     failCount,
+    deadUpstreamCount,
+    actualCompatibilityFailures: failCount - deadUpstreamCount,
+    candidateCompatibleHistoricalFailures: deadUpstreamCount,
     byClassification,
     byBannerType,
     sampledFailures: allFailures.slice(0, maxSampledFailures),
