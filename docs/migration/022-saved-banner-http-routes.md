@@ -60,6 +60,9 @@ Recall looks up the saved row by mnemonic, decodes the legacy ordinal, parses th
 stored JSON strings, then renders through the already-supported server/resource
 renderer paths.
 
+The complete `BannerType` coverage matrix lives in
+[`027-bannertype-coverage.md`](./027-bannertype-coverage.md).
+
 Supported saved recall types:
 
 - `MINECRAFT_SERVER`

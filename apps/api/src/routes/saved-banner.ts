@@ -68,6 +68,54 @@ interface SaveBody {
   readonly settings: SavedBannerJsonMap;
 }
 
+export const supportedSavedBannerTypes = [
+  "SPONGE_AUTHOR",
+  "SPONGE_RESOURCE",
+  "SPIGOT_AUTHOR",
+  "SPIGOT_RESOURCE",
+  "MINECRAFT_SERVER",
+  "CURSEFORGE_AUTHOR",
+  "CURSEFORGE_RESOURCE",
+  "MODRINTH_AUTHOR",
+  "MODRINTH_RESOURCE",
+  "BUILTBYBIT_AUTHOR",
+  "BUILTBYBIT_RESOURCE",
+  "BUILTBYBIT_MEMBER",
+  "POLYMART_AUTHOR",
+  "POLYMART_RESOURCE",
+  "POLYMART_TEAM",
+  "HANGAR_AUTHOR",
+  "HANGAR_RESOURCE"
+] as const satisfies readonly BannerType[];
+
+export const unsupportedSavedBannerTypes = [
+  "DISCORD_USER"
+] as const satisfies readonly BannerType[];
+
+export const requiredMetadataByBannerType = {
+  SPONGE_AUTHOR: ["author_id"],
+  SPONGE_RESOURCE: ["resource_id"],
+  SPIGOT_AUTHOR: ["author_id"],
+  SPIGOT_RESOURCE: ["resource_id"],
+  MINECRAFT_SERVER: ["server_host"],
+  CURSEFORGE_AUTHOR: ["author_id"],
+  CURSEFORGE_RESOURCE: ["resource_id"],
+  MODRINTH_AUTHOR: ["author_id"],
+  MODRINTH_RESOURCE: ["resource_id"],
+  BUILTBYBIT_AUTHOR: ["author_id"],
+  BUILTBYBIT_RESOURCE: ["resource_id"],
+  BUILTBYBIT_MEMBER: ["member_id"],
+  POLYMART_AUTHOR: ["author_id"],
+  POLYMART_RESOURCE: ["resource_id"],
+  POLYMART_TEAM: ["team_id"],
+  HANGAR_AUTHOR: ["author_id"],
+  HANGAR_RESOURCE: ["resource_id"],
+  DISCORD_USER: ["user_id"]
+} as const satisfies Record<BannerType, readonly string[]>;
+
+const supportedSavedBannerTypeSet = new Set<BannerType>(supportedSavedBannerTypes);
+const unsupportedSavedBannerTypeSet = new Set<BannerType>(unsupportedSavedBannerTypes);
+
 export class SavedBannerDataError extends Error {
   constructor(message: string) {
     super(message);
@@ -152,6 +200,17 @@ const parseSaveBody = (body: unknown): SaveBody | null => {
   };
 };
 
+const validateSavedBannerMetadata = (
+  bannerType: BannerType,
+  metadata: SavedBannerJsonMap
+): void => {
+  for (const key of requiredMetadataByBannerType[bannerType]) {
+    if (metadata[key] === undefined || metadata[key] === "") {
+      throw new SavedBannerDataError(`Saved ${bannerType} banner is missing ${key}`);
+    }
+  }
+};
+
 const toSavedBannerResponse = (row: SavedBannerRow): Record<string, unknown> => ({
   id: row.id,
   type: row.type,
@@ -234,6 +293,15 @@ export class SavedBannerRecallService {
       throw new SavedBannerDataError(String(error));
     }
 
+    if (unsupportedSavedBannerTypeSet.has(bannerType)) {
+      throw new UnsupportedSavedBannerTypeError(bannerType);
+    }
+    if (!supportedSavedBannerTypeSet.has(bannerType)) {
+      throw new UnsupportedSavedBannerTypeError(bannerType);
+    }
+
+    validateSavedBannerMetadata(bannerType, metadata);
+
     if (bannerType === "MINECRAFT_SERVER") {
       return await this.renderMinecraftServer(metadata, settings, outputType);
     }
@@ -265,9 +333,8 @@ export class SavedBannerRecallService {
     outputType: SavedBannerOutputType
   ): Promise<Buffer | null> {
     const host = metadata["server_host"];
-    if (host === undefined || host === "") {
+    if (host === undefined)
       throw new SavedBannerDataError("Saved Minecraft server banner is missing server_host");
-    }
 
     const parsedPort =
       metadata["server_port"] === undefined ? 25565 : Number.parseInt(metadata["server_port"], 10);
@@ -295,9 +362,8 @@ export class SavedBannerRecallService {
     outputType: SavedBannerOutputType
   ): Promise<Buffer | null> {
     const resourceId = metadata["resource_id"];
-    if (resourceId === undefined || resourceId === "") {
+    if (resourceId === undefined)
       throw new SavedBannerDataError("Saved resource banner is missing resource_id");
-    }
 
     const client: ResourceClient | undefined = this.resourceClients[backend];
     if (client === undefined) {
@@ -326,9 +392,8 @@ export class SavedBannerRecallService {
     outputType: SavedBannerOutputType
   ): Promise<Buffer | null> {
     const authorId = metadata["author_id"];
-    if (authorId === undefined || authorId === "") {
+    if (authorId === undefined)
       throw new SavedBannerDataError("Saved author banner is missing author_id");
-    }
 
     const client: AuthorClient | undefined = this.authorClients[backend];
     if (client === undefined) {
@@ -356,9 +421,8 @@ export class SavedBannerRecallService {
     outputType: SavedBannerOutputType
   ): Promise<Buffer | null> {
     const memberId = metadata["member_id"];
-    if (memberId === undefined || memberId === "") {
+    if (memberId === undefined)
       throw new SavedBannerDataError("Saved member banner is missing member_id");
-    }
 
     const client: MemberClient | undefined = this.memberClients["BUILTBYBIT"];
     if (client === undefined) {
@@ -386,9 +450,8 @@ export class SavedBannerRecallService {
     outputType: SavedBannerOutputType
   ): Promise<Buffer | null> {
     const teamId = metadata["team_id"];
-    if (teamId === undefined || teamId === "") {
+    if (teamId === undefined)
       throw new SavedBannerDataError("Saved team banner is missing team_id");
-    }
 
     const client: TeamClient | undefined = this.teamClients["POLYMART"];
     if (client === undefined) {
