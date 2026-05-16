@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { cors } from "hono/cors";
 import type { MinecraftStatusAdapter } from "@mcbanners/minecraft-status";
 import type { MemoryCache, CacheStats } from "@mcbanners/cache";
 import type { SavedBannerRepository } from "@mcbanners/db";
@@ -11,6 +12,7 @@ import { createAuthorBannerRoute, type AuthorClients } from "./routes/author-ban
 import { createMemberBannerRoute, type MemberClients } from "./routes/member-banner";
 import { createTeamBannerRoute, type TeamClients } from "./routes/team-banner";
 import { createSavedBannerRoute, createUnavailableSavedBannerRoute } from "./routes/saved-banner";
+import { createServiceCompatRoute } from "./routes/service-compat";
 import { requestLoggerMiddleware } from "./middleware/request-logger";
 import { createRateLimitMiddleware, type RateLimitOptions } from "./middleware/rate-limit";
 
@@ -98,6 +100,15 @@ export const createApp = (
   const app = new Hono();
 
   app.use("*", requestLoggerMiddleware);
+  app.use(
+    "*",
+    cors({
+      origin: "*",
+      allowMethods: ["GET", "POST", "OPTIONS"],
+      allowHeaders: ["Content-Type", "X-Request-Id"],
+      exposeHeaders: ["Content-Length", "Content-Type", "Cache-Control", "X-Request-Id"]
+    })
+  );
   if (options?.rateLimit !== undefined) {
     app.use("*", createRateLimitMiddleware(options.rateLimit));
   }
@@ -160,6 +171,7 @@ export const createApp = (
   }
 
   app.route("/mc", createMcServerRoute(mcAdapter));
+  app.route("/banner/svc", createServiceCompatRoute());
 
   // Public compatibility route — matches legacy banner-api GET /server/:host/:port/...
   app.route("/banner/server", createServerBannerRoute(mcAdapter, caches?.bannerImage));
