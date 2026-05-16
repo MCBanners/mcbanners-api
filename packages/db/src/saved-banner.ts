@@ -1,3 +1,5 @@
+import { createPool } from "mysql2/promise";
+
 import type { Kysely } from "kysely";
 
 import {
@@ -123,3 +125,30 @@ export const createSavedBannerRepository = (
     };
   }
 });
+
+/**
+ * Read-only corpus query for the saved-banner validator script.
+ * Creates a short-lived pool, queries, then destroys it.
+ * Only packages/db may import mysql2 directly; scripts should use this helper.
+ */
+export const readSavedBannerCorpusRows = async (
+  databaseUrl: string,
+  limit: number | null
+): Promise<readonly SavedBannerRow[]> => {
+  const pool = createPool(databaseUrl);
+  try {
+    if (limit !== null) {
+      const [rows] = await pool.query(
+        "SELECT id, type, mnemonic, metadata, settings FROM saved_banner LIMIT ?",
+        [limit]
+      );
+      return rows as SavedBannerRow[];
+    }
+    const [rows] = await pool.query(
+      "SELECT id, type, mnemonic, metadata, settings FROM saved_banner"
+    );
+    return rows as SavedBannerRow[];
+  } finally {
+    await pool.end();
+  }
+};

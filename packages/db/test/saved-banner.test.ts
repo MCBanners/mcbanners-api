@@ -7,6 +7,7 @@ import {
   parseSavedBannerMetadata,
   parseSavedBannerSettings,
   prepareSavedBannerInsert,
+  readSavedBannerCorpusRows,
   serializeSavedBannerMetadata,
   serializeSavedBannerSettings,
   type InsertSavedBannerInput,
@@ -185,5 +186,11 @@ describe("SavedBannerRepository behavior with in-memory adapter", () => {
     expect(owned).toHaveLength(1);
     expect(owned[0]?.owner).toBe(owner);
     expect(owned[0]?.mnemonic).toBe("ownerbannerabcd");
+  });
+});
+
+describe("readSavedBannerCorpusRows", () => {
+  it("is exported as a function", () => {
+    expect(typeof readSavedBannerCorpusRows).toBe("function");
   });
 });
