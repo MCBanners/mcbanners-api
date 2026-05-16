@@ -37,22 +37,22 @@ Cloudflare's default cache key includes the full URL including query string. Thi
 
 The API emits explicit `Cache-Control` response headers on all cacheable routes. Cloudflare respects `Cache-Control: public` by default and will cache these routes at the edge without requiring additional Page Rules.
 
-| Route pattern                                   | Cache-Control value                              |
-| ----------------------------------------------- | ------------------------------------------------ |
-| `GET /mc/server`                                | `public, max-age=30, stale-while-revalidate=60`  |
-| `GET /mc/icon`                                  | `public, max-age=300, stale-while-revalidate=600`|
-| `GET /banner/server/*/isValid`                  | `public, max-age=30, stale-while-revalidate=60`  |
-| `GET /banner/server/*/banner.png\|jpg`          | `public, max-age=60, stale-while-revalidate=300` |
-| `GET /banner/resource/*/isValid`                | `public, max-age=30, stale-while-revalidate=60`  |
-| `GET /banner/resource/*/banner.png\|jpg`        | `public, max-age=60, stale-while-revalidate=300` |
-| `GET /banner/author/*/isValid`                  | `public, max-age=30, stale-while-revalidate=60`  |
-| `GET /banner/author/*/banner.png\|jpg`          | `public, max-age=60, stale-while-revalidate=300` |
-| `GET /banner/member/*/isValid`                  | `public, max-age=30, stale-while-revalidate=60`  |
-| `GET /banner/member/*/banner.png\|jpg`          | `public, max-age=60, stale-while-revalidate=300` |
-| `GET /banner/team/*/isValid`                    | `public, max-age=30, stale-while-revalidate=60`  |
-| `GET /banner/team/*/banner.png\|jpg`            | `public, max-age=60, stale-while-revalidate=300` |
-| `GET /banner/saved/*.png\|jpg`                  | `public, max-age=60, stale-while-revalidate=300` |
-| `GET /health`, `GET /ready`, error responses    | no `Cache-Control` header                        |
+| Route pattern                                | Cache-Control value                               |
+| -------------------------------------------- | ------------------------------------------------- |
+| `GET /mc/server`                             | `public, max-age=30, stale-while-revalidate=60`   |
+| `GET /mc/icon`                               | `public, max-age=300, stale-while-revalidate=600` |
+| `GET /banner/server/*/isValid`               | `public, max-age=30, stale-while-revalidate=60`   |
+| `GET /banner/server/*/banner.png\|jpg`       | `public, max-age=60, stale-while-revalidate=300`  |
+| `GET /banner/resource/*/isValid`             | `public, max-age=30, stale-while-revalidate=60`   |
+| `GET /banner/resource/*/banner.png\|jpg`     | `public, max-age=60, stale-while-revalidate=300`  |
+| `GET /banner/author/*/isValid`               | `public, max-age=30, stale-while-revalidate=60`   |
+| `GET /banner/author/*/banner.png\|jpg`       | `public, max-age=60, stale-while-revalidate=300`  |
+| `GET /banner/member/*/isValid`               | `public, max-age=30, stale-while-revalidate=60`   |
+| `GET /banner/member/*/banner.png\|jpg`       | `public, max-age=60, stale-while-revalidate=300`  |
+| `GET /banner/team/*/isValid`                 | `public, max-age=30, stale-while-revalidate=60`   |
+| `GET /banner/team/*/banner.png\|jpg`         | `public, max-age=60, stale-while-revalidate=300`  |
+| `GET /banner/saved/*.png\|jpg`               | `public, max-age=60, stale-while-revalidate=300`  |
+| `GET /health`, `GET /ready`, error responses | no `Cache-Control` header                         |
 
 **Alignment with Cloudflare page rule table:** The CDN TTL recommendations in the table above (60 s for images, 30 s for status/data) match the `max-age` values the API already emits. No explicit Cache Rules are needed unless you want a longer edge TTL than the API's `max-age` — Cloudflare will honor the API's `Cache-Control: public` header automatically.
 

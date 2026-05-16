@@ -23,19 +23,21 @@ export interface AppCaches {
   mcStatus?: MemoryCache;
   /** In-memory cache for rendered banner image Buffers (TTL 60 s). */
   bannerImage?: MemoryCache;
-  /** In-memory cache for rendered resource banner image Buffers (TTL 60 s). */
+  /** In-memory cache for marketplace resource data responses (TTL 900 s). */
+  resourceData?: MemoryCache;
+  /** In-memory cache for rendered resource banner image Buffers (TTL 300 s). */
   resourceBannerImage?: MemoryCache;
-  /** In-memory cache for author lookup responses (TTL 30 s). */
+  /** In-memory cache for author lookup responses (TTL 900 s). */
   authorData?: MemoryCache;
-  /** In-memory cache for rendered author banner image Buffers (TTL 60 s). */
+  /** In-memory cache for rendered author banner image Buffers (TTL 300 s). */
   authorBannerImage?: MemoryCache;
-  /** In-memory cache for BuiltByBit member lookup responses (TTL 30 s). */
+  /** In-memory cache for BuiltByBit member lookup responses (TTL 900 s). */
   memberData?: MemoryCache;
-  /** In-memory cache for rendered member banner image Buffers (TTL 60 s). */
+  /** In-memory cache for rendered member banner image Buffers (TTL 300 s). */
   memberBannerImage?: MemoryCache;
-  /** In-memory cache for Polymart team lookup responses (TTL 30 s). */
+  /** In-memory cache for Polymart team lookup responses (TTL 900 s). */
   teamData?: MemoryCache;
-  /** In-memory cache for rendered team banner image Buffers (TTL 60 s). */
+  /** In-memory cache for rendered team banner image Buffers (TTL 300 s). */
   teamBannerImage?: MemoryCache;
 }
 
@@ -167,7 +169,7 @@ export const createApp = (
 
   app.route(
     "/banner/resource",
-    createResourceBannerRoute(resourceClients, caches?.resourceBannerImage)
+    createResourceBannerRoute(resourceClients, caches?.resourceBannerImage, caches?.resourceData)
   );
 
   app.route(

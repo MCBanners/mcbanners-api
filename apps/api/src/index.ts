@@ -43,6 +43,10 @@ const bannerImageCache = new MemoryCache({
   maxEntries: 200,
   maxBytes: 50_000_000
 });
+const resourceDataCache = new MemoryCache({
+  ttlMs: cacheTtl.marketplaceResourceMs,
+  maxEntries: 500
+});
 const resourceBannerImageCache = new MemoryCache({
   ttlMs: cacheTtl.resourceBannerImageMs,
   maxEntries: 200,
@@ -94,6 +98,7 @@ const appMetrics: AppMetrics | undefined = runtimeConfig.metricsEnabled
         caches: {
           mcStatus: mcStatusCache.stats(),
           bannerImage: bannerImageCache.stats(),
+          resourceData: resourceDataCache.stats(),
           resourceBannerImage: resourceBannerImageCache.stats(),
           authorData: authorDataCache.stats(),
           authorBannerImage: authorBannerImageCache.stats(),
@@ -121,6 +126,7 @@ const app = createApp(
   {
     mcStatus: mcStatusCache,
     bannerImage: bannerImageCache,
+    resourceData: resourceDataCache,
     resourceBannerImage: resourceBannerImageCache,
     authorData: authorDataCache,
     authorBannerImage: authorBannerImageCache,

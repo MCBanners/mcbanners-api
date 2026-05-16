@@ -42,9 +42,21 @@ const ensureFonts = (): void => {
 
 export const createResourceBannerRoute = (
   clients: ResourceClients,
-  bannerCache?: MemoryCache
+  bannerCache?: MemoryCache,
+  dataCache?: MemoryCache
 ): Hono => {
   const route = new Hono();
+
+  const fetchResourceData = (client: ResourceClient, platform: string, normalizedId: string) => {
+    if (dataCache === undefined) {
+      return client.getResourceBannerData(normalizedId);
+    }
+    return dataCache.getOrSet(
+      `resource:${platform.toLowerCase()}:${normalizedId}`,
+      () => client.getResourceBannerData(normalizedId),
+      { cacheNull: false }
+    );
+  };
 
   /**
    * Unified wildcard handler for both `isValid` and `banner.(png|jpg)`.
@@ -77,7 +89,7 @@ export const createResourceBannerRoute = (
         return c.json({ valid: false });
       }
       const normalizedId = normalizeResourceId(platform, id);
-      const data = await client.getResourceBannerData(normalizedId);
+      const data = await fetchResourceData(client, platform, normalizedId);
       const res = c.json({ valid: data !== null });
       res.headers.set("Cache-Control", "public, max-age=30, stale-while-revalidate=60");
       return res;
@@ -98,7 +110,7 @@ export const createResourceBannerRoute = (
 
     const outputType = match[1].toLowerCase();
     const normalizedId = normalizeResourceId(platform, id);
-    const data = await client.getResourceBannerData(normalizedId);
+    const data = await fetchResourceData(client, platform, normalizedId);
     if (data === null) {
       return c.body(null, 404);
     }

@@ -19,6 +19,7 @@ describe("API runtime database config", () => {
       cacheTtl: {
         minecraftStatusMs: 30_000,
         serverBannerImageMs: 60_000,
+        marketplaceResourceMs: 900_000,
         resourceBannerImageMs: 300_000,
         marketplaceAuthorMs: 900_000,
         authorBannerImageMs: 300_000,
@@ -103,6 +104,7 @@ describe("API runtime cache TTL config", () => {
     expect(loadApiRuntimeConfig({}).cacheTtl).toEqual({
       minecraftStatusMs: 30_000,
       serverBannerImageMs: 60_000,
+      marketplaceResourceMs: 900_000,
       resourceBannerImageMs: 300_000,
       marketplaceAuthorMs: 900_000,
       authorBannerImageMs: 300_000,
@@ -121,7 +123,8 @@ describe("API runtime cache TTL config", () => {
 
   it("respects CACHE_MARKETPLACE_AUTHOR_TTL_MS env override", () => {
     expect(
-      loadApiRuntimeConfig({ CACHE_MARKETPLACE_AUTHOR_TTL_MS: "60000" }).cacheTtl.marketplaceAuthorMs
+      loadApiRuntimeConfig({ CACHE_MARKETPLACE_AUTHOR_TTL_MS: "60000" }).cacheTtl
+        .marketplaceAuthorMs
     ).toBe(60_000);
   });
 
@@ -130,5 +133,12 @@ describe("API runtime cache TTL config", () => {
       loadApiRuntimeConfig({ CACHE_RENDERED_RESOURCE_BANNER_TTL_MS: "600000" }).cacheTtl
         .resourceBannerImageMs
     ).toBe(600_000);
+  });
+
+  it("respects CACHE_MARKETPLACE_RESOURCE_TTL_MS env override", () => {
+    expect(
+      loadApiRuntimeConfig({ CACHE_MARKETPLACE_RESOURCE_TTL_MS: "300000" }).cacheTtl
+        .marketplaceResourceMs
+    ).toBe(300_000);
   });
 });

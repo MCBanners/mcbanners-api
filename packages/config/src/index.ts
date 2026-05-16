@@ -15,6 +15,7 @@ const envSchema = z.object({
   RATE_LIMIT_WINDOW_MS: z.string().trim().min(1).optional(),
   RATE_LIMIT_MAX_REQUESTS: z.string().trim().min(1).optional(),
   METRICS_ENABLED: z.string().trim().min(1).optional(),
+  CACHE_MARKETPLACE_RESOURCE_TTL_MS: z.string().trim().min(1).optional(),
   CACHE_MINECRAFT_STATUS_TTL_MS: z.string().trim().min(1).optional(),
   CACHE_RENDERED_SERVER_BANNER_TTL_MS: z.string().trim().min(1).optional(),
   CACHE_RENDERED_RESOURCE_BANNER_TTL_MS: z.string().trim().min(1).optional(),
@@ -58,6 +59,8 @@ export interface CacheTtlConfig {
   readonly minecraftStatusMs: number;
   /** Rendered server banner image cache TTL (default 60 s). */
   readonly serverBannerImageMs: number;
+  /** Marketplace resource data cache TTL (default 900 s). */
+  readonly marketplaceResourceMs: number;
   /** Rendered resource banner image cache TTL (default 300 s). */
   readonly resourceBannerImageMs: number;
   /** Marketplace author data cache TTL (default 900 s). */
@@ -214,6 +217,11 @@ export const loadApiRuntimeConfig = (
         parsed.CACHE_RENDERED_SERVER_BANNER_TTL_MS,
         60_000,
         "CACHE_RENDERED_SERVER_BANNER_TTL_MS"
+      ),
+      marketplaceResourceMs: parsePositiveInteger(
+        parsed.CACHE_MARKETPLACE_RESOURCE_TTL_MS,
+        900_000,
+        "CACHE_MARKETPLACE_RESOURCE_TTL_MS"
       ),
       resourceBannerImageMs: parsePositiveInteger(
         parsed.CACHE_RENDERED_RESOURCE_BANNER_TTL_MS,

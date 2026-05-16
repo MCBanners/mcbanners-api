@@ -978,3 +978,49 @@ describe("Modrinth resource route", () => {
     expect(body.valid).toBe(true);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Resource data cache (separate from banner image cache)
+// ---------------------------------------------------------------------------
+
+describe("resource data cache", () => {
+  it("data cache hit avoids second upstream client call", async () => {
+    const capturing = new CapturingResourceClient(FIXTURE_SPIGOT_FREE);
+    const dataCache = new MemoryCache({ maxEntries: 100, ttlMs: 60_000 });
+    const cachedApp = makeApp({ SPIGOT: capturing }, { resourceData: dataCache });
+
+    await cachedApp.request("/banner/resource/spigot/12345/banner.png");
+    expect(capturing.ids).toEqual(["12345"]);
+    expect(dataCache.stats().sets).toBe(1);
+
+    await cachedApp.request("/banner/resource/spigot/12345/banner.png");
+    expect(capturing.ids).toEqual(["12345"]);
+    expect(dataCache.stats().hits).toBe(1);
+    expect(dataCache.stats().sets).toBe(1);
+  });
+
+  it("null resource data is not cached", async () => {
+    const capturing = new CapturingResourceClient(null);
+    const dataCache = new MemoryCache({ maxEntries: 100, ttlMs: 60_000 });
+    const cachedApp = makeApp({ SPIGOT: capturing }, { resourceData: dataCache });
+
+    await cachedApp.request("/banner/resource/spigot/missing/banner.png");
+    await cachedApp.request("/banner/resource/spigot/missing/banner.png");
+
+    expect(capturing.ids).toEqual(["missing", "missing"]);
+    expect(dataCache.stats().sets).toBe(0);
+  });
+
+  it("data cache also applies to isValid endpoint", async () => {
+    const capturing = new CapturingResourceClient(FIXTURE_SPIGOT_FREE);
+    const dataCache = new MemoryCache({ maxEntries: 100, ttlMs: 60_000 });
+    const cachedApp = makeApp({ SPIGOT: capturing }, { resourceData: dataCache });
+
+    await cachedApp.request("/banner/resource/spigot/12345/isValid");
+    expect(dataCache.stats().sets).toBe(1);
+
+    await cachedApp.request("/banner/resource/spigot/12345/isValid");
+    expect(dataCache.stats().hits).toBe(1);
+    expect(capturing.ids).toEqual(["12345"]);
+  });
+});

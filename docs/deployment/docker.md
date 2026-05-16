@@ -71,17 +71,18 @@ Cache behavior is configurable via environment variables. Defaults are suitable 
 
 Cache TTLs (all values in milliseconds):
 
-| Env var                              | Default   | Purpose                                |
-| ------------------------------------ | --------- | -------------------------------------- |
-| `CACHE_MINECRAFT_STATUS_TTL_MS`      | `30000`   | Minecraft server status data (30 s)    |
-| `CACHE_RENDERED_SERVER_BANNER_TTL_MS`| `60000`   | Rendered server banner image (60 s)    |
-| `CACHE_RENDERED_RESOURCE_BANNER_TTL_MS`| `300000`| Rendered resource banner image (5 min) |
-| `CACHE_MARKETPLACE_AUTHOR_TTL_MS`    | `900000`  | Marketplace author data (15 min)       |
-| `CACHE_RENDERED_AUTHOR_BANNER_TTL_MS`| `300000`  | Rendered author banner image (5 min)   |
-| `CACHE_MARKETPLACE_MEMBER_TTL_MS`    | `900000`  | Marketplace member data (15 min)       |
-| `CACHE_RENDERED_MEMBER_BANNER_TTL_MS`| `300000`  | Rendered member banner image (5 min)   |
-| `CACHE_MARKETPLACE_TEAM_TTL_MS`      | `900000`  | Marketplace team data (15 min)         |
-| `CACHE_RENDERED_TEAM_BANNER_TTL_MS`  | `300000`  | Rendered team banner image (5 min)     |
+| Env var                                 | Default  | Purpose                                |
+| --------------------------------------- | -------- | -------------------------------------- |
+| `CACHE_MINECRAFT_STATUS_TTL_MS`         | `30000`  | Minecraft server status data (30 s)    |
+| `CACHE_RENDERED_SERVER_BANNER_TTL_MS`   | `60000`  | Rendered server banner image (60 s)    |
+| `CACHE_RENDERED_RESOURCE_BANNER_TTL_MS` | `300000` | Rendered resource banner image (5 min) |
+| `CACHE_MARKETPLACE_AUTHOR_TTL_MS`       | `900000` | Marketplace author data (15 min)       |
+| `CACHE_RENDERED_AUTHOR_BANNER_TTL_MS`   | `300000` | Rendered author banner image (5 min)   |
+| `CACHE_MARKETPLACE_MEMBER_TTL_MS`       | `900000` | Marketplace member data (15 min)       |
+| `CACHE_RENDERED_MEMBER_BANNER_TTL_MS`   | `300000` | Rendered member banner image (5 min)   |
+| `CACHE_MARKETPLACE_RESOURCE_TTL_MS`     | `900000` | Marketplace resource data (15 min)     |
+| `CACHE_MARKETPLACE_TEAM_TTL_MS`         | `900000` | Marketplace team data (15 min)         |
+| `CACHE_RENDERED_TEAM_BANNER_TTL_MS`     | `300000` | Rendered team banner image (5 min)     |
 
 ## Health And Readiness
 
