@@ -252,8 +252,9 @@ const skippedResult = (routeCase: CompatRouteCase): CaseComparisonResult => ({
   path: routeCase.path,
   enabled: routeCase.enabled,
   skipped: true,
+  ...(routeCase.disabledReason === undefined ? {} : { skipReason: routeCase.disabledReason }),
   passed: true,
-  failures: routeCase.disabledReason === undefined ? [] : [routeCase.disabledReason],
+  failures: [],
   legacy: EMPTY_RESPONSE,
   candidate: EMPTY_RESPONSE,
   artifacts: {}

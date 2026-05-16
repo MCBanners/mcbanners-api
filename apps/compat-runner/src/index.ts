@@ -1,4 +1,5 @@
 import { compareFixture } from "./compare";
+import type { FetchLike } from "./compare";
 import { loadCompatFixture } from "./fixture";
 import { renderMarkdownSummary, writeReports } from "./report";
 import { HELP_TEXT, parseCliOptions } from "./cli";
@@ -11,11 +12,20 @@ const sanitizeUrl = (value: string): string => {
   return url.toString();
 };
 
-export const runCli = async (args: readonly string[]): Promise<number> => {
+export interface CliConsole {
+  readonly log: (...data: unknown[]) => void;
+  readonly error: (...data: unknown[]) => void;
+}
+
+export const runCli = async (
+  args: readonly string[],
+  fetchImpl: FetchLike = fetch,
+  cliConsole: CliConsole = console
+): Promise<number> => {
   try {
     const options = parseCliOptions(args);
     if (options === "help") {
-      console.log(HELP_TEXT.trimEnd());
+      cliConsole.log(HELP_TEXT.trimEnd());
       return 0;
     }
 
@@ -24,23 +34,24 @@ export const runCli = async (args: readonly string[]): Promise<number> => {
       fixture,
       options.legacyBaseUrl,
       options.candidateBaseUrl,
-      options.outputDir
+      options.outputDir,
+      fetchImpl
     );
     await writeReports(summary, options.outputDir);
 
-    console.log(`Fixture: ${fixture.name}`);
-    console.log(`Legacy: ${sanitizeUrl(options.legacyBaseUrl)}`);
-    console.log(`Candidate: ${sanitizeUrl(options.candidateBaseUrl)}`);
-    console.log(`Report: ${options.outputDir}`);
-    console.log(
+    cliConsole.log(`Fixture: ${fixture.name}`);
+    cliConsole.log(`Legacy: ${sanitizeUrl(options.legacyBaseUrl)}`);
+    cliConsole.log(`Candidate: ${sanitizeUrl(options.candidateBaseUrl)}`);
+    cliConsole.log(`Report: ${options.outputDir}`);
+    cliConsole.log(
       `Result: ${String(summary.totals.passed)}/${String(summary.totals.enabled)} enabled cases passed, ${String(summary.totals.skipped)} skipped`
     );
-    console.log("");
-    console.log(renderMarkdownSummary(summary));
+    cliConsole.log("");
+    cliConsole.log(renderMarkdownSummary(summary));
 
     return summary.totals.failed === 0 ? 0 : 1;
   } catch (error) {
-    console.error(error instanceof Error ? error.message : "Compatibility runner failed");
+    cliConsole.error(error instanceof Error ? error.message : "Compatibility runner failed");
     return 1;
   }
 };

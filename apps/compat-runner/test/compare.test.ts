@@ -1,11 +1,18 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 
-import { compareCase, jsonShape, normalizeContentType, type FetchLike } from "../src/compare";
+import {
+  compareCase,
+  compareFixture,
+  jsonShape,
+  normalizeContentType,
+  type FetchLike
+} from "../src/compare";
 import { parseImageDimensions } from "../src/image";
+import { runCli } from "../src/index";
 import type { CompatRouteCase } from "../src/types";
 
 const PNG_1X1 = Uint8Array.from([
@@ -14,7 +21,24 @@ const PNG_1X1 = Uint8Array.from([
   0x89
 ]);
 
+const PNG_1X1_DIFFERENT_BYTES = Uint8Array.from([...PNG_1X1, 0x00, 0x01, 0x02]);
+
+const PNG_2X1 = Uint8Array.from([
+  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
+  0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00
+]);
+
 let outputDir: string;
+
+const silentConsole = {
+  log: (...data: unknown[]) => {
+    void data;
+  },
+  error: (...data: unknown[]) => {
+    void data;
+  }
+};
 
 beforeEach(async () => {
   outputDir = await mkdtemp(join(tmpdir(), "mcbanners-compat-"));
@@ -70,6 +94,43 @@ describe("compat comparison helpers", () => {
     expect(result.artifacts.candidate).toBe("artifacts/json/candidate.json");
   });
 
+  it("passes image cases with matching status, content type, and dimensions even when bytes differ", async () => {
+    const routeCase: CompatRouteCase = {
+      id: "image",
+      enabled: true,
+      type: "image",
+      method: "GET",
+      path: "/banner/server/example.org/25565/banner.png"
+    };
+    let calls = 0;
+    const fetchImpl: FetchLike = () => {
+      calls += 1;
+      return Promise.resolve(
+        new Response(calls === 1 ? PNG_1X1 : PNG_1X1_DIFFERENT_BYTES, {
+          status: 200,
+          headers: { "Content-Type": "image/png" }
+        })
+      );
+    };
+
+    const result = await compareCase(
+      routeCase,
+      "http://legacy.test",
+      "http://candidate.test",
+      outputDir,
+      fetchImpl
+    );
+
+    expect(result.passed).toBe(true);
+    expect(result.failures).toEqual([]);
+    expect(result.comparison?.kind).toBe("image");
+    if (result.comparison?.kind === "image") {
+      expect(result.comparison.byteSizeEqual).toBe(false);
+      expect(result.comparison.legacy.sha256).not.toBe(result.comparison.candidate.sha256);
+      expect(result.comparison.dimensionsEqual).toBe(true);
+    }
+  });
+
   it("fails image cases when dimensions differ or cannot be read", async () => {
     const routeCase: CompatRouteCase = {
       id: "image",
@@ -82,7 +143,7 @@ describe("compat comparison helpers", () => {
     const fetchImpl: FetchLike = () => {
       calls += 1;
       return Promise.resolve(
-        new Response(calls === 1 ? PNG_1X1 : new Uint8Array([1, 2, 3]), {
+        new Response(calls === 1 ? PNG_1X1 : PNG_2X1, {
           status: 200,
           headers: { "Content-Type": "image/png" }
         })
@@ -99,5 +160,191 @@ describe("compat comparison helpers", () => {
 
     expect(result.passed).toBe(false);
     expect(result.failures).toContain("image dimensions mismatch or unavailable");
+  });
+
+  it("fails image cases when content types differ", async () => {
+    const routeCase: CompatRouteCase = {
+      id: "image-content-type",
+      enabled: true,
+      type: "image",
+      method: "GET",
+      path: "/banner/server/example.org/25565/banner.png"
+    };
+    let calls = 0;
+    const fetchImpl: FetchLike = () => {
+      calls += 1;
+      return Promise.resolve(
+        new Response(PNG_1X1, {
+          status: 200,
+          headers: { "Content-Type": calls === 1 ? "image/png" : "image/jpeg" }
+        })
+      );
+    };
+
+    const result = await compareCase(
+      routeCase,
+      "http://legacy.test",
+      "http://candidate.test",
+      outputDir,
+      fetchImpl
+    );
+
+    expect(result.passed).toBe(false);
+    expect(result.failures.some((failure) => failure.startsWith("content-type mismatch"))).toBe(
+      true
+    );
+  });
+
+  it("fails image cases when status codes differ", async () => {
+    const routeCase: CompatRouteCase = {
+      id: "image-status",
+      enabled: true,
+      type: "image",
+      method: "GET",
+      path: "/banner/server/example.org/25565/banner.png"
+    };
+    let calls = 0;
+    const fetchImpl: FetchLike = () => {
+      calls += 1;
+      return Promise.resolve(
+        new Response(PNG_1X1, {
+          status: calls === 1 ? 200 : 404,
+          headers: { "Content-Type": "image/png" }
+        })
+      );
+    };
+
+    const result = await compareCase(
+      routeCase,
+      "http://legacy.test",
+      "http://candidate.test",
+      outputDir,
+      fetchImpl
+    );
+
+    expect(result.passed).toBe(false);
+    expect(result.failures.some((failure) => failure.startsWith("status mismatch"))).toBe(true);
+  });
+
+  it("treats disabled cases as skipped neutral results", async () => {
+    const summary = await compareFixture(
+      {
+        name: "skip-fixture",
+        cases: [
+          {
+            id: "disabled",
+            enabled: false,
+            disabledReason: "manual-only fixture",
+            type: "image",
+            method: "GET",
+            path: "/banner/saved/abcdefghijklmn.png"
+          }
+        ]
+      },
+      "http://legacy.test",
+      "http://candidate.test",
+      outputDir,
+      () => {
+        throw new Error("disabled case should not fetch");
+      }
+    );
+
+    expect(summary.totals).toMatchObject({ enabled: 0, skipped: 1, passed: 0, failed: 0 });
+    expect(summary.cases[0]?.skipped).toBe(true);
+    expect(summary.cases[0]?.passed).toBe(true);
+    expect(summary.cases[0]?.failures).toEqual([]);
+    expect(summary.cases[0]?.skipReason).toBe("manual-only fixture");
+  });
+
+  it("returns CLI exit 0 for mixed pass and skip results", async () => {
+    const fixturePath = join(outputDir, "fixture.json");
+    await writeFile(
+      fixturePath,
+      JSON.stringify({
+        name: "mixed-pass-skip",
+        cases: [
+          {
+            id: "passing-image",
+            enabled: true,
+            type: "image",
+            method: "GET",
+            path: "/banner/server/example.org/25565/banner.png"
+          },
+          {
+            id: "disabled-image",
+            enabled: false,
+            disabledReason: "manual-only fixture",
+            type: "image",
+            method: "GET",
+            path: "/banner/saved/abcdefghijklmn.png"
+          }
+        ]
+      })
+    );
+
+    const exitCode = await runCli(
+      [
+        "--legacy-base-url",
+        "http://legacy.test",
+        "--candidate-base-url",
+        "http://candidate.test",
+        "--fixture",
+        fixturePath,
+        "--output-dir",
+        join(outputDir, "reports")
+      ],
+      () =>
+        Promise.resolve(
+          new Response(PNG_1X1, { status: 200, headers: { "Content-Type": "image/png" } })
+        ),
+      silentConsole
+    );
+
+    expect(exitCode).toBe(0);
+  });
+
+  it("returns CLI exit 1 when an enabled case fails", async () => {
+    const fixturePath = join(outputDir, "fixture.json");
+    await writeFile(
+      fixturePath,
+      JSON.stringify({
+        name: "enabled-failure",
+        cases: [
+          {
+            id: "failing-image",
+            enabled: true,
+            type: "image",
+            method: "GET",
+            path: "/banner/server/example.org/25565/banner.png"
+          }
+        ]
+      })
+    );
+
+    let calls = 0;
+    const exitCode = await runCli(
+      [
+        "--legacy-base-url",
+        "http://legacy.test",
+        "--candidate-base-url",
+        "http://candidate.test",
+        "--fixture",
+        fixturePath,
+        "--output-dir",
+        join(outputDir, "reports")
+      ],
+      () => {
+        calls += 1;
+        return Promise.resolve(
+          new Response(calls === 1 ? PNG_1X1 : PNG_2X1, {
+            status: 200,
+            headers: { "Content-Type": "image/png" }
+          })
+        );
+      },
+      silentConsole
+    );
+
+    expect(exitCode).toBe(1);
   });
 });

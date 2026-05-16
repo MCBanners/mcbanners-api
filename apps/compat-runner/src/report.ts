@@ -57,6 +57,11 @@ export const renderMarkdownSummary = (summary: CompatSummary): string => {
       `Candidate status/content-type: ${String(result.candidate.status)} / ${String(result.candidate.contentType)}`
     );
 
+    if (result.skipped && result.skipReason !== undefined) {
+      lines.push("");
+      lines.push(`Skip reason: ${result.skipReason}`);
+    }
+
     if (result.failures.length > 0) {
       lines.push("");
       lines.push("Failures:");

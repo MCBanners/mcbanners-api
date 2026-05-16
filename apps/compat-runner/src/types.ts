@@ -69,6 +69,7 @@ export interface CaseComparisonResult {
   readonly path: string;
   readonly enabled: boolean;
   readonly skipped: boolean;
+  readonly skipReason?: string;
   readonly passed: boolean;
   readonly failures: readonly string[];
   readonly legacy: FetchedResponse;

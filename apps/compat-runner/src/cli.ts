@@ -1,3 +1,5 @@
+import { resolve } from "node:path";
+
 import type { CliOptions } from "./types";
 
 export const HELP_TEXT = `MCBanners compatibility runner
@@ -55,7 +57,7 @@ export const parseCliOptions = (args: readonly string[]): CliOptions | "help" =>
       requireOption(args, "--candidate-base-url"),
       "--candidate-base-url"
     ),
-    fixture: requireOption(args, "--fixture"),
-    outputDir: requireOption(args, "--output-dir")
+    fixture: resolve(process.cwd(), requireOption(args, "--fixture")),
+    outputDir: resolve(process.cwd(), requireOption(args, "--output-dir"))
   };
 };
