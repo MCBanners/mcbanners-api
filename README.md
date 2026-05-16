@@ -55,6 +55,16 @@ Invoke-WebRequest http://localhost:3000/ready
 
 `/health` is a simple alive check. `/ready` validates renderer assets and checks the saved-banner MariaDB connection only when the saved-banner DB is configured. See `docs/deployment/docker.md` for environment variables and Docker notes.
 
+## Deployment Docs
+
+| Document | Purpose |
+|---|---|
+| [`docs/deployment/v1-readiness-audit.md`](docs/deployment/v1-readiness-audit.md) | v1 readiness audit: supported routes, env vars, Docker status, compat-runner results, known differences, rollback plan |
+| [`docs/deployment/staging-plan.md`](docs/deployment/staging-plan.md) | Step-by-step staging workflow before production cutover |
+| [`docs/deployment/cutover-plan.md`](docs/deployment/cutover-plan.md) | Production cutover procedure and rollback steps |
+| [`docs/deployment/docker.md`](docs/deployment/docker.md) | Docker image strategy, env vars, troubleshooting |
+| [`docs/deployment/release-checklist.md`](docs/deployment/release-checklist.md) | Pre-release local verification checklist |
+
 ## Workspace Imports
 
 Use `@mcbanners/<package>` workspace imports for cross-package code:
