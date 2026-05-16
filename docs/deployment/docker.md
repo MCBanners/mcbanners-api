@@ -12,6 +12,27 @@ MCBanners API Next is deployed as a self-hosted Bun container. The container run
 - Runtime stage copies only API source, package source, renderer assets, package manifests, `bun.lock`, and `bunfig.toml`.
 - Runtime process runs as the non-root `mcbanners` user.
 
+## Runtime Strategy
+
+The container runs TypeScript source directly via Bun (`bun run apps/api/src/index.ts`). Bun transpiles TypeScript natively at startup; no pre-compiled JavaScript is required at runtime. The `bun run build` step in the builder stage produces TypeScript declaration artifacts for project-reference type checking and is not used at runtime.
+
+This means:
+
+- No separate `dist/` directory is needed in the runtime image.
+- The runtime stage copies `src/` trees directly.
+- Bun startup time is negligible for this service.
+
+If a compiled-JS-only runtime is ever required, it would require updating the Dockerfile to copy `dist/` trees and change the CMD to `bun run apps/api/dist/index.js`. That path has not been tested.
+
+## Minecraft Adapter Selection
+
+The startup module selects the Minecraft status adapter based on `NODE_ENV`:
+
+- `NODE_ENV=production` → `LiveMinecraftStatusAdapter` (real TCP pings to Minecraft servers).
+- Any other value → `createFixtureAdapter(MC_STATUS_FIXTURES)` (static fixture data; no network).
+
+The Dockerfile sets `ENV NODE_ENV=production`. Local `bun run dev` and unit tests run without `NODE_ENV=production` and therefore use the fixture adapter, keeping tests deterministic.
+
 ## Required Environment
 
 `PORT` is optional and defaults to `3000`. The Docker image exposes `3000`.

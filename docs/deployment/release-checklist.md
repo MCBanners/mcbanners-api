@@ -7,6 +7,14 @@ This checklist is the local production verification path for the self-hosted Doc
 - Confirm the working tree contains only intended release changes.
 - Confirm `../banner-api`, `../mc-api`, and `../discord-api` are untouched.
 - Review `package.json`, workspace package manifests, and `bun.lock` together.
+- Confirm no generated artifacts are tracked in git:
+
+```powershell
+git ls-files | Select-String "node_modules|/dist/|/output/|tsbuildinfo"
+```
+
+This must return no output. If it does, remove the tracked files from the git index and update `.gitignore` before proceeding.
+
 - Run deterministic checks:
 
 ```powershell

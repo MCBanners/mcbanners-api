@@ -1,6 +1,6 @@
 # v1 Readiness Audit
 
-Audit date: 2026-05-16. Reflects test suite at commit `f2824a8` (M24 complete).
+Audit date: 2026-05-16. Reflects test suite at commit `77c3fa1` (M25 complete, M26 hardening).
 
 ## Current Evidence
 
@@ -71,6 +71,8 @@ All 17 legacy `BannerType` ordinals are handled. 16 are supported for recall. `D
 - Current product does not rely on Discord banner functionality.
 - Saved recall returns `501 Not Implemented` with a documented error body.
 - If production data proves active Discord saved banners need support, a separate Discord compatibility milestone should be opened.
+
+The `apps/discord-bot` workspace stub is intentionally excluded from the monorepo build and typecheck references (`tsconfig.build.json`). It is not deployed in the v1 API container.
 
 See `docs/migration/027-bannertype-coverage.md` for the full coverage matrix.
 
