@@ -35,7 +35,8 @@ const HANGAR_USER_JSON = JSON.stringify({
   createdAt: "2022-12-22T14:20:08.320636Z",
   id: 4,
   name: "ViaVersion",
-  tagline: "Easing the gap between Minecraft updates by allowing players to connect with different versions.",
+  tagline:
+    "Easing the gap between Minecraft updates by allowing players to connect with different versions.",
   roles: [100],
   projectCount: 2,
   locked: false,
