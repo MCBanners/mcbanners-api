@@ -31,6 +31,28 @@ const NO_AVATAR_PROJECT_JSON = JSON.stringify({
 
 const TINY_PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
+const HANGAR_USER_JSON = JSON.stringify({
+  createdAt: "2022-12-22T14:20:08.320636Z",
+  id: 4,
+  name: "ViaVersion",
+  tagline: "Easing the gap between Minecraft updates by allowing players to connect with different versions.",
+  roles: [100],
+  projectCount: 2,
+  locked: false,
+  nameHistory: [],
+  avatarUrl: "https://hangarcdn.papermc.io/avatars/user/viaversion.webp?v=5",
+  socials: {},
+  isOrganization: true
+});
+
+const authorProject = (name: string, downloads: number, stars: number, views: number) => ({
+  name,
+  namespace: { owner: "ViaVersion", slug: name },
+  stats: { stars, downloads, views },
+  lastUpdated: "2026-05-15T16:55:37.99701Z",
+  avatarUrl: null
+});
+
 describe("HangarResourceClient", () => {
   it("returns ResourceBannerData for a nominal project", async () => {
     const mockFetch = makeMockFetch({
@@ -124,5 +146,77 @@ describe("HangarResourceClient", () => {
     const client = new HangarResourceClient({}, mockFetch);
     const result = await client.getResourceBannerData("org/emptydate");
     expect(result?.resource.lastUpdated).toBeNull();
+  });
+
+  it("returns AuthorBannerData using the documented owner project search endpoint", async () => {
+    const mockFetch = makeMockFetch({
+      [`${HANGAR_BASE}/users/viaversion`]: {
+        status: 200,
+        body: HANGAR_USER_JSON
+      },
+      [`${HANGAR_BASE}/projects?owner=ViaVersion&limit=25&offset=0`]: {
+        status: 200,
+        body: JSON.stringify({
+          pagination: { count: 2, limit: 25, offset: 0 },
+          result: [
+            authorProject("ViaVersion", 397827, 439, 938727),
+            authorProject("ViaBackwards", 120000, 123, 456000)
+          ]
+        })
+      },
+      "https://hangarcdn.papermc.io/avatars/user/viaversion.webp?v=5": {
+        status: 200,
+        body: TINY_PNG
+      }
+    });
+
+    const client = new HangarResourceClient({}, mockFetch);
+    const result = await client.getAuthorBannerData("ViaVersion");
+
+    expect(result).not.toBeNull();
+    expect(result?.backend).toBe("HANGAR");
+    expect(result?.author.name).toBe("ViaVersion");
+    expect(result?.author.resourceCount).toBe(2);
+    expect(result?.author.downloadCount).toBe(517827);
+    expect(result?.author.likes).toBe(562);
+    expect(result?.author.reviews).toBe(1394727);
+    expect(result?.author.logoBase64).not.toBeNull();
+  });
+
+  it("aggregates Hangar author projects across pages", async () => {
+    const mockFetch = makeMockFetch({
+      [`${HANGAR_BASE}/users/viaversion`]: {
+        status: 200,
+        body: HANGAR_USER_JSON
+      },
+      [`${HANGAR_BASE}/projects?owner=ViaVersion&limit=25&offset=0`]: {
+        status: 200,
+        body: JSON.stringify({
+          pagination: { count: 26, limit: 25, offset: 0 },
+          result: Array.from({ length: 25 }, (_, i) =>
+            authorProject(`Project${String(i)}`, 1, 2, 3)
+          )
+        })
+      },
+      [`${HANGAR_BASE}/projects?owner=ViaVersion&limit=25&offset=25`]: {
+        status: 200,
+        body: JSON.stringify({
+          pagination: { count: 26, limit: 25, offset: 25 },
+          result: [authorProject("Project25", 10, 20, 30)]
+        })
+      },
+      "https://hangarcdn.papermc.io/avatars/user/viaversion.webp?v=5": {
+        status: 200,
+        body: TINY_PNG
+      }
+    });
+
+    const client = new HangarResourceClient({}, mockFetch);
+    const result = await client.getAuthorBannerData("ViaVersion");
+
+    expect(result?.author.resourceCount).toBe(26);
+    expect(result?.author.downloadCount).toBe(35);
+    expect(result?.author.likes).toBe(70);
+    expect(result?.author.reviews).toBe(105);
   });
 });
