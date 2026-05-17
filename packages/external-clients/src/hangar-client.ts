@@ -28,8 +28,26 @@ const HangarUserSchema = z.object({
 });
 
 const HangarProjectsSchema = z.object({
+  pagination: z
+    .object({
+      count: z.number().default(0),
+      limit: z.number().default(0),
+      offset: z.number().default(0)
+    })
+    .optional(),
   result: z.array(HangarProjectSchema).default([])
 });
+
+const HANGAR_PROJECT_PAGE_LIMIT = 25;
+
+const buildHangarAuthorProjectsUrl = (owner: string, offset: number): string => {
+  const params = new URLSearchParams({
+    owner,
+    limit: String(HANGAR_PROJECT_PAGE_LIMIT),
+    offset: String(offset)
+  });
+  return `${HANGAR_BASE_URL}/projects?${params.toString()}`;
+};
 
 /**
  * Hangar resource client.
@@ -92,18 +110,34 @@ export class HangarResourceClient implements ResourceClient, AuthorClient {
     );
     if (user === null) return null;
 
-    const projects = await fetchJson(
-      `${HANGAR_BASE_URL}/users/${encodeURIComponent(user.name)}/projects`,
-      HangarProjectsSchema,
-      this.options,
-      this.fetchFn
-    );
-    if (projects === null || projects.result.length === 0) return null;
+    const projects: z.infer<typeof HangarProjectSchema>[] = [];
+    let offset = 0;
+    let expectedCount = 0;
+
+    for (;;) {
+      const page = await fetchJson(
+        buildHangarAuthorProjectsUrl(user.name, offset),
+        HangarProjectsSchema,
+        this.options,
+        this.fetchFn
+      );
+      if (page === null) return null;
+      if (offset === 0) {
+        expectedCount = page.pagination?.count ?? page.result.length;
+      }
+      if (page.result.length === 0) break;
+
+      projects.push(...page.result);
+      offset += page.result.length;
+      if (projects.length >= expectedCount) break;
+    }
+
+    if (projects.length === 0) return null;
 
     const logoBase64 = user.avatarUrl
       ? await fetchImageBase64(user.avatarUrl, this.options, this.fetchFn)
       : null;
-    const totals = projects.result.reduce(
+    const totals = projects.reduce(
       (acc, project) => ({
         downloads: acc.downloads + project.stats.downloads,
         stars: acc.stars + project.stats.stars,
@@ -115,7 +149,7 @@ export class HangarResourceClient implements ResourceClient, AuthorClient {
     return {
       author: {
         name: user.name,
-        resourceCount: user.projectCount,
+        resourceCount: expectedCount,
         logoBase64,
         downloadCount: totals.downloads,
         likes: totals.stars,
