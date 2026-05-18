@@ -10,7 +10,9 @@ import {
   encodePng,
   encodeJpg,
   renderNode,
-  registerRendererFonts
+  registerRendererFonts,
+  validateBannerStyleSettings,
+  parseBannerStyleSettings
 } from "@mcbanners/banner-renderer";
 import { parseResourceRoutePath, extractRouteRemainder } from "./resource-route-parser";
 
@@ -119,9 +121,15 @@ export const createResourceBannerRoute = (
 
     const rawQuery = Object.fromEntries(new URL(c.req.url).searchParams.entries());
 
+    const styleErrors = validateBannerStyleSettings(rawQuery);
+    if (styleErrors.length > 0) {
+      return c.json({ errors: styleErrors }, 400);
+    }
+    const style = parseBannerStyleSettings(rawQuery) ?? undefined;
+
     const renderBanner = async (): Promise<Buffer> => {
       const settings = parseResourceBannerSettings(rawQuery);
-      const nodes = buildResourceBannerNodes(data, settings);
+      const nodes = buildResourceBannerNodes(data, settings, style);
       const surface = createCanvasSurface(RESOURCE_BANNER_WIDTH, RESOURCE_BANNER_HEIGHT);
       for (const node of nodes) {
         await renderNode(surface, node);

@@ -2,16 +2,17 @@ import { Hono } from "hono";
 import {
   buildServerBannerNodes,
   mapStatusToServerBannerData,
-  parseServerBannerSettings
-} from "@mcbanners/banner-renderer";
-import {
+  parseServerBannerSettings,
   createCanvasSurface,
   encodePng,
   encodeJpg,
   renderNode,
-  registerRendererFonts
+  registerRendererFonts,
+  SERVER_BANNER_WIDTH,
+  SERVER_BANNER_HEIGHT,
+  validateBannerStyleSettings,
+  parseBannerStyleSettings
 } from "@mcbanners/banner-renderer";
-import { SERVER_BANNER_WIDTH, SERVER_BANNER_HEIGHT } from "@mcbanners/banner-renderer";
 import type { MinecraftStatusAdapter } from "@mcbanners/minecraft-status";
 import type { MemoryCache } from "@mcbanners/cache";
 
@@ -106,10 +107,16 @@ export const createServerBannerRoute = (
 
     const rawQuery = Object.fromEntries(new URL(c.req.url).searchParams.entries());
 
+    const styleErrors = validateBannerStyleSettings(rawQuery);
+    if (styleErrors.length > 0) {
+      return c.json({ errors: styleErrors }, 400);
+    }
+    const style = parseBannerStyleSettings(rawQuery) ?? undefined;
+
     const renderBanner = async (): Promise<Buffer> => {
       const data = mapStatusToServerBannerData(status);
       const settings = parseServerBannerSettings(rawQuery);
-      const nodes = buildServerBannerNodes(data, settings);
+      const nodes = buildServerBannerNodes(data, settings, style);
 
       const surface = createCanvasSurface(SERVER_BANNER_WIDTH, SERVER_BANNER_HEIGHT);
       for (const node of nodes) {

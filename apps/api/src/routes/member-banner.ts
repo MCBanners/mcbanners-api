@@ -9,7 +9,9 @@ import {
   MEMBER_BANNER_WIDTH,
   parseMemberBannerSettings,
   registerRendererFonts,
-  renderNode
+  renderNode,
+  validateBannerStyleSettings,
+  parseBannerStyleSettings
 } from "@mcbanners/banner-renderer";
 import { normalizeResourceId, type MemberClient } from "@mcbanners/external-clients";
 import { extractRouteRemainder, parseResourceRoutePath } from "./resource-route-parser";
@@ -94,8 +96,15 @@ export const createMemberBannerRoute = (
     ensureFonts();
     const outputType = match[1].toLowerCase();
     const rawQuery = Object.fromEntries(new URL(c.req.url).searchParams.entries());
+
+    const styleErrors = validateBannerStyleSettings(rawQuery);
+    if (styleErrors.length > 0) {
+      return c.json({ errors: styleErrors }, 400);
+    }
+    const style = parseBannerStyleSettings(rawQuery) ?? undefined;
+
     const renderBanner = async (): Promise<Buffer> => {
-      const nodes = buildMemberBannerNodes(data, parseMemberBannerSettings(rawQuery));
+      const nodes = buildMemberBannerNodes(data, parseMemberBannerSettings(rawQuery), style);
       const surface = createCanvasSurface(MEMBER_BANNER_WIDTH, MEMBER_BANNER_HEIGHT);
       for (const node of nodes) await renderNode(surface, node);
       return outputType === "jpg" ? encodeJpg(surface) : encodePng(surface);
