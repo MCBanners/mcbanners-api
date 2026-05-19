@@ -50,11 +50,7 @@ export const parseBannerStyleSettings = (rawQuery: RawQuery): BannerStyleSetting
   const accentColor = rawAccent !== undefined ? parseHexColor(rawAccent) : null;
 
   const rawShadow = readNamespacedRaw("shadow", "preset", rawQuery);
-  const shadowPreset: ShadowPreset | null = parseEnumParameter(
-    rawShadow,
-    shadowPresetValues,
-    null
-  );
+  const shadowPreset: ShadowPreset | null = parseEnumParameter(rawShadow, shadowPresetValues, null);
 
   const rawLogoY = readNamespacedRaw("logo", "y", rawQuery);
   const parsedLogoY = parseIntegerParameter(rawLogoY, 0) ?? 0;

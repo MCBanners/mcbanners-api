@@ -111,16 +111,17 @@ export const buildResourceBannerNodes = (
   const templateFontColor = resolveTextColor(textTheme);
   const baseColor = style?.background.mode === "solid" ? WHITE : templateFontColor;
 
-  const primaryColor = style?.text.primaryColor != null
-    ? resolveStyleColor(style.text.primaryColor, baseColor)
-    : baseColor;
-  const secondaryColor = style?.text.secondaryColor != null
-    ? resolveStyleColor(style.text.secondaryColor, baseColor)
-    : baseColor;
+  const primaryColor =
+    style?.text.primaryColor != null
+      ? resolveStyleColor(style.text.primaryColor, baseColor)
+      : baseColor;
+  const secondaryColor =
+    style?.text.secondaryColor != null
+      ? resolveStyleColor(style.text.secondaryColor, baseColor)
+      : baseColor;
 
-  const shadowForText: TextShadow | undefined = style?.shadowPreset != null
-    ? (SHADOW_PRESETS[style.shadowPreset] ?? undefined)
-    : undefined;
+  const shadowForText: TextShadow | undefined =
+    style?.shadowPreset != null ? (SHADOW_PRESETS[style.shadowPreset] ?? undefined) : undefined;
 
   // Background
   if (style?.background.mode === "solid" && style.background.color !== null) {
@@ -128,7 +129,14 @@ export const buildResourceBannerNodes = (
     const r = parseInt(hex.slice(1, 3), 16);
     const g = parseInt(hex.slice(3, 5), 16);
     const b = parseInt(hex.slice(5, 7), 16);
-    nodes.push({ type: "fill-rect", x: 0, y: 0, width: RESOURCE_BANNER_WIDTH, height: RESOURCE_BANNER_HEIGHT, color: rgbaColor(r, g, b) });
+    nodes.push({
+      type: "fill-rect",
+      x: 0,
+      y: 0,
+      width: RESOURCE_BANNER_WIDTH,
+      height: RESOURCE_BANNER_HEIGHT,
+      color: rgbaColor(r, g, b)
+    });
   } else {
     nodes.push({
       type: "image",

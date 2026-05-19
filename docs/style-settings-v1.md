@@ -25,16 +25,16 @@ The Customization v1 style layer allows callers to override background, text col
 
 All keys follow the `namespace__key` convention used throughout the settings layer.
 
-| Key | Type | Default | Description |
-|---|---|---|---|
-| `style__version` | integer | — | Must be `1`. If present with a different value the style block is rejected and the request falls back to legacy rendering. |
-| `background__mode` | enum | `template` | `template` — use the template image selected by `background__template`. `solid` — fill the canvas with `background__color`. |
-| `background__color` | hex color | — | Required when `background__mode=solid`. Canonical `#rrggbb` (case-insensitive; `#` optional; 3-char shorthand accepted). |
-| `text__primary_color` | hex color | — | Override for the primary text role (banner title / name). |
-| `text__secondary_color` | hex color | — | Override for the secondary text role (stats, author, supporting text). |
-| `text__accent_color` | hex color | — | Override for the accent text role (currently unused in built-in layouts; reserved). |
-| `shadow__preset` | enum | — | Text drop-shadow preset: `none`, `soft`, or `strong`. Absent = no shadow applied. |
-| `logo__y` | integer | `0` | Vertical offset applied on top of the automatically centred logo position. Clamped to `[-50, 50]`. |
+| Key                     | Type      | Default    | Description                                                                                                                 |
+| ----------------------- | --------- | ---------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `style__version`        | integer   | —          | Must be `1`. If present with a different value the style block is rejected and the request falls back to legacy rendering.  |
+| `background__mode`      | enum      | `template` | `template` — use the template image selected by `background__template`. `solid` — fill the canvas with `background__color`. |
+| `background__color`     | hex color | —          | Required when `background__mode=solid`. Canonical `#rrggbb` (case-insensitive; `#` optional; 3-char shorthand accepted).    |
+| `text__primary_color`   | hex color | —          | Override for the primary text role (banner title / name).                                                                   |
+| `text__secondary_color` | hex color | —          | Override for the secondary text role (stats, author, supporting text).                                                      |
+| `text__accent_color`    | hex color | —          | Override for the accent text role (currently unused in built-in layouts; reserved).                                         |
+| `shadow__preset`        | enum      | —          | Text drop-shadow preset: `none`, `soft`, or `strong`. Absent = no shadow applied.                                           |
+| `logo__y`               | integer   | `0`        | Vertical offset applied on top of the automatically centred logo position. Clamped to `[-50, 50]`.                          |
 
 ---
 
@@ -46,6 +46,7 @@ Accepted formats (case-insensitive, `#` prefix optional):
 - 6-character full form: `ffffff`, `#ffffff`, `FFFFFF`, `#FFFFFF`.
 
 Rejected formats:
+
 - Named CSS colours (`white`, `red`, …).
 - Functional notation (`rgb()`, `rgba()`, `hsl()`, …).
 - 8-character RGBA hex (`#rrggbbaa`).
@@ -73,11 +74,11 @@ When `solid` mode is active, the fallback text colour for all roles is **white**
 
 Each layout maps its text elements to one of three roles:
 
-| Role | Resource | Author | Server | Member | Team |
-|---|---|---|---|---|---|
-| **primary** | resource name | author name | server name | member name | team name |
+| Role          | Resource                          | Author                                    | Server                 | Member                     | Team                               |
+| ------------- | --------------------------------- | ----------------------------------------- | ---------------------- | -------------------------- | ---------------------------------- |
+| **primary**   | resource name                     | author name                               | server name            | member name                | team name                          |
 | **secondary** | author, reviews, downloads, price | resource count, likes, downloads, reviews | version, motd, players | rank, joined, posts, likes | resource count, downloads, ratings |
-| **accent** | *(unused)* | *(unused)* | *(unused)* | *(unused)* | *(unused)* |
+| **accent**    | _(unused)_                        | _(unused)_                                | _(unused)_             | _(unused)_                 | _(unused)_                         |
 
 If a role override is absent, the role inherits the base colour (white for `solid`, or the template-derived colour for `template`).
 
@@ -85,11 +86,11 @@ If a role override is absent, the role inherits the base colour (white for `soli
 
 ## Shadow preset values
 
-| Preset | `offsetX` | `offsetY` | `blur` | `color` |
-|---|---|---|---|---|
-| `none` | — | — | — | — (no shadow) |
-| `soft` | `1` | `1` | `2` | `rgba(0,0,0,0.45)` |
-| `strong` | `2` | `2` | `4` | `rgba(0,0,0,0.75)` |
+| Preset   | `offsetX` | `offsetY` | `blur` | `color`            |
+| -------- | --------- | --------- | ------ | ------------------ |
+| `none`   | —         | —         | —      | — (no shadow)      |
+| `soft`   | `1`       | `1`       | `2`    | `rgba(0,0,0,0.45)` |
+| `strong` | `2`       | `2`       | `4`    | `rgba(0,0,0,0.75)` |
 
 Shadow is applied to all text nodes produced by the layout builder. The canvas shadow state is reset after each text draw call to avoid bleed-through to non-text nodes.
 
@@ -125,14 +126,14 @@ Used for rendering. Returns `null` if no style keys are present (legacy path). I
 
 Used for save/preview validation paths. Returns an array of `StyleValidationError` objects. An empty array means valid.
 
-| Error code | Condition |
-|---|---|
-| `UNSUPPORTED_STYLE_VERSION` | `style__version` present and not `"1"` |
-| `INVALID_BACKGROUND_MODE` | `background__mode` present and not `template`/`solid` |
-| `MISSING_BACKGROUND_COLOR` | `background__mode=solid` and `background__color` absent |
-| `INVALID_HEX_COLOR` | Any colour key present with an invalid hex value |
-| `INVALID_SHADOW_PRESET` | `shadow__preset` present and not a valid preset name |
-| `INVALID_LOGO_Y` | `logo__y` present and not a valid integer or outside `[-50, 50]` |
+| Error code                  | Condition                                                        |
+| --------------------------- | ---------------------------------------------------------------- |
+| `UNSUPPORTED_STYLE_VERSION` | `style__version` present and not `"1"`                           |
+| `INVALID_BACKGROUND_MODE`   | `background__mode` present and not `template`/`solid`            |
+| `MISSING_BACKGROUND_COLOR`  | `background__mode=solid` and `background__color` absent          |
+| `INVALID_HEX_COLOR`         | Any colour key present with an invalid hex value                 |
+| `INVALID_SHADOW_PRESET`     | `shadow__preset` present and not a valid preset name             |
+| `INVALID_LOGO_Y`            | `logo__y` present and not a valid integer or outside `[-50, 50]` |
 
 Early return: if `UNSUPPORTED_STYLE_VERSION` fires, no further validation is performed.
 

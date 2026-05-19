@@ -69,23 +69,31 @@ export const buildAuthorBannerNodes = (
   const templateFontColor = resolveTextColor(textTheme);
   const baseColor = style?.background.mode === "solid" ? WHITE : templateFontColor;
 
-  const primaryColor = style?.text.primaryColor != null
-    ? resolveStyleColor(style.text.primaryColor, baseColor)
-    : baseColor;
-  const secondaryColor = style?.text.secondaryColor != null
-    ? resolveStyleColor(style.text.secondaryColor, baseColor)
-    : baseColor;
+  const primaryColor =
+    style?.text.primaryColor != null
+      ? resolveStyleColor(style.text.primaryColor, baseColor)
+      : baseColor;
+  const secondaryColor =
+    style?.text.secondaryColor != null
+      ? resolveStyleColor(style.text.secondaryColor, baseColor)
+      : baseColor;
 
-  const shadowForText: TextShadow | undefined = style?.shadowPreset != null
-    ? (SHADOW_PRESETS[style.shadowPreset] ?? undefined)
-    : undefined;
+  const shadowForText: TextShadow | undefined =
+    style?.shadowPreset != null ? (SHADOW_PRESETS[style.shadowPreset] ?? undefined) : undefined;
 
   if (style?.background.mode === "solid" && style.background.color !== null) {
     const hex = style.background.color;
     const r = parseInt(hex.slice(1, 3), 16);
     const g = parseInt(hex.slice(3, 5), 16);
     const b = parseInt(hex.slice(5, 7), 16);
-    nodes.push({ type: "fill-rect", x: 0, y: 0, width: AUTHOR_BANNER_WIDTH, height: AUTHOR_BANNER_HEIGHT, color: rgbaColor(r, g, b) });
+    nodes.push({
+      type: "fill-rect",
+      x: 0,
+      y: 0,
+      width: AUTHOR_BANNER_WIDTH,
+      height: AUTHOR_BANNER_HEIGHT,
+      color: rgbaColor(r, g, b)
+    });
   } else {
     nodes.push({
       type: "image",
@@ -121,7 +129,12 @@ export const buildAuthorBannerNodes = (
 
   if (settings.authorName.enable) {
     nodes.push(
-      makeTextNode(settings.authorName, settings.authorName.display || data.author.name, primaryColor, shadowForText)
+      makeTextNode(
+        settings.authorName,
+        settings.authorName.display || data.author.name,
+        primaryColor,
+        shadowForText
+      )
     );
   }
 

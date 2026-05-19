@@ -91,9 +91,7 @@ export const validateBannerStyleSettings = (rawQuery: RawQuery): StyleValidation
 
   const rawShadow = readNamespacedRaw("shadow", "preset", rawQuery);
   if (rawShadow !== undefined) {
-    const validPreset = (shadowPresetValues as readonly string[]).includes(
-      rawShadow.toLowerCase()
-    );
+    const validPreset = (shadowPresetValues as readonly string[]).includes(rawShadow.toLowerCase());
     if (!validPreset) {
       errors.push({
         code: "INVALID_SHADOW_PRESET",

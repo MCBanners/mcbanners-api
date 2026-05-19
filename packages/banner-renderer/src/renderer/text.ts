@@ -58,7 +58,7 @@ export const renderTextNode = (surface: RenderSurface, node: TextNode): void => 
  * `y + lineIndex * lineHeight`.
  * Applies optional text shadow if the node carries a shadow preset.
  */
-export const renderWrappedTextNode= (surface: RenderSurface, node: WrappedTextNode): void => {
+export const renderWrappedTextNode = (surface: RenderSurface, node: WrappedTextNode): void => {
   surface.context.font = buildFontSpec(node.fontFace, node.fontWeight, node.fontSize);
   surface.context.fillStyle = rgbaColorToString(node.color);
   applyShadow(surface, node);
