@@ -2,7 +2,7 @@ name: Docker Publish
 
 on:
   push:
-    branches: [main, staging, new-controls]
+    branches: [main, staging]
     tags: ["v*.*.*"]
   pull_request:
     branches: [main]
