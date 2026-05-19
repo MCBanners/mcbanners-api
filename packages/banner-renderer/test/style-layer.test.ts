@@ -238,11 +238,11 @@ describe("canonicalizeBannerStyleSettings", () => {
 
 describe("SHADOW_PRESETS", () => {
   test("none maps to null", () => {
-    expect(SHADOW_PRESETS["none"]).toBeNull();
+    expect(SHADOW_PRESETS.none).toBeNull();
   });
 
   test("soft is a deterministic TextShadow object", () => {
-    const s = SHADOW_PRESETS["soft"];
+    const s = SHADOW_PRESETS.soft;
     expect(s).not.toBeNull();
     expect(s!.offsetX).toBe(1);
     expect(s!.offsetY).toBe(1);
@@ -251,11 +251,11 @@ describe("SHADOW_PRESETS", () => {
   });
 
   test("strong is a deterministic TextShadow object stronger than soft", () => {
-    const s = SHADOW_PRESETS["strong"];
+    const s = SHADOW_PRESETS.strong;
     expect(s).not.toBeNull();
-    expect(s!.offsetX).toBeGreaterThan(SHADOW_PRESETS["soft"]!.offsetX);
-    expect(s!.offsetY).toBeGreaterThan(SHADOW_PRESETS["soft"]!.offsetY);
-    expect(s!.blur).toBeGreaterThan(SHADOW_PRESETS["soft"]!.blur);
+    expect(s!.offsetX).toBeGreaterThan(SHADOW_PRESETS.soft!.offsetX);
+    expect(s!.offsetY).toBeGreaterThan(SHADOW_PRESETS.soft!.offsetY);
+    expect(s!.blur).toBeGreaterThan(SHADOW_PRESETS.soft!.blur);
   });
 });
 
@@ -275,7 +275,7 @@ describe("buildResourceBannerNodes — legacy (no style)", () => {
     const nodes = buildResourceBannerNodes(FIXTURE_SPIGOT_FREE, DEFAULT_RESOURCE_BANNER_SETTINGS);
     const texts = getTextNodes(nodes);
     expect(texts.length).toBeGreaterThan(0);
-    texts.forEach((n) => expect(n.shadow).toBeUndefined());
+    texts.forEach((n) => { expect(n.shadow).toBeUndefined(); });
   });
 });
 
@@ -356,7 +356,7 @@ describe("buildResourceBannerNodes — shadow presets", () => {
       style
     );
     const texts = getTextNodes(nodes);
-    texts.forEach((n) => expect(n.shadow).toBeUndefined());
+    texts.forEach((n) => { expect(n.shadow).toBeUndefined(); });
   });
 
   test("shadow__preset=soft → TextShadow on text nodes", () => {
