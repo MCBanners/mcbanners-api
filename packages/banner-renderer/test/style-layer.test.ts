@@ -275,7 +275,9 @@ describe("buildResourceBannerNodes — legacy (no style)", () => {
     const nodes = buildResourceBannerNodes(FIXTURE_SPIGOT_FREE, DEFAULT_RESOURCE_BANNER_SETTINGS);
     const texts = getTextNodes(nodes);
     expect(texts.length).toBeGreaterThan(0);
-    texts.forEach((n) => { expect(n.shadow).toBeUndefined(); });
+    texts.forEach((n) => {
+      expect(n.shadow).toBeUndefined();
+    });
   });
 });
 
@@ -356,7 +358,9 @@ describe("buildResourceBannerNodes — shadow presets", () => {
       style
     );
     const texts = getTextNodes(nodes);
-    texts.forEach((n) => { expect(n.shadow).toBeUndefined(); });
+    texts.forEach((n) => {
+      expect(n.shadow).toBeUndefined();
+    });
   });
 
   test("shadow__preset=soft → TextShadow on text nodes", () => {
