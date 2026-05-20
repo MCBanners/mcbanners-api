@@ -1,10 +1,15 @@
-import { getBackgroundTemplateTextTheme } from "@mcbanners/domain";
+﻿import { getBackgroundTemplateTextTheme } from "@mcbanners/domain";
 import type { ServiceBackend } from "@mcbanners/domain";
 
 import { mapFontFace } from "../../compat/font-face";
 import { mapTextAlign } from "../../compat/text-align";
 import { resolveTextColor } from "../../compat/text-theme";
 import type { RenderNode } from "../../nodes/render-node";
+import type { BannerStyleSettings } from "../../style";
+import type { TextShadow } from "../../style";
+import { SHADOW_PRESETS } from "../../style";
+import type { RgbaColor } from "../../types/rgba-color";
+import { WHITE, rgbaColor } from "../../types/rgba-color";
 import { abbreviateNumber } from "../../text/number-util";
 import { formatUpdatedDate } from "../../text/date-util";
 import {
@@ -47,11 +52,20 @@ const backendLogoSpriteKey = (backend: ServiceBackend): string => {
   }
 };
 
+const resolveStyleColor = (hexColor: string | null | undefined, fallback: RgbaColor): RgbaColor => {
+  if (hexColor === null || hexColor === undefined) return fallback;
+  const r = parseInt(hexColor.slice(1, 3), 16);
+  const g = parseInt(hexColor.slice(3, 5), 16);
+  const b = parseInt(hexColor.slice(5, 7), 16);
+  return rgbaColor(r, g, b);
+};
+
 /** Converts per-element text settings + content string into a TextNode. */
 const makeTextNode = (
   s: ResourceBannerTextSettings,
   content: string,
-  fontColor: ReturnType<typeof resolveTextColor>
+  color: RgbaColor,
+  shadow?: TextShadow
 ): RenderNode => ({
   type: "text",
   x: s.x,
@@ -60,8 +74,9 @@ const makeTextNode = (
   fontFace: mapFontFace(s.fontFace),
   fontWeight: s.fontBold ? "bold" : "regular",
   fontSize: s.fontSize,
-  color: fontColor,
-  align: mapTextAlign(s.textAlign)
+  color,
+  align: mapTextAlign(s.textAlign),
+  ...(shadow !== undefined ? { shadow } : {})
 });
 
 /**
@@ -87,26 +102,55 @@ const makeTextNode = (
  */
 export const buildResourceBannerNodes = (
   data: ResourceBannerData,
-  settings: ResourceBannerSettings
+  settings: ResourceBannerSettings,
+  style?: BannerStyleSettings | null
 ): readonly RenderNode[] => {
   const nodes: RenderNode[] = [];
 
   const textTheme = getBackgroundTemplateTextTheme(settings.background.template);
-  const fontColor = resolveTextColor(textTheme);
+  const templateFontColor = resolveTextColor(textTheme);
+  const baseColor = style?.background.mode === "solid" ? WHITE : templateFontColor;
+
+  const primaryColor =
+    style?.text.primaryColor != null
+      ? resolveStyleColor(style.text.primaryColor, baseColor)
+      : baseColor;
+  const secondaryColor =
+    style?.text.secondaryColor != null
+      ? resolveStyleColor(style.text.secondaryColor, baseColor)
+      : baseColor;
+
+  const shadowForText: TextShadow | undefined =
+    style?.shadowPreset != null ? (SHADOW_PRESETS[style.shadowPreset] ?? undefined) : undefined;
 
   // Background
-  nodes.push({
-    type: "image",
-    x: 0,
-    y: 0,
-    width: RESOURCE_BANNER_WIDTH,
-    height: RESOURCE_BANNER_HEIGHT,
-    assetKey: settings.background.template
-  });
+  if (style?.background.mode === "solid" && style.background.color !== null) {
+    const hex = style.background.color;
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    nodes.push({
+      type: "fill-rect",
+      x: 0,
+      y: 0,
+      width: RESOURCE_BANNER_WIDTH,
+      height: RESOURCE_BANNER_HEIGHT,
+      color: rgbaColor(r, g, b)
+    });
+  } else {
+    nodes.push({
+      type: "image",
+      x: 0,
+      y: 0,
+      width: RESOURCE_BANNER_WIDTH,
+      height: RESOURCE_BANNER_HEIGHT,
+      assetKey: settings.background.template
+    });
+  }
 
   // Logo — resource logo (base64) or backend-specific fallback sprite
   const logoSize = Math.min(settings.logo.size, RESOURCE_BANNER_LOGO_MAX_SIZE);
-  const logoY = Math.floor((RESOURCE_BANNER_HEIGHT - logoSize) / 2);
+  const logoY = Math.floor((RESOURCE_BANNER_HEIGHT - logoSize) / 2) + (style?.logoYOffset ?? 0);
 
   if (data.resource.logoBase64 !== null && data.resource.logoBase64 !== "") {
     nodes.push({
@@ -135,13 +179,13 @@ export const buildResourceBannerNodes = (
       displayOverride === "" || displayOverride.toLowerCase() === "unset"
         ? data.resource.name
         : displayOverride;
-    nodes.push(makeTextNode(settings.resourceName, resourceTitle, fontColor));
+    nodes.push(makeTextNode(settings.resourceName, resourceTitle, primaryColor, shadowForText));
   }
 
   // Author name: "by {name}"
   if (settings.authorName.enable) {
     const content = settings.authorName.display || `by ${data.author.name}`;
-    nodes.push(makeTextNode(settings.authorName, content, fontColor));
+    nodes.push(makeTextNode(settings.authorName, content, secondaryColor, shadowForText));
   }
 
   // Reviews / Updated — backend-conditional
@@ -153,21 +197,21 @@ export const buildResourceBannerNodes = (
         (data.resource.lastUpdated !== null
           ? `Updated: ${formatUpdatedDate(data.resource.lastUpdated)}`
           : "Updated: unknown");
-      nodes.push(makeTextNode(settings.updated, content, fontColor));
+      nodes.push(makeTextNode(settings.updated, content, secondaryColor, shadowForText));
     }
   } else if (data.backend === "HANGAR") {
     // Hangar: show "{n} stars"
     if (settings.reviews.enable) {
       const content =
         settings.reviews.display || `${abbreviateNumber(data.resource.rating.count)} stars`;
-      nodes.push(makeTextNode(settings.reviews, content, fontColor));
+      nodes.push(makeTextNode(settings.reviews, content, secondaryColor, shadowForText));
     }
   } else {
     // All other backends: show "{n} reviews"
     if (settings.reviews.enable) {
       const content =
         settings.reviews.display || `${abbreviateNumber(data.resource.rating.count)} reviews`;
-      nodes.push(makeTextNode(settings.reviews, content, fontColor));
+      nodes.push(makeTextNode(settings.reviews, content, secondaryColor, shadowForText));
     }
   }
 
@@ -208,7 +252,7 @@ export const buildResourceBannerNodes = (
     const wording = isPremium ? "purchases" : "downloads";
     const content =
       settings.downloads.display || `${abbreviateNumber(data.resource.downloadCount)} ${wording}`;
-    nodes.push(makeTextNode(settings.downloads, content, fontColor));
+    nodes.push(makeTextNode(settings.downloads, content, secondaryColor, shadowForText));
   }
 
   // Price — only for premium resources
@@ -216,7 +260,7 @@ export const buildResourceBannerNodes = (
     const priceInfo = data.resource.price;
     const content =
       settings.price.display || `${priceInfo.amount.toFixed(2)} ${priceInfo.currency}`;
-    nodes.push(makeTextNode(settings.price, content, fontColor));
+    nodes.push(makeTextNode(settings.price, content, secondaryColor, shadowForText));
   }
 
   return nodes;

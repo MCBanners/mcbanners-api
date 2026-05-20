@@ -20,14 +20,35 @@ const drawAligned = (
   surface.context.fillText(text, drawX, y);
 };
 
+const applyShadow = (surface: RenderSurface, node: TextNode | WrappedTextNode): void => {
+  if (node.shadow !== undefined) {
+    surface.context.shadowOffsetX = node.shadow.offsetX;
+    surface.context.shadowOffsetY = node.shadow.offsetY;
+    surface.context.shadowBlur = node.shadow.blur;
+    surface.context.shadowColor = node.shadow.color;
+  }
+};
+
+const clearShadow = (surface: RenderSurface, node: TextNode | WrappedTextNode): void => {
+  if (node.shadow !== undefined) {
+    surface.context.shadowOffsetX = 0;
+    surface.context.shadowOffsetY = 0;
+    surface.context.shadowBlur = 0;
+    surface.context.shadowColor = "transparent";
+  }
+};
+
 /**
  * Draws a single line of text onto the surface using the node's font and color.
  * Alignment follows legacy `ImageUtil.drawText` semantics.
+ * Applies optional text shadow if the node carries a shadow preset.
  */
 export const renderTextNode = (surface: RenderSurface, node: TextNode): void => {
   surface.context.font = buildFontSpec(node.fontFace, node.fontWeight, node.fontSize);
   surface.context.fillStyle = rgbaColorToString(node.color);
+  applyShadow(surface, node);
   drawAligned(surface, node.content, node.x, node.y, node.align);
+  clearShadow(surface, node);
 };
 
 /**
@@ -35,10 +56,12 @@ export const renderTextNode = (surface: RenderSurface, node: TextNode): void => 
  * at a word boundary (`maxChars`), then split into lines that fit within
  * `maxWidth` using the legacy word-wrap algorithm. Each line is drawn at
  * `y + lineIndex * lineHeight`.
+ * Applies optional text shadow if the node carries a shadow preset.
  */
 export const renderWrappedTextNode = (surface: RenderSurface, node: WrappedTextNode): void => {
   surface.context.font = buildFontSpec(node.fontFace, node.fontWeight, node.fontSize);
   surface.context.fillStyle = rgbaColorToString(node.color);
+  applyShadow(surface, node);
 
   const text =
     node.maxChars !== undefined ? truncateText(node.content, node.maxChars) : node.content;
@@ -50,4 +73,6 @@ export const renderWrappedTextNode = (surface: RenderSurface, node: WrappedTextN
     const line = lines[i]!;
     drawAligned(surface, line, node.x, node.y + i * node.lineHeight, node.align);
   }
+
+  clearShadow(surface, node);
 };

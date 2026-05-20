@@ -2,6 +2,7 @@ import type { RgbaColor } from "../types/rgba-color";
 import type { RendererFontFace } from "../types/font-face";
 import type { FontWeight } from "../types/font-weight";
 import type { RendererTextAlign } from "../types/text-align";
+import type { TextShadow } from "../style/shadow-preset";
 
 export interface WrappedTextNode {
   readonly type: "wrapped-text";
@@ -19,4 +20,5 @@ export interface WrappedTextNode {
   readonly lineHeight: number;
   /** Optional character limit applied before wrapping (word-boundary aware). */
   readonly maxChars?: number;
+  readonly shadow?: TextShadow;
 }

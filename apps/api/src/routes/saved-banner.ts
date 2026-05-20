@@ -26,7 +26,10 @@ import {
   SERVER_BANNER_HEIGHT,
   SERVER_BANNER_WIDTH,
   TEAM_BANNER_HEIGHT,
-  TEAM_BANNER_WIDTH
+  TEAM_BANNER_WIDTH,
+  parseBannerStyleSettings,
+  validateBannerStyleSettings,
+  canonicalizeBannerStyleSettings
 } from "@mcbanners/banner-renderer";
 import type {
   AuthorClient,
@@ -345,8 +348,9 @@ export class SavedBannerRecallService {
     }
 
     ensureFonts();
+    const style = parseBannerStyleSettings(settings) ?? undefined;
     const data = mapStatusToServerBannerData(status);
-    const nodes = buildServerBannerNodes(data, parseServerBannerSettings(settings));
+    const nodes = buildServerBannerNodes(data, parseServerBannerSettings(settings), style);
     const surface = createCanvasSurface(SERVER_BANNER_WIDTH, SERVER_BANNER_HEIGHT);
     for (const node of nodes) {
       await renderNode(surface, node);
@@ -376,7 +380,8 @@ export class SavedBannerRecallService {
     }
 
     ensureFonts();
-    const nodes = buildResourceBannerNodes(data, parseResourceBannerSettings(settings));
+    const style = parseBannerStyleSettings(settings) ?? undefined;
+    const nodes = buildResourceBannerNodes(data, parseResourceBannerSettings(settings), style);
     const surface = createCanvasSurface(RESOURCE_BANNER_WIDTH, RESOURCE_BANNER_HEIGHT);
     for (const node of nodes) {
       await renderNode(surface, node);
@@ -406,7 +411,8 @@ export class SavedBannerRecallService {
     }
 
     ensureFonts();
-    const nodes = buildAuthorBannerNodes(data, parseAuthorBannerSettings(settings));
+    const style = parseBannerStyleSettings(settings) ?? undefined;
+    const nodes = buildAuthorBannerNodes(data, parseAuthorBannerSettings(settings), style);
     const surface = createCanvasSurface(AUTHOR_BANNER_WIDTH, AUTHOR_BANNER_HEIGHT);
     for (const node of nodes) {
       await renderNode(surface, node);
@@ -435,7 +441,8 @@ export class SavedBannerRecallService {
     }
 
     ensureFonts();
-    const nodes = buildMemberBannerNodes(data, parseMemberBannerSettings(settings));
+    const style = parseBannerStyleSettings(settings) ?? undefined;
+    const nodes = buildMemberBannerNodes(data, parseMemberBannerSettings(settings), style);
     const surface = createCanvasSurface(MEMBER_BANNER_WIDTH, MEMBER_BANNER_HEIGHT);
     for (const node of nodes) {
       await renderNode(surface, node);
@@ -464,7 +471,8 @@ export class SavedBannerRecallService {
     }
 
     ensureFonts();
-    const nodes = buildTeamBannerNodes(data, parseTeamBannerSettings(settings));
+    const style = parseBannerStyleSettings(settings) ?? undefined;
+    const nodes = buildTeamBannerNodes(data, parseTeamBannerSettings(settings), style);
     const surface = createCanvasSurface(TEAM_BANNER_WIDTH, TEAM_BANNER_HEIGHT);
     for (const node of nodes) {
       await renderNode(surface, node);
@@ -504,10 +512,21 @@ export const createSavedBannerRoute = (
       return c.json({ error: "Invalid saved banner body" }, 400);
     }
 
+    const styleErrors = validateBannerStyleSettings(parsed.settings);
+    if (styleErrors.length > 0) {
+      return c.json({ errors: styleErrors }, 400);
+    }
+
+    // Merge canonicalized style fields on top of the coerced settings so that
+    // existing non-style settings (e.g. reviews__enable, logo_size) are preserved
+    // and style fields are stored in canonical form.
+    const canonicalStyleFields = canonicalizeBannerStyleSettings(parsed.settings);
+    const mergedSettings = { ...parsed.settings, ...canonicalStyleFields };
+
     const row = await repository.insertSavedBanner({
       bannerType: parsed.type,
       metadata: parsed.metadata,
-      settings: parsed.settings,
+      settings: mergedSettings,
       owner: null
     });
 

@@ -5,6 +5,7 @@ import { renderWrappedTextNode } from "./text";
 import { renderImageNode } from "./image";
 import { renderSpriteNode } from "./image";
 import { renderDebugNode } from "./debug";
+import { renderFillRectNode } from "./fill";
 
 /**
  * Dispatches a single render node to its appropriate primitive renderer.
@@ -27,6 +28,9 @@ export const renderNode = async (surface: RenderSurface, node: RenderNode): Prom
       break;
     case "debug":
       renderDebugNode(surface, node);
+      break;
+    case "fill-rect":
+      renderFillRectNode(surface, node);
       break;
   }
 };

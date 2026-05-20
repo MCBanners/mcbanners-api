@@ -9,7 +9,9 @@ import {
   registerRendererFonts,
   renderNode,
   TEAM_BANNER_HEIGHT,
-  TEAM_BANNER_WIDTH
+  TEAM_BANNER_WIDTH,
+  validateBannerStyleSettings,
+  parseBannerStyleSettings
 } from "@mcbanners/banner-renderer";
 import { normalizeResourceId, type TeamClient } from "@mcbanners/external-clients";
 import { extractRouteRemainder, parseResourceRoutePath } from "./resource-route-parser";
@@ -94,8 +96,15 @@ export const createTeamBannerRoute = (
     ensureFonts();
     const outputType = match[1].toLowerCase();
     const rawQuery = Object.fromEntries(new URL(c.req.url).searchParams.entries());
+
+    const styleErrors = validateBannerStyleSettings(rawQuery);
+    if (styleErrors.length > 0) {
+      return c.json({ errors: styleErrors }, 400);
+    }
+    const style = parseBannerStyleSettings(rawQuery) ?? undefined;
+
     const renderBanner = async (): Promise<Buffer> => {
-      const nodes = buildTeamBannerNodes(data, parseTeamBannerSettings(rawQuery));
+      const nodes = buildTeamBannerNodes(data, parseTeamBannerSettings(rawQuery), style);
       const surface = createCanvasSurface(TEAM_BANNER_WIDTH, TEAM_BANNER_HEIGHT);
       for (const node of nodes) await renderNode(surface, node);
       return outputType === "jpg" ? encodeJpg(surface) : encodePng(surface);

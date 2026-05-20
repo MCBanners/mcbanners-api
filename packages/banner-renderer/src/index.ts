@@ -5,5 +5,6 @@ export * from "./text";
 export * from "./renderer";
 export * from "./compat";
 export * from "./layouts";
+export * from "./style";
 
 export const rendererRuntimeTarget = "@napi-rs/canvas";
