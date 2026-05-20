@@ -11,6 +11,7 @@
         "@mcbanners/db": "workspace:*",
         "@mcbanners/domain": "workspace:*",
         "@mcbanners/external-clients": "workspace:*",
+        "@mcbanners/hytale-status": "workspace:*",
         "@mcbanners/logger": "workspace:*",
         "@mcbanners/minecraft-status": "workspace:*",
         "hono": "^4.12.18",
@@ -36,6 +37,7 @@
         "@mcbanners/db": "workspace:*",
         "@mcbanners/domain": "workspace:*",
         "@mcbanners/external-clients": "workspace:*",
+        "@mcbanners/hytale-status": "workspace:*",
         "@mcbanners/logger": "workspace:*",
         "@mcbanners/minecraft-status": "workspace:*",
         "hono": "^4.12.18",
@@ -54,6 +56,7 @@
       "name": "@mcbanners/banner-renderer",
       "dependencies": {
         "@mcbanners/domain": "workspace:*",
+        "@mcbanners/hytale-status": "workspace:*",
         "@mcbanners/minecraft-status": "workspace:*",
         "@napi-rs/canvas": "^1.0.0",
       },
@@ -83,6 +86,13 @@
     },
     "packages/external-clients": {
       "name": "@mcbanners/external-clients",
+    },
+    "packages/hytale-status": {
+      "name": "@mcbanners/hytale-status",
+      "dependencies": {
+        "@hytaleone/query": "^1.1.1",
+        "@mcbanners/minecraft-status": "workspace:*",
+      },
     },
     "packages/logger": {
       "name": "@mcbanners/logger",
@@ -121,6 +131,8 @@
 
     "@humanwhocodes/retry": ["@humanwhocodes/retry@0.4.3", "", {}, "sha512-bV0Tgo9K4hfPCek+aMAn81RppFKv2ySDQeMoSZuvTASywNTnVJCArCZE2FWqpvIatKu7VMRLWlR1EazvVhDyhQ=="],
 
+    "@hytaleone/query": ["@hytaleone/query@1.1.1", "", {}, "sha512-Q35xcuJplqP8etrnNHwxtl+97JB5ntNrRp8UPzBbV0w3mXYEgfXV5GU5zC34qz6COMQBDqFFdANIk25WQnhsCw=="],
+
     "@mcbanners/api": ["@mcbanners/api@workspace:apps/api"],
 
     "@mcbanners/banner-renderer": ["@mcbanners/banner-renderer@workspace:packages/banner-renderer"],
@@ -140,6 +152,8 @@
     "@mcbanners/domain": ["@mcbanners/domain@workspace:packages/domain"],
 
     "@mcbanners/external-clients": ["@mcbanners/external-clients@workspace:packages/external-clients"],
+
+    "@mcbanners/hytale-status": ["@mcbanners/hytale-status@workspace:packages/hytale-status"],
 
     "@mcbanners/logger": ["@mcbanners/logger@workspace:packages/logger"],
 

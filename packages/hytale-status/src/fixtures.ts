@@ -3,7 +3,7 @@ import type { HytaleServerStatus } from "./types";
 export const HYTALE_FIXTURE_STANDARD: HytaleServerStatus = {
   host: "play.hytale.example",
   port: 5520,
-  provider: "hyquery",
+  provider: "onequery",
   version: "Hytale Beta",
   players: {
     online: 42,

@@ -1,4 +1,4 @@
-export type HytaleStatusProvider = "hyquery" | "minecraft-compatible-ping";
+export type HytaleStatusProvider = "onequery" | "minecraft-compatible-ping";
 
 export interface HytaleServerStatus {
   readonly host: string;

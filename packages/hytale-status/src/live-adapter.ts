@@ -5,7 +5,7 @@ import {
 } from "@mcbanners/minecraft-status";
 
 import type { HytaleStatusAdapter } from "./adapter";
-import { LiveHyQueryProvider, type HyQueryProvider } from "./hyquery-provider";
+import { LiveOneQueryProvider, type OneQueryProvider } from "./onequery-provider";
 import type { HytaleServerStatus } from "./types";
 import { validateHost, validatePort } from "./validate";
 
@@ -16,29 +16,13 @@ export type MinecraftCompatiblePing = (
 ) => Promise<McApiResponse | null>;
 
 export interface LiveHytaleStatusAdapterOptions {
-  readonly hyQueryProvider?: HyQueryProvider;
+  readonly oneQueryProvider?: OneQueryProvider;
   readonly minecraftPing?: MinecraftCompatiblePing;
-  readonly hyQueryTimeoutMs?: number;
+  readonly oneQueryTimeoutMs?: number;
   readonly pingTimeoutMs?: number;
 }
 
 const DEFAULT_ATTEMPT_TIMEOUT_MS = 2500;
-
-const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number): Promise<T | null> => {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  try {
-    return await Promise.race([
-      promise,
-      new Promise<null>((resolve) => {
-        timer = setTimeout(() => {
-          resolve(null);
-        }, timeoutMs);
-      })
-    ]);
-  } finally {
-    if (timer !== undefined) clearTimeout(timer);
-  }
-};
 
 const mapMinecraftPingToHytaleStatus = (raw: McApiResponse): HytaleServerStatus => {
   const status = normalizeMinecraftServerStatus(raw);
@@ -60,15 +44,15 @@ const mapMinecraftPingToHytaleStatus = (raw: McApiResponse): HytaleServerStatus 
 };
 
 export class LiveHytaleStatusAdapter implements HytaleStatusAdapter {
-  private readonly hyQueryProvider: HyQueryProvider;
+  private readonly oneQueryProvider: OneQueryProvider;
   private readonly minecraftPing: MinecraftCompatiblePing;
-  private readonly hyQueryTimeoutMs: number;
+  private readonly oneQueryTimeoutMs: number;
   private readonly pingTimeoutMs: number;
 
   constructor(options: LiveHytaleStatusAdapterOptions = {}) {
-    this.hyQueryProvider = options.hyQueryProvider ?? new LiveHyQueryProvider();
+    this.oneQueryProvider = options.oneQueryProvider ?? new LiveOneQueryProvider();
     this.minecraftPing = options.minecraftPing ?? pingMinecraftServer;
-    this.hyQueryTimeoutMs = options.hyQueryTimeoutMs ?? DEFAULT_ATTEMPT_TIMEOUT_MS;
+    this.oneQueryTimeoutMs = options.oneQueryTimeoutMs ?? DEFAULT_ATTEMPT_TIMEOUT_MS;
     this.pingTimeoutMs = options.pingTimeoutMs ?? DEFAULT_ATTEMPT_TIMEOUT_MS;
   }
 
@@ -77,20 +61,14 @@ export class LiveHytaleStatusAdapter implements HytaleStatusAdapter {
     if (validatePort(port) !== null) return null;
 
     try {
-      const hyQueryStatus = await withTimeout(
-        this.hyQueryProvider.query(host, port, this.hyQueryTimeoutMs),
-        this.hyQueryTimeoutMs
-      );
-      if (hyQueryStatus !== null) return hyQueryStatus;
+      const oneQueryStatus = await this.oneQueryProvider.query(host, port, this.oneQueryTimeoutMs);
+      if (oneQueryStatus !== null) return oneQueryStatus;
     } catch {
       // Fall through to Minecraft-compatible ping.
     }
 
     try {
-      const raw = await withTimeout(
-        this.minecraftPing(host, port, this.pingTimeoutMs),
-        this.pingTimeoutMs
-      );
+      const raw = await this.minecraftPing(host, port, this.pingTimeoutMs);
       return raw === null ? null : mapMinecraftPingToHytaleStatus(raw);
     } catch {
       return null;

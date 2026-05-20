@@ -7,5 +7,10 @@ export {
   type LiveHytaleStatusAdapterOptions,
   type MinecraftCompatiblePing
 } from "./live-adapter";
-export { LiveHyQueryProvider, type HyQueryProvider } from "./hyquery-provider";
+export {
+  LiveOneQueryProvider,
+  mapOneQueryResponseToStatus,
+  type OneQueryFn,
+  type OneQueryProvider
+} from "./onequery-provider";
 export { validateHost, validatePort } from "./validate";
