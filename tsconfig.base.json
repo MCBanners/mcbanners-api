@@ -33,7 +33,9 @@
       "@mcbanners/external-clients": ["packages/external-clients/src/index.ts"],
       "@mcbanners/external-clients/*": ["packages/external-clients/src/*"],
       "@mcbanners/minecraft-status": ["packages/minecraft-status/src/index.ts"],
-      "@mcbanners/minecraft-status/*": ["packages/minecraft-status/src/*"]
+      "@mcbanners/minecraft-status/*": ["packages/minecraft-status/src/*"],
+      "@mcbanners/hytale-status": ["packages/hytale-status/src/index.ts"],
+      "@mcbanners/hytale-status/*": ["packages/hytale-status/src/*"]
     }
   }
 }

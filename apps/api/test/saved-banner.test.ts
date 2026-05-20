@@ -7,6 +7,11 @@ import {
   type MinecraftStatusAdapter
 } from "@mcbanners/minecraft-status";
 import {
+  createFixtureHytaleAdapter,
+  HYTALE_STATUS_FIXTURES,
+  type HytaleStatusAdapter
+} from "@mcbanners/hytale-status";
+import {
   registerRendererFonts,
   type MemberBannerData,
   type ResourceBannerData,
@@ -168,7 +173,8 @@ const makeSavedApp = (
   minecraftAdapter: MinecraftStatusAdapter = createFixtureAdapter(MC_STATUS_FIXTURES),
   authorClients = { SPIGOT: new FixtureAuthorClient(FIXTURE_SPIGOT_AUTHOR) },
   memberClients = { BUILTBYBIT: new FixtureMemberClient(FIXTURE_BUILTBYBIT_MEMBER) },
-  teamClients = { POLYMART: new FixtureTeamClient(FIXTURE_POLYMART_TEAM) }
+  teamClients = { POLYMART: new FixtureTeamClient(FIXTURE_POLYMART_TEAM) },
+  hytaleAdapter: HytaleStatusAdapter = createFixtureHytaleAdapter(HYTALE_STATUS_FIXTURES)
 ) =>
   createApp(
     minecraftAdapter,
@@ -177,7 +183,10 @@ const makeSavedApp = (
     { savedBanners: repository },
     authorClients,
     memberClients,
-    teamClients
+    teamClients,
+    undefined,
+    undefined,
+    { hytaleAdapter }
   );
 
 const savedRow = (
@@ -443,6 +452,55 @@ describe("GET /banner/saved/:mnemonic.:outputType", () => {
 
     expect(res.status).toBe(200);
     expect(res.headers.get("Content-Type")).toBe("image/jpeg");
+    expect((await res.arrayBuffer()).byteLength).toBeGreaterThan(0);
+  });
+
+  it("defaults missing server_game metadata to Minecraft for saved server banners", async () => {
+    let minecraftCalls = 0;
+    let hytaleCalls = 0;
+    const minecraftAdapter: MinecraftStatusAdapter = {
+      getStatus: (host, port) => {
+        minecraftCalls += 1;
+        return createFixtureAdapter(MC_STATUS_FIXTURES).getStatus(host, port);
+      }
+    };
+    const hytaleAdapter: HytaleStatusAdapter = {
+      getStatus: () => {
+        hytaleCalls += 1;
+        return Promise.resolve(null);
+      }
+    };
+    const repository = new InMemorySavedBannerRepository([
+      savedRow({ mnemonic: "abcdefghijklmn" })
+    ]);
+
+    const res = await makeSavedApp(
+      repository,
+      undefined,
+      minecraftAdapter,
+      undefined,
+      undefined,
+      undefined,
+      hytaleAdapter
+    ).request("/banner/saved/abcdefghijklmn.png");
+
+    expect(res.status).toBe(200);
+    expect(minecraftCalls).toBe(1);
+    expect(hytaleCalls).toBe(0);
+  });
+
+  it("recalls a Hytale server saved banner through MINECRAFT_SERVER metadata", async () => {
+    const repository = new InMemorySavedBannerRepository([
+      savedRow({
+        mnemonic: "abcdefghijklmn",
+        metadata:
+          '{"server_host":"play.hytale.example","server_port":"5520","server_game":"hytale"}'
+      })
+    ]);
+    const res = await makeSavedApp(repository).request("/banner/saved/abcdefghijklmn.png");
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toBe("image/png");
     expect((await res.arrayBuffer()).byteLength).toBeGreaterThan(0);
   });
 

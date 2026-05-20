@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import type { MinecraftStatusAdapter } from "@mcbanners/minecraft-status";
+import { LiveHytaleStatusAdapter, type HytaleStatusAdapter } from "@mcbanners/hytale-status";
 import type { MemoryCache, CacheStats } from "@mcbanners/cache";
 import type { SavedBannerRepository } from "@mcbanners/db";
 import { validateAssetFiles } from "@mcbanners/banner-renderer/assets";
@@ -59,6 +60,7 @@ export interface AppMetrics {
 
 export interface AppOptions {
   readonly rateLimit?: RateLimitOptions;
+  readonly hytaleAdapter?: HytaleStatusAdapter;
 }
 
 export interface AppRepositories {
@@ -118,6 +120,7 @@ export const createApp = (
     caches?.mcStatus !== undefined
       ? new CachedMinecraftStatusAdapter(minecraftAdapter, caches.mcStatus)
       : minecraftAdapter;
+  const htAdapter: HytaleStatusAdapter = options?.hytaleAdapter ?? new LiveHytaleStatusAdapter();
 
   app.get("/health", (c) =>
     c.json({
@@ -174,10 +177,24 @@ export const createApp = (
   app.route("/banner/svc", createServiceCompatRoute());
 
   // Public compatibility route — matches legacy banner-api GET /server/:host/:port/...
-  app.route("/banner/server", createServerBannerRoute(mcAdapter, caches?.bannerImage));
+  app.route(
+    "/banner/server",
+    createServerBannerRoute({
+      minecraftAdapter: mcAdapter,
+      hytaleAdapter: htAdapter,
+      bannerCache: caches?.bannerImage
+    })
+  );
 
   // Internal dev alias (not part of the public API contract)
-  app.route("/server", createServerBannerRoute(mcAdapter, caches?.bannerImage));
+  app.route(
+    "/server",
+    createServerBannerRoute({
+      minecraftAdapter: mcAdapter,
+      hytaleAdapter: htAdapter,
+      bannerCache: caches?.bannerImage
+    })
+  );
 
   app.route(
     "/banner/resource",
@@ -207,6 +224,7 @@ export const createApp = (
       createSavedBannerRoute(
         repositories.savedBanners,
         mcAdapter,
+        htAdapter,
         resourceClients,
         authorClients ?? {},
         memberClients ?? {},

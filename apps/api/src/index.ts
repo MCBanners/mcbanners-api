@@ -1,6 +1,11 @@
 import { createApp, type AppMetrics, type AppOptions, type MetricsSnapshot } from "./app";
 import { createFixtureAdapter, LiveMinecraftStatusAdapter } from "@mcbanners/minecraft-status";
 import { MC_STATUS_FIXTURES } from "@mcbanners/minecraft-status";
+import {
+  createFixtureHytaleAdapter,
+  HYTALE_STATUS_FIXTURES,
+  LiveHytaleStatusAdapter
+} from "@mcbanners/hytale-status";
 import { MemoryCache } from "@mcbanners/cache";
 import { loadApiRuntimeConfig } from "@mcbanners/config";
 import { logger } from "@mcbanners/logger";
@@ -35,6 +40,9 @@ try {
 const minecraftAdapter = isDev
   ? createFixtureAdapter(MC_STATUS_FIXTURES)
   : new LiveMinecraftStatusAdapter();
+const hytaleAdapter = isDev
+  ? createFixtureHytaleAdapter(HYTALE_STATUS_FIXTURES)
+  : new LiveHytaleStatusAdapter();
 
 const { cacheTtl } = runtimeConfig;
 const mcStatusCache = new MemoryCache({ ttlMs: cacheTtl.minecraftStatusMs, maxEntries: 500 });
@@ -113,12 +121,13 @@ const appMetrics: AppMetrics | undefined = runtimeConfig.metricsEnabled
 
 const appOptions: AppOptions | undefined = runtimeConfig.rateLimit.enabled
   ? {
+      hytaleAdapter,
       rateLimit: {
         windowMs: runtimeConfig.rateLimit.windowMs,
         maxRequests: runtimeConfig.rateLimit.maxRequests
       }
     }
-  : undefined;
+  : { hytaleAdapter };
 
 const app = createApp(
   minecraftAdapter,

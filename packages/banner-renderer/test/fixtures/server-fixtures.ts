@@ -54,11 +54,21 @@ export const FIXTURE_EMPTY_VALUES_SERVER: ServerBannerData = {
   iconBase64: null
 };
 
+export const FIXTURE_UNKNOWN_MAX_SERVER: ServerBannerData = {
+  name: "play.hytale.example",
+  version: "Hytale",
+  motd: "Hytale server",
+  onlinePlayers: 42,
+  maxPlayers: null,
+  iconBase64: null
+};
+
 /** All fixtures as an array for parameterized tests. */
 export const ALL_FIXTURES: readonly { label: string; fixture: ServerBannerData }[] = [
   { label: "standard-with-icon", fixture: FIXTURE_STANDARD_SERVER },
   { label: "no-icon", fixture: FIXTURE_NO_ICON_SERVER },
   { label: "long-motd", fixture: FIXTURE_LONG_MOTD_SERVER },
   { label: "unicode", fixture: FIXTURE_UNICODE_SERVER },
-  { label: "empty-values", fixture: FIXTURE_EMPTY_VALUES_SERVER }
+  { label: "empty-values", fixture: FIXTURE_EMPTY_VALUES_SERVER },
+  { label: "unknown-max", fixture: FIXTURE_UNKNOWN_MAX_SERVER }
 ];

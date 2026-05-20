@@ -19,7 +19,8 @@ import {
   FIXTURE_EMPTY_VALUES_SERVER,
   FIXTURE_LONG_MOTD_SERVER,
   FIXTURE_NO_ICON_SERVER,
-  FIXTURE_STANDARD_SERVER
+  FIXTURE_STANDARD_SERVER,
+  FIXTURE_UNKNOWN_MAX_SERVER
 } from "./fixtures/server-fixtures";
 
 // ─── parseServerBannerSettings ───────────────────────────────────────────────
@@ -199,6 +200,15 @@ describe("buildServerBannerNodes", () => {
     );
     expect(playersNode?.content).toContain("42500");
     expect(playersNode?.content).toContain("200000");
+    expect(playersNode?.content).toBe("42500 / 200000 players online");
+  });
+
+  test("players TextNode omits max count when maxPlayers is null", () => {
+    const nodes = buildServerBannerNodes(FIXTURE_UNKNOWN_MAX_SERVER, DEFAULT_SERVER_BANNER_SETTINGS);
+    const playersNode = nodes.find(
+      (n): n is TextNode => n.type === "text" && n.y === DEFAULT_SERVER_BANNER_SETTINGS.players.y
+    );
+    expect(playersNode?.content).toBe("42 players online");
   });
 
   test("players omitted when enable=false", () => {

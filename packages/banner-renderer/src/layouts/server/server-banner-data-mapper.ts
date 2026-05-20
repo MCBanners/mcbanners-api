@@ -1,4 +1,5 @@
 import type { MinecraftServerStatus } from "@mcbanners/minecraft-status";
+import type { HytaleServerStatus } from "@mcbanners/hytale-status";
 import type { ServerBannerData } from "./server-banner-data";
 
 const DATA_URI_PREFIX = "data:image/png;base64,";
@@ -27,3 +28,14 @@ export const mapStatusToServerBannerData = (status: MinecraftServerStatus): Serv
     iconBase64
   };
 };
+
+export const mapHytaleStatusToServerBannerData = (
+  status: HytaleServerStatus
+): ServerBannerData => ({
+  name: status.host,
+  version: status.version ?? "Hytale",
+  motd: status.motd.clean ?? status.motd.raw ?? "Hytale server",
+  onlinePlayers: status.players.online,
+  maxPlayers: status.players.max,
+  iconBase64: null
+});

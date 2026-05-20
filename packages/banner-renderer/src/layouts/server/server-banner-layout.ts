@@ -181,7 +181,10 @@ export const buildServerBannerNodes = (
 
   // Players
   if (settings.players.enable) {
-    const raw = `${String(data.onlinePlayers)} / ${String(data.maxPlayers)} players online`;
+    const raw =
+      data.maxPlayers === null
+        ? `${String(data.onlinePlayers)} players online`
+        : `${String(data.onlinePlayers)} / ${String(data.maxPlayers)} players online`;
     nodes.push(
       makeTextNode(settings.players, settings.players.display || raw, secondaryColor, shadowForText)
     );

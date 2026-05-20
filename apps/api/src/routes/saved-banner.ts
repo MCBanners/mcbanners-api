@@ -9,6 +9,7 @@ import {
   createCanvasSurface,
   encodeJpg,
   encodePng,
+  mapHytaleStatusToServerBannerData,
   mapStatusToServerBannerData,
   parseAuthorBannerSettings,
   parseMemberBannerSettings,
@@ -38,6 +39,7 @@ import type {
   TeamClient
 } from "@mcbanners/external-clients";
 import type { MinecraftStatusAdapter } from "@mcbanners/minecraft-status";
+import type { HytaleStatusAdapter } from "@mcbanners/hytale-status";
 import {
   decodeBannerTypeOrdinal,
   parseSavedBannerMetadata,
@@ -277,6 +279,7 @@ const backendForAuthorBannerType = (bannerType: BannerType): ServiceBackend | nu
 export class SavedBannerRecallService {
   constructor(
     private readonly minecraftAdapter: MinecraftStatusAdapter,
+    private readonly hytaleAdapter: HytaleStatusAdapter,
     private readonly resourceClients: ResourceClients,
     private readonly authorClients: AuthorClients,
     private readonly memberClients: MemberClients,
@@ -306,7 +309,7 @@ export class SavedBannerRecallService {
     validateSavedBannerMetadata(bannerType, metadata);
 
     if (bannerType === "MINECRAFT_SERVER") {
-      return await this.renderMinecraftServer(metadata, settings, outputType);
+      return await this.renderGameServer(metadata, settings, outputType);
     }
 
     const backend = backendForResourceBannerType(bannerType);
@@ -330,7 +333,7 @@ export class SavedBannerRecallService {
     throw new UnsupportedSavedBannerTypeError(bannerType);
   }
 
-  private async renderMinecraftServer(
+  private async renderGameServer(
     metadata: SavedBannerJsonMap,
     settings: SavedBannerJsonMap,
     outputType: SavedBannerOutputType
@@ -342,14 +345,25 @@ export class SavedBannerRecallService {
     const parsedPort =
       metadata["server_port"] === undefined ? 25565 : Number.parseInt(metadata["server_port"], 10);
     const port = Number.isFinite(parsedPort) ? parsedPort : 25565;
-    const status = await this.minecraftAdapter.getStatus(host.toLowerCase(), port);
-    if (status === null) {
-      return null;
+
+    const game = metadata["server_game"] ?? "minecraft";
+    if (game !== "minecraft" && game !== "hytale") {
+      throw new SavedBannerDataError("Saved Minecraft server banner has invalid server_game");
     }
 
     ensureFonts();
     const style = parseBannerStyleSettings(settings) ?? undefined;
-    const data = mapStatusToServerBannerData(status);
+    const data =
+      game === "hytale"
+        ? await (async () => {
+            const status = await this.hytaleAdapter.getStatus(host.toLowerCase(), port);
+            return status === null ? null : mapHytaleStatusToServerBannerData(status);
+          })()
+        : await (async () => {
+            const status = await this.minecraftAdapter.getStatus(host.toLowerCase(), port);
+            return status === null ? null : mapStatusToServerBannerData(status);
+          })();
+    if (data === null) return null;
     const nodes = buildServerBannerNodes(data, parseServerBannerSettings(settings), style);
     const surface = createCanvasSurface(SERVER_BANNER_WIDTH, SERVER_BANNER_HEIGHT);
     for (const node of nodes) {
@@ -485,6 +499,7 @@ export class SavedBannerRecallService {
 export const createSavedBannerRoute = (
   repository: SavedBannerRepository,
   minecraftAdapter: MinecraftStatusAdapter,
+  hytaleAdapter: HytaleStatusAdapter,
   resourceClients: ResourceClients,
   authorClients: AuthorClients = {},
   memberClients: MemberClients = {},
@@ -493,6 +508,7 @@ export const createSavedBannerRoute = (
   const route = new Hono();
   const recall = new SavedBannerRecallService(
     minecraftAdapter,
+    hytaleAdapter,
     resourceClients,
     authorClients,
     memberClients,

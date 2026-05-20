@@ -1,6 +1,11 @@
 import { describe, it, expect, beforeAll } from "bun:test";
 import { createApp } from "../src/app";
 import { createFixtureAdapter, MC_STATUS_FIXTURES } from "@mcbanners/minecraft-status";
+import {
+  createFixtureHytaleAdapter,
+  HYTALE_STATUS_FIXTURES,
+  type HytaleStatusAdapter
+} from "@mcbanners/hytale-status";
 import { registerRendererFonts } from "@mcbanners/banner-renderer";
 import { MemoryCache } from "@mcbanners/cache";
 
@@ -11,6 +16,19 @@ beforeAll(() => {
 
 const adapter = createFixtureAdapter(MC_STATUS_FIXTURES);
 const app = createApp(adapter, {});
+const hytaleAdapter = createFixtureHytaleAdapter(HYTALE_STATUS_FIXTURES);
+const hytaleApp = createApp(
+  adapter,
+  {},
+  undefined,
+  undefined,
+  undefined,
+  undefined,
+  undefined,
+  undefined,
+  undefined,
+  { hytaleAdapter }
+);
 
 // ---------------------------------------------------------------------------
 // Health check
@@ -569,5 +587,135 @@ describe("Cache key normalization", () => {
     const s = cache.stats();
     expect(s.sets).toBe(1);
     expect(s.evictions).toBe(0); // rendered PNG is well under 10 MB
+  });
+});
+
+describe("explicit game server banner routes", () => {
+  it("old Minecraft PNG, JPG, and isValid routes still work", async () => {
+    const png = await hytaleApp.request("/banner/server/mc.hypixel.net/25565/banner.png");
+    const jpg = await hytaleApp.request("/banner/server/mc.hypixel.net/25565/banner.jpg");
+    const valid = await hytaleApp.request("/banner/server/mc.hypixel.net/25565/isValid");
+
+    expect(png.status).toBe(200);
+    expect(png.headers.get("Content-Type")).toBe("image/png");
+    expect(jpg.status).toBe(200);
+    expect(jpg.headers.get("Content-Type")).toBe("image/jpeg");
+    expect(await valid.json()).toEqual({ valid: true });
+  });
+
+  it("new explicit Minecraft PNG, JPG, and isValid routes work", async () => {
+    const png = await hytaleApp.request("/banner/server/minecraft/mc.hypixel.net/25565/banner.png");
+    const jpg = await hytaleApp.request("/banner/server/minecraft/mc.hypixel.net/25565/banner.jpg");
+    const valid = await hytaleApp.request("/banner/server/minecraft/mc.hypixel.net/25565/isValid");
+
+    expect(png.status).toBe(200);
+    expect(png.headers.get("Content-Type")).toBe("image/png");
+    expect(jpg.status).toBe(200);
+    expect(jpg.headers.get("Content-Type")).toBe("image/jpeg");
+    expect(await valid.json()).toEqual({ valid: true });
+  });
+
+  it("new explicit Hytale PNG, JPG, and isValid routes work with fixture adapter", async () => {
+    const png = await hytaleApp.request("/banner/server/hytale/play.hytale.example/5520/banner.png");
+    const jpg = await hytaleApp.request("/banner/server/hytale/play.hytale.example/5520/banner.jpg");
+    const valid = await hytaleApp.request("/banner/server/hytale/play.hytale.example/5520/isValid");
+
+    expect(png.status).toBe(200);
+    expect(png.headers.get("Content-Type")).toBe("image/png");
+    expect(jpg.status).toBe(200);
+    expect(jpg.headers.get("Content-Type")).toBe("image/jpeg");
+    expect(await valid.json()).toEqual({ valid: true });
+  });
+
+  it("unknown game segment returns 404", async () => {
+    const res = await hytaleApp.request("/banner/server/java/mc.hypixel.net/25565/banner.png");
+    expect(res.status).toBe(404);
+  });
+
+  it("invalid port on a known game render route returns 400", async () => {
+    const res = await hytaleApp.request("/banner/server/hytale/play.hytale.example/99999/banner.png");
+    expect(res.status).toBe(400);
+  });
+
+  it("Hytale render returns 404 when no Hytale provider succeeds", async () => {
+    const nullHytaleAdapter: HytaleStatusAdapter = {
+      getStatus: () => Promise.resolve(null)
+    };
+    const nullApp = createApp(
+      adapter,
+      {},
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      { hytaleAdapter: nullHytaleAdapter }
+    );
+
+    const res = await nullApp.request("/banner/server/hytale/play.hytale.example/5520/banner.png");
+    expect(res.status).toBe(404);
+  });
+
+  it("cache key separates Minecraft and Hytale for the same host and port", async () => {
+    const cache = new MemoryCache({ ttlMs: 60_000, maxBytes: 10_000_000 });
+    const sameHostMinecraftAdapter = createFixtureAdapter({
+      ...MC_STATUS_FIXTURES,
+      "play.hytale.example:5520": {
+        host: "play.hytale.example",
+        port: 5520,
+        version: "1.20.4",
+        players: { online: 42, max: 100 },
+        motd: { raw: "Minecraft", colorless: "Minecraft", formatted: "Minecraft" }
+      }
+    });
+    const cachedApp = createApp(
+      sameHostMinecraftAdapter,
+      {},
+      { bannerImage: cache },
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      { hytaleAdapter }
+    );
+
+    const mc = await cachedApp.request(
+      "/banner/server/minecraft/play.hytale.example/5520/banner.png"
+    );
+    const ht = await cachedApp.request("/banner/server/hytale/play.hytale.example/5520/banner.png");
+
+    expect(mc.status).toBe(200);
+    expect(ht.status).toBe(200);
+    expect(cache.stats().sets).toBe(2);
+  });
+
+  it("legacy Minecraft and explicit Minecraft normalize to the same cache identity", async () => {
+    const cache = new MemoryCache({ ttlMs: 60_000, maxBytes: 10_000_000 });
+    const cachedApp = createApp(
+      adapter,
+      {},
+      { bannerImage: cache },
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      { hytaleAdapter }
+    );
+
+    const legacy = await cachedApp.request("/banner/server/mc.hypixel.net/25565/banner.png");
+    const explicit = await cachedApp.request(
+      "/banner/server/minecraft/mc.hypixel.net/25565/banner.png"
+    );
+
+    expect(legacy.status).toBe(200);
+    expect(explicit.status).toBe(200);
+    expect(cache.stats().sets).toBe(1);
+    expect(cache.stats().hits).toBe(1);
   });
 });

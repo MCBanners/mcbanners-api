@@ -14,8 +14,8 @@ export interface ServerBannerData {
   readonly motd: string;
   /** Number of players currently online. */
   readonly onlinePlayers: number;
-  /** Maximum player capacity. */
-  readonly maxPlayers: number;
+  /** Maximum player capacity, or null when the provider does not expose it. */
+  readonly maxPlayers: number | null;
   /**
    * Base64-encoded server icon PNG (64×64 pixels), without the
    * `data:image/png;base64,` prefix. Null when the server has no icon.

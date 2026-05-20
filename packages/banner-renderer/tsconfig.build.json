@@ -11,6 +11,7 @@
   "include": ["src/**/*.ts"],
   "references": [
     { "path": "../domain/tsconfig.build.json" },
+    { "path": "../hytale-status/tsconfig.build.json" },
     { "path": "../minecraft-status/tsconfig.build.json" }
   ]
 }
