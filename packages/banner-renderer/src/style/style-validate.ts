@@ -1,4 +1,4 @@
-import { readNamespacedRaw, type RawQuery } from "@mcbanners/domain";
+import { type RawQuery, readNamespacedRaw } from "@mcbanners/domain";
 
 import { parseHexColor } from "./hex-color";
 import { shadowPresetValues } from "./shadow-preset";

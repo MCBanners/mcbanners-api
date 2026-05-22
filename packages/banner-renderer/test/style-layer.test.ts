@@ -1,16 +1,16 @@
 import { describe, expect, test } from "bun:test";
 
 import {
-  parseHexColor,
-  parseBannerStyleSettings,
-  validateBannerStyleSettings,
-  canonicalizeBannerStyleSettings,
-  SHADOW_PRESETS,
   buildResourceBannerNodes,
-  DEFAULT_RESOURCE_BANNER_SETTINGS
+  canonicalizeBannerStyleSettings,
+  DEFAULT_RESOURCE_BANNER_SETTINGS,
+  parseBannerStyleSettings,
+  parseHexColor,
+  SHADOW_PRESETS,
+  validateBannerStyleSettings
 } from "../src";
-import type { RenderNode } from "../src/nodes/render-node";
 import type { FillRectNode } from "../src/nodes/fill-rect-node";
+import type { RenderNode } from "../src/nodes/render-node";
 import type { TextNode } from "../src/nodes/text-node";
 import { FIXTURE_SPIGOT_FREE } from "./fixtures/resource-fixtures";
 

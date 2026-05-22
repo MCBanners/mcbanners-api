@@ -1,12 +1,12 @@
 import {
   backgroundTemplateValues,
   fontFaceValues,
+  type RawQuery,
   readBooleanParameter,
   readEnumParameter,
   readIntegerParameter,
   readStringParameter,
-  textAlignValues,
-  type RawQuery
+  textAlignValues
 } from "@mcbanners/domain";
 
 import { DEFAULT_AUTHOR_BANNER_SETTINGS } from "./author-banner-defaults";

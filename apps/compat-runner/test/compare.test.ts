@@ -1,15 +1,14 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
-import { join } from "node:path";
-import { tmpdir } from "node:os";
-
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import {
   compareCase,
   compareFixture,
+  type FetchLike,
   jsonShape,
-  normalizeContentType,
-  type FetchLike
+  normalizeContentType
 } from "../src/compare";
 import { parseImageDimensions } from "../src/image";
 import { runCli } from "../src/index";

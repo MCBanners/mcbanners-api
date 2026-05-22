@@ -4,7 +4,6 @@ import { createHash } from "node:crypto";
 
 import {
   BLACK,
-  WHITE,
   buildFontSpec,
   createCanvasSurface,
   encodeJpg,
@@ -15,7 +14,8 @@ import {
   renderSpriteNode,
   renderTextNode,
   renderWrappedTextNode,
-  rgbaColor
+  rgbaColor,
+  WHITE
 } from "@mcbanners/banner-renderer";
 
 const pngSignature = [0x89, 0x50, 0x4e, 0x47] as const;

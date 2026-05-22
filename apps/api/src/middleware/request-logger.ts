@@ -1,5 +1,5 @@
-import type { MiddlewareHandler } from "hono";
 import { logger } from "@mcbanners/logger";
+import type { MiddlewareHandler } from "hono";
 
 const isValidRequestId = (id: string): boolean => {
   if (id.length > 128) return false;

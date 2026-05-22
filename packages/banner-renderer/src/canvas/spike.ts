@@ -5,10 +5,10 @@ import { fileURLToPath } from "node:url";
 import { createCanvas, GlobalFonts, loadImage } from "@napi-rs/canvas";
 
 import {
+  type AssetReference,
   rendererAssetManifest,
   resolveAssetPath,
-  validateAssetFiles,
-  type AssetReference
+  validateAssetFiles
 } from "../assets";
 
 export interface CanvasSpikeResult {

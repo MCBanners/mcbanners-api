@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { z } from "zod";
 
-import { fetchImageBase64, fetchJson, type FetchFn } from "../src/http-client";
+import { type FetchFn, fetchImageBase64, fetchJson } from "../src/http-client";
 
 const JsonSchema = z.object({ ok: z.boolean() });
 const tinyPng = new Uint8Array([0x89, 0x50, 0x4e, 0x47]);

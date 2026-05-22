@@ -1,8 +1,8 @@
-import { compareFixture } from "./compare";
+import { HELP_TEXT, parseCliOptions } from "./cli";
 import type { FetchLike } from "./compare";
+import { compareFixture } from "./compare";
 import { loadCompatFixture } from "./fixture";
 import { renderMarkdownSummary, writeReports } from "./report";
-import { HELP_TEXT, parseCliOptions } from "./cli";
 
 const sanitizeUrl = (value: string): string => {
   const url = new URL(value);

@@ -1,4 +1,4 @@
-import { describe, it, expect } from "bun:test";
+import { describe, expect, it } from "bun:test";
 import { HangarResourceClient } from "../src/hangar-client";
 import type { FetchFn } from "../src/http-client";
 

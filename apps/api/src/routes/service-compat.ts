@@ -1,5 +1,5 @@
-import { Hono } from "hono";
 import { compatibilityManifest } from "@mcbanners/domain";
+import { Hono } from "hono";
 
 const displayName = (value: string): string =>
   value

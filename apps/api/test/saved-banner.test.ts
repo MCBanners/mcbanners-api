@@ -1,25 +1,24 @@
 import { beforeAll, describe, expect, it } from "bun:test";
-
-import { createApp, type ResourceClients } from "../src/app";
+import type { AuthorBannerData } from "@mcbanners/banner-renderer";
+import {
+  type MemberBannerData,
+  type ResourceBannerData,
+  registerRendererFonts,
+  type TeamBannerData
+} from "@mcbanners/banner-renderer";
+import {
+  decodeBannerTypeOrdinal,
+  type InsertSavedBannerInput,
+  prepareSavedBannerInsert,
+  type SavedBannerRepository,
+  type SavedBannerRow
+} from "@mcbanners/db";
 import {
   createFixtureAdapter,
   MC_STATUS_FIXTURES,
   type MinecraftStatusAdapter
 } from "@mcbanners/minecraft-status";
-import {
-  registerRendererFonts,
-  type MemberBannerData,
-  type ResourceBannerData,
-  type TeamBannerData
-} from "@mcbanners/banner-renderer";
-import {
-  decodeBannerTypeOrdinal,
-  prepareSavedBannerInsert,
-  type InsertSavedBannerInput,
-  type SavedBannerRepository,
-  type SavedBannerRow
-} from "@mcbanners/db";
-import type { AuthorBannerData } from "@mcbanners/banner-renderer";
+import { createApp, type ResourceClients } from "../src/app";
 
 beforeAll(() => {
   registerRendererFonts();

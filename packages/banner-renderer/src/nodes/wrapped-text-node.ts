@@ -1,8 +1,8 @@
-import type { RgbaColor } from "../types/rgba-color";
+import type { TextShadow } from "../style/shadow-preset";
 import type { RendererFontFace } from "../types/font-face";
 import type { FontWeight } from "../types/font-weight";
+import type { RgbaColor } from "../types/rgba-color";
 import type { RendererTextAlign } from "../types/text-align";
-import type { TextShadow } from "../style/shadow-preset";
 
 export interface WrappedTextNode {
   readonly type: "wrapped-text";

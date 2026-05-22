@@ -1,7 +1,6 @@
-import { MysqlDialect, sql, type Dialect, type Kysely } from "kysely";
-import { createPool, type PoolOptions } from "mysql2";
-
 import type { MariaDbConnectionConfig } from "@mcbanners/config";
+import { type Dialect, type Kysely, MysqlDialect, sql } from "kysely";
+import { createPool, type PoolOptions } from "mysql2";
 
 import { createDb } from "./db";
 import type { MCBannersDatabase } from "./schema";

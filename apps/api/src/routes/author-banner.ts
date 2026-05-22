@@ -1,6 +1,3 @@
-import { Hono } from "hono";
-import type { MemoryCache } from "@mcbanners/cache";
-import { normalizeResourceId, type AuthorClient } from "@mcbanners/external-clients";
 import {
   AUTHOR_BANNER_HEIGHT,
   AUTHOR_BANNER_WIDTH,
@@ -9,11 +6,14 @@ import {
   encodeJpg,
   encodePng,
   parseAuthorBannerSettings,
+  parseBannerStyleSettings,
   registerRendererFonts,
   renderNode,
-  validateBannerStyleSettings,
-  parseBannerStyleSettings
+  validateBannerStyleSettings
 } from "@mcbanners/banner-renderer";
+import type { MemoryCache } from "@mcbanners/cache";
+import { type AuthorClient, normalizeResourceId } from "@mcbanners/external-clients";
+import { Hono } from "hono";
 import { extractRouteRemainder, parseResourceRoutePath } from "./resource-route-parser";
 
 const BANNER_FILENAME_RE = /^banner\.(png|jpg)$/i;

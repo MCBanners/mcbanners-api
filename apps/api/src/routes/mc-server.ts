@@ -1,5 +1,5 @@
-import { Hono } from "hono";
 import type { MinecraftStatusAdapter } from "@mcbanners/minecraft-status";
+import { Hono } from "hono";
 
 /**
  * Mounts mc-api-compatible routes under /mc:
@@ -25,7 +25,7 @@ export const createMcServerRoute = (adapter: MinecraftStatusAdapter): Hono => {
     }
 
     const port = portStr !== undefined ? parseInt(portStr, 10) : 25565;
-    if (isNaN(port) || port < 1 || port > 65535) {
+    if (Number.isNaN(port) || port < 1 || port > 65535) {
       return c.json({ error: "Invalid port" }, 400);
     }
 
@@ -58,7 +58,7 @@ export const createMcServerRoute = (adapter: MinecraftStatusAdapter): Hono => {
     }
 
     const port = portStr !== undefined ? parseInt(portStr, 10) : 25565;
-    if (isNaN(port) || port < 1 || port > 65535) {
+    if (Number.isNaN(port) || port < 1 || port > 65535) {
       return c.json({ error: "Invalid port" }, 400);
     }
 

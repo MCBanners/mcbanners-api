@@ -1,7 +1,6 @@
 import { describe, expect, it } from "bun:test";
-
-import { createApp } from "../src/app";
 import { createFixtureAdapter, MC_STATUS_FIXTURES } from "@mcbanners/minecraft-status";
+import { createApp } from "../src/app";
 
 const makeApp = () => createApp(createFixtureAdapter(MC_STATUS_FIXTURES), {});
 

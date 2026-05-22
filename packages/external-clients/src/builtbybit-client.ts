@@ -1,11 +1,11 @@
-import { z } from "zod";
 import type {
   AuthorBannerData,
   MemberBannerData,
   ResourceBannerData
 } from "@mcbanners/banner-renderer";
+import { z } from "zod";
+import { type FetchFn, fetchImageBase64, fetchJson, type HttpClientOptions } from "./http-client";
 import type { AuthorClient, MemberClient, ResourceClient } from "./resource-client";
-import { fetchImageBase64, fetchJson, type FetchFn, type HttpClientOptions } from "./http-client";
 import { normalizeResourceId } from "./resource-id";
 
 const BBB_BASE_URL = "https://api.builtbybit.com/v1/";

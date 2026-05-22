@@ -1,43 +1,34 @@
-import { Hono, type Context } from "hono";
-
 import {
-  buildResourceBannerNodes,
-  buildServerBannerNodes,
+  AUTHOR_BANNER_HEIGHT,
+  AUTHOR_BANNER_WIDTH,
   buildAuthorBannerNodes,
   buildMemberBannerNodes,
+  buildResourceBannerNodes,
+  buildServerBannerNodes,
   buildTeamBannerNodes,
+  canonicalizeBannerStyleSettings,
   createCanvasSurface,
   encodeJpg,
   encodePng,
+  MEMBER_BANNER_HEIGHT,
+  MEMBER_BANNER_WIDTH,
   mapStatusToServerBannerData,
   parseAuthorBannerSettings,
+  parseBannerStyleSettings,
   parseMemberBannerSettings,
   parseResourceBannerSettings,
   parseServerBannerSettings,
   parseTeamBannerSettings,
-  AUTHOR_BANNER_HEIGHT,
-  AUTHOR_BANNER_WIDTH,
-  MEMBER_BANNER_HEIGHT,
-  MEMBER_BANNER_WIDTH,
-  registerRendererFonts,
-  renderNode,
   RESOURCE_BANNER_HEIGHT,
   RESOURCE_BANNER_WIDTH,
+  registerRendererFonts,
+  renderNode,
   SERVER_BANNER_HEIGHT,
   SERVER_BANNER_WIDTH,
   TEAM_BANNER_HEIGHT,
   TEAM_BANNER_WIDTH,
-  parseBannerStyleSettings,
-  validateBannerStyleSettings,
-  canonicalizeBannerStyleSettings
+  validateBannerStyleSettings
 } from "@mcbanners/banner-renderer";
-import type {
-  AuthorClient,
-  MemberClient,
-  ResourceClient,
-  TeamClient
-} from "@mcbanners/external-clients";
-import type { MinecraftStatusAdapter } from "@mcbanners/minecraft-status";
 import {
   decodeBannerTypeOrdinal,
   parseSavedBannerMetadata,
@@ -46,11 +37,18 @@ import {
   type SavedBannerRepository,
   type SavedBannerRow
 } from "@mcbanners/db";
-import { bannerTypeSchema, type BannerType, type ServiceBackend } from "@mcbanners/domain";
-
-import type { ResourceClients } from "./resource-banner";
+import { type BannerType, bannerTypeSchema, type ServiceBackend } from "@mcbanners/domain";
+import type {
+  AuthorClient,
+  MemberClient,
+  ResourceClient,
+  TeamClient
+} from "@mcbanners/external-clients";
+import type { MinecraftStatusAdapter } from "@mcbanners/minecraft-status";
+import { type Context, Hono } from "hono";
 import type { AuthorClients } from "./author-banner";
 import type { MemberClients } from "./member-banner";
+import type { ResourceClients } from "./resource-banner";
 import type { TeamClients } from "./team-banner";
 
 const SAVED_BANNER_FILENAME_RE = /^([A-Za-z]{14})\.(png|jpg)$/i;

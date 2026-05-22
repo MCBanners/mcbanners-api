@@ -18,7 +18,6 @@ export class CacheNamespace {
     return `${this.prefix}:${k}`;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters
   get<T>(key: string): T | undefined {
     return this.cache.get<T>(this.key(key));
   }
@@ -33,7 +32,7 @@ export class CacheNamespace {
 
   /** Removes all entries belonging to this namespace. */
   clear(): void {
-    this.cache.clearPrefix(this.prefix + ":");
+    this.cache.clearPrefix(`${this.prefix}:`);
   }
 
   getOrSet<T>(key: string, fn: () => Promise<T>, opts?: GetOrSetOptions<T>): Promise<T> {

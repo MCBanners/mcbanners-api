@@ -12,11 +12,11 @@ import {
   renderNode
 } from "../src";
 import {
-  DEFAULT_SERVER_BANNER_SETTINGS,
-  SERVER_BANNER_HEIGHT,
-  SERVER_BANNER_WIDTH,
   buildServerBannerNodes,
-  parseServerBannerSettings
+  DEFAULT_SERVER_BANNER_SETTINGS,
+  parseServerBannerSettings,
+  SERVER_BANNER_HEIGHT,
+  SERVER_BANNER_WIDTH
 } from "../src/layouts/server";
 import {
   ALL_FIXTURES,

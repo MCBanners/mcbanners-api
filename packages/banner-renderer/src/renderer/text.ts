@@ -1,11 +1,11 @@
 import type { TextNode } from "../nodes/text-node";
 import type { WrappedTextNode } from "../nodes/wrapped-text-node";
-import type { RendererTextAlign } from "../types/text-align";
+import { computeAlignedX } from "../text/align";
+import { truncateText } from "../text/truncate";
+import { wrapText } from "../text/wrap";
 import type { RenderSurface } from "../types/render-surface";
 import { rgbaColorToString } from "../types/rgba-color";
-import { wrapText } from "../text/wrap";
-import { truncateText } from "../text/truncate";
-import { computeAlignedX } from "../text/align";
+import type { RendererTextAlign } from "../types/text-align";
 import { buildFontSpec } from "./font-registry";
 
 const drawAligned = (

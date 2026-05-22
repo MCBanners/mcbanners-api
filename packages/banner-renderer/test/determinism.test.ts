@@ -3,7 +3,6 @@ import { describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
 
 import {
-  WHITE,
   createCanvasSurface,
   encodeJpg,
   encodePng,
@@ -11,7 +10,8 @@ import {
   renderImageNode,
   renderSpriteNode,
   renderTextNode,
-  renderWrappedTextNode
+  renderWrappedTextNode,
+  WHITE
 } from "@mcbanners/banner-renderer";
 
 const sha256 = (buf: Buffer): string => createHash("sha256").update(buf).digest("hex");

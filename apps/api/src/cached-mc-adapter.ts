@@ -1,5 +1,5 @@
-import { MemoryCache } from "@mcbanners/cache";
-import type { MinecraftStatusAdapter, MinecraftServerStatus } from "@mcbanners/minecraft-status";
+import type { MemoryCache } from "@mcbanners/cache";
+import type { MinecraftServerStatus, MinecraftStatusAdapter } from "@mcbanners/minecraft-status";
 
 /**
  * Wraps any {@link MinecraftStatusAdapter} with an in-memory TTL cache.

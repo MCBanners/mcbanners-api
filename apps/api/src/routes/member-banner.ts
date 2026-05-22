@@ -1,5 +1,3 @@
-import { Hono } from "hono";
-import type { MemoryCache } from "@mcbanners/cache";
 import {
   buildMemberBannerNodes,
   createCanvasSurface,
@@ -7,13 +5,15 @@ import {
   encodePng,
   MEMBER_BANNER_HEIGHT,
   MEMBER_BANNER_WIDTH,
+  parseBannerStyleSettings,
   parseMemberBannerSettings,
   registerRendererFonts,
   renderNode,
-  validateBannerStyleSettings,
-  parseBannerStyleSettings
+  validateBannerStyleSettings
 } from "@mcbanners/banner-renderer";
-import { normalizeResourceId, type MemberClient } from "@mcbanners/external-clients";
+import type { MemoryCache } from "@mcbanners/cache";
+import { type MemberClient, normalizeResourceId } from "@mcbanners/external-clients";
+import { Hono } from "hono";
 import { extractRouteRemainder, parseResourceRoutePath } from "./resource-route-parser";
 
 const BANNER_FILENAME_RE = /^banner\.(png|jpg)$/i;

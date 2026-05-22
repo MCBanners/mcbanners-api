@@ -1,11 +1,11 @@
-import { z } from "zod";
 import type {
   AuthorBannerData,
   ResourceBannerData,
   TeamBannerData
 } from "@mcbanners/banner-renderer";
+import { z } from "zod";
+import { type FetchFn, fetchImageBase64, fetchJson, type HttpClientOptions } from "./http-client";
 import type { AuthorClient, ResourceClient, TeamClient } from "./resource-client";
-import { fetchJson, fetchImageBase64, type FetchFn, type HttpClientOptions } from "./http-client";
 import { normalizeResourceId } from "./resource-id";
 
 const POLYMART_BASE_URL = "https://api.polymart.org/v1/";

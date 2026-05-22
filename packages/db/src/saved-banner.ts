@@ -1,13 +1,12 @@
-import { createPool } from "mysql2/promise";
-
-import type { Kysely } from "kysely";
-
 import {
+  type BannerType,
   bannerTypeByName,
   bannerTypeOrdinalMap,
-  generateMnemonic,
-  type BannerType
+  generateMnemonic
 } from "@mcbanners/domain";
+
+import type { Kysely } from "kysely";
+import { createPool } from "mysql2/promise";
 
 import type { MCBannersDatabase, NewSavedBannerRow, SavedBannerRow } from "./schema";
 

@@ -3,7 +3,7 @@
  * Exported for unit testing; no side effects, no I/O.
  */
 
-import { decodeBannerTypeOrdinal, type BannerType } from "@mcbanners/domain";
+import { type BannerType, decodeBannerTypeOrdinal } from "@mcbanners/domain";
 
 export type { BannerType };
 

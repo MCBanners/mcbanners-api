@@ -4,18 +4,17 @@ import { mapFontFace } from "../../compat/font-face";
 import { mapTextAlign } from "../../compat/text-align";
 import { resolveTextColor } from "../../compat/text-theme";
 import type { RenderNode } from "../../nodes/render-node";
-import type { BannerStyleSettings } from "../../style";
-import type { TextShadow } from "../../style";
+import type { BannerStyleSettings, TextShadow } from "../../style";
 import { SHADOW_PRESETS } from "../../style";
-import type { RgbaColor } from "../../types/rgba-color";
-import { WHITE, rgbaColor } from "../../types/rgba-color";
 import { abbreviateNumber } from "../../text/number-util";
+import type { RgbaColor } from "../../types/rgba-color";
+import { rgbaColor, WHITE } from "../../types/rgba-color";
+import type { AuthorBannerData } from "./author-banner-data";
 import {
   AUTHOR_BANNER_HEIGHT,
   AUTHOR_BANNER_LOGO_MAX_SIZE,
   AUTHOR_BANNER_WIDTH
 } from "./author-banner-defaults";
-import type { AuthorBannerData } from "./author-banner-data";
 import type { AuthorBannerSettings, AuthorBannerTextSettings } from "./author-banner-settings";
 
 const resolveStyleColor = (hexColor: string | null | undefined, fallback: RgbaColor): RgbaColor => {

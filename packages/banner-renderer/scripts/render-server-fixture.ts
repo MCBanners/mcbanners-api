@@ -17,10 +17,10 @@ import {
   renderNode
 } from "../src";
 import {
+  buildServerBannerNodes,
   DEFAULT_SERVER_BANNER_SETTINGS,
   SERVER_BANNER_HEIGHT,
-  SERVER_BANNER_WIDTH,
-  buildServerBannerNodes
+  SERVER_BANNER_WIDTH
 } from "../src/layouts/server";
 import { ALL_FIXTURES } from "../test/fixtures/server-fixtures";
 

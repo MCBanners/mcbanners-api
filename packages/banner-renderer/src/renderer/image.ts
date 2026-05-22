@@ -1,9 +1,8 @@
 import { loadImage } from "@napi-rs/canvas";
-
+import { rendererAssetManifest, resolveAssetPath } from "../assets";
 import type { ImageNode } from "../nodes/image-node";
 import type { SpriteNode } from "../nodes/sprite-node";
 import type { RenderSurface } from "../types/render-surface";
-import { rendererAssetManifest, resolveAssetPath } from "../assets";
 
 const loadManifestImage = async (assetKey: string): ReturnType<typeof loadImage> => {
   const asset = rendererAssetManifest.assets.find((a) => a.key === assetKey);

@@ -11,17 +11,17 @@
  * Tests are fixture-driven; no live network calls are made.
  */
 
-import { describe, it, expect } from "bun:test";
-import { SpigotResourceClient } from "../src/spigot-client";
-import { ModrinthResourceClient } from "../src/modrinth-client";
+import { describe, expect, it } from "bun:test";
+import type { ResourceBannerData } from "@mcbanners/banner-renderer";
+import { BuiltByBitResourceClient } from "../src/builtbybit-client";
 import { CurseForgeResourceClient } from "../src/curseforge-client";
 import { HangarResourceClient } from "../src/hangar-client";
+import type { FetchFn } from "../src/http-client";
+import { ModrinthResourceClient } from "../src/modrinth-client";
 import { OreResourceClient } from "../src/ore-client";
-import { BuiltByBitResourceClient } from "../src/builtbybit-client";
 import { PolymartResourceClient } from "../src/polymart-client";
 import type { ResourceClient } from "../src/resource-client";
-import type { ResourceBannerData } from "@mcbanners/banner-renderer";
-import type { FetchFn } from "../src/http-client";
+import { SpigotResourceClient } from "../src/spigot-client";
 
 // ---------------------------------------------------------------------------
 // Shared mock fetch factory

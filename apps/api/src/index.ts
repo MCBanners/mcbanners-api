@@ -1,10 +1,6 @@
-import { createApp, type AppMetrics, type AppOptions, type MetricsSnapshot } from "./app";
-import { createFixtureAdapter, LiveMinecraftStatusAdapter } from "@mcbanners/minecraft-status";
-import { MC_STATUS_FIXTURES } from "@mcbanners/minecraft-status";
+import { validateAssetFiles } from "@mcbanners/banner-renderer/assets";
 import { MemoryCache } from "@mcbanners/cache";
 import { loadApiRuntimeConfig } from "@mcbanners/config";
-import { logger } from "@mcbanners/logger";
-import { validateAssetFiles } from "@mcbanners/banner-renderer/assets";
 import {
   checkSavedBannerDb,
   createSavedBannerDb,
@@ -13,14 +9,21 @@ import {
   type SavedBannerRepository
 } from "@mcbanners/db";
 import {
-  SpigotResourceClient,
-  ModrinthResourceClient,
+  BuiltByBitResourceClient,
   CurseForgeResourceClient,
   HangarResourceClient,
+  ModrinthResourceClient,
   OreResourceClient,
-  BuiltByBitResourceClient,
-  PolymartResourceClient
+  PolymartResourceClient,
+  SpigotResourceClient
 } from "@mcbanners/external-clients";
+import { logger } from "@mcbanners/logger";
+import {
+  createFixtureAdapter,
+  LiveMinecraftStatusAdapter,
+  MC_STATUS_FIXTURES
+} from "@mcbanners/minecraft-status";
+import { type AppMetrics, type AppOptions, createApp, type MetricsSnapshot } from "./app";
 
 const isDev = process.env.NODE_ENV !== "production";
 const runtimeConfig = loadApiRuntimeConfig();

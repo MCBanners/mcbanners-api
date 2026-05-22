@@ -30,23 +30,22 @@ import { readSavedBannerCorpusRows, type SavedBannerRow } from "@mcbanners/db";
 import { decodeBannerTypeOrdinal } from "@mcbanners/domain";
 
 import {
-  classifyPreFlight,
-  classifyHttpStatus,
-  guardDbSafety,
-  redactDbUrl,
   aggregateSummary,
-  buildMetadataPreview,
-  parseBannerTypeFilter,
-  parseConcurrency,
-  parseClassificationFilter,
-  truncateStr,
-  runConcurrentQueue,
-  DEAD_UPSTREAM_CLASSIFICATIONS,
   type BannerType,
-  type RawRow,
+  buildMetadataPreview,
+  type CorpusClassification,
   type CorpusResult,
   type CorpusSummary,
-  type CorpusClassification
+  classifyHttpStatus,
+  classifyPreFlight,
+  guardDbSafety,
+  parseBannerTypeFilter,
+  parseClassificationFilter,
+  parseConcurrency,
+  type RawRow,
+  redactDbUrl,
+  runConcurrentQueue,
+  truncateStr
 } from "./corpus-helpers";
 
 // ---------------------------------------------------------------------------
@@ -198,7 +197,7 @@ const fetchBannerResponse = async (baseUrl: string, mnemonic: string): Promise<B
   };
 };
 
-const isImageContentType = (ct: string | null): boolean => ct !== null && ct.startsWith("image/");
+const isImageContentType = (ct: string | null): boolean => ct?.startsWith("image/") ?? false;
 
 const extractBodyPreview = (
   contentType: string | null,
@@ -576,7 +575,7 @@ const rawResults = await runConcurrentQueue(
   filteredRows as SavedBannerRow[],
   concurrency,
   (row) => processRow(baseUrl, row, saveDir, preFlightOnlyFilters),
-  (index, result) => {
+  (_index, result) => {
     processedCount++;
     if (result === null) {
       // Skipped due to skipApiCall

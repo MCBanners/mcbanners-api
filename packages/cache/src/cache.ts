@@ -1,5 +1,5 @@
-import type { CacheOptions, CacheStats, GetOrSetOptions, IMemoryCache } from "./types";
 import { CacheNamespace } from "./namespace";
+import type { CacheOptions, CacheStats, GetOrSetOptions, IMemoryCache } from "./types";
 
 interface CacheEntry {
   value: unknown;
@@ -38,7 +38,6 @@ export class MemoryCache implements IMemoryCache {
     this.maxBytes = opts.maxBytes ?? Infinity;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters
   get<T>(key: string): T | undefined {
     const entry = this.entries.get(key);
     if (entry === undefined) {

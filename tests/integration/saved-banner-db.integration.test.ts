@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 
 import { loadApiRuntimeConfig } from "@mcbanners/config";
+import type { MCBannersDatabase } from "@mcbanners/db";
 import {
   createSavedBannerDb,
   createSavedBannerRepository,
@@ -8,7 +9,6 @@ import {
   type SavedBannerRepository
 } from "@mcbanners/db";
 import type { Kysely } from "kysely";
-import type { MCBannersDatabase } from "@mcbanners/db";
 
 const databaseUrl = process.env.DATABASE_URL;
 const integrationEnabled = process.env.SAVED_BANNER_DB_INTEGRATION === "1";

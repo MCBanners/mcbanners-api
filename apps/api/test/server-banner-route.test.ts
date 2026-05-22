@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeAll } from "bun:test";
-import { createApp } from "../src/app";
-import { createFixtureAdapter, MC_STATUS_FIXTURES } from "@mcbanners/minecraft-status";
+import { beforeAll, describe, expect, it } from "bun:test";
 import { registerRendererFonts } from "@mcbanners/banner-renderer";
 import { MemoryCache } from "@mcbanners/cache";
+import { createFixtureAdapter, MC_STATUS_FIXTURES } from "@mcbanners/minecraft-status";
+import { createApp } from "../src/app";
 
 // Pre-register fonts once for all render tests.
 beforeAll(() => {

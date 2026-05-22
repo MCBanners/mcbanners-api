@@ -1,9 +1,9 @@
-import { describe, it, expect, beforeAll } from "bun:test";
-import { createApp, type AppCaches } from "../src/app";
-import { createFixtureAdapter, MC_STATUS_FIXTURES } from "@mcbanners/minecraft-status";
+import { beforeAll, describe, expect, it } from "bun:test";
+import type { ResourceBannerData } from "@mcbanners/banner-renderer";
 import { registerRendererFonts } from "@mcbanners/banner-renderer";
 import { MemoryCache } from "@mcbanners/cache";
-import type { ResourceBannerData } from "@mcbanners/banner-renderer";
+import { createFixtureAdapter, MC_STATUS_FIXTURES } from "@mcbanners/minecraft-status";
+import { type AppCaches, createApp } from "../src/app";
 import type { ResourceClients } from "../src/routes/resource-banner";
 
 beforeAll(() => {

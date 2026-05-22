@@ -12,7 +12,7 @@
 
 import * as net from "node:net";
 import type { McApiResponse } from "./mc-api-response";
-import { componentToLegacy, stripColors, cleanMotd } from "./motd-utils";
+import { cleanMotd, componentToLegacy, stripColors } from "./motd-utils";
 
 // ---------------------------------------------------------------------------
 // Safety limits
@@ -27,7 +27,7 @@ const MAX_FAVICON_BYTES = 65_536; // 64 KB
 /** Maximum raw MOTD string length before any normalization. Excess is truncated. */
 const MAX_MOTD_LENGTH = 32_768; // 32 KB
 
-export { MAX_PACKET_BYTES, MAX_FAVICON_BYTES, MAX_MOTD_LENGTH };
+export { MAX_FAVICON_BYTES, MAX_MOTD_LENGTH, MAX_PACKET_BYTES };
 
 // ---------------------------------------------------------------------------
 // VarInt codec

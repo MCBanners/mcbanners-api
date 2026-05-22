@@ -1,5 +1,5 @@
-import { describe, it, expect } from "bun:test";
-import { parseResourceRoutePath, extractRouteRemainder } from "../src/routes/resource-route-parser";
+import { describe, expect, it } from "bun:test";
+import { extractRouteRemainder, parseResourceRoutePath } from "../src/routes/resource-route-parser";
 
 // ---------------------------------------------------------------------------
 // parseResourceRoutePath

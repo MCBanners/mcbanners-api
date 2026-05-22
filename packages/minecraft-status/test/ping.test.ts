@@ -5,20 +5,20 @@
  * Mock TCP servers are used for end-to-end protocol tests.
  */
 
-import { describe, it, expect } from "bun:test";
+import { describe, expect, it } from "bun:test";
 import * as net from "node:net";
 import {
-  componentToLegacy,
-  stripColors,
   cleanMotd,
+  componentToLegacy,
+  LiveMinecraftStatusAdapter,
   pingMinecraftServer,
-  LiveMinecraftStatusAdapter
+  stripColors
 } from "../src";
 import {
   encodeVarInt,
-  tryReadVarInt,
+  slpToMcApiResponse,
   tryParseStatusResponse,
-  slpToMcApiResponse
+  tryReadVarInt
 } from "../src/ping";
 
 // ---------------------------------------------------------------------------

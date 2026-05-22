@@ -1,12 +1,12 @@
-import { describe, it, expect } from "bun:test";
-import {
-  normalizeMinecraftServerStatus,
-  FixtureMinecraftStatusAdapter,
-  createFixtureAdapter,
-  MC_STATUS_FIXTURES,
-  MC_FIXTURE_HYPIXEL
-} from "../src";
+import { describe, expect, it } from "bun:test";
 import type { McApiResponse } from "../src";
+import {
+  createFixtureAdapter,
+  FixtureMinecraftStatusAdapter,
+  MC_FIXTURE_HYPIXEL,
+  MC_STATUS_FIXTURES,
+  normalizeMinecraftServerStatus
+} from "../src";
 
 // ---------------------------------------------------------------------------
 // normalizeMinecraftServerStatus

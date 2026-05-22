@@ -1,12 +1,12 @@
 import {
-  readNamespacedRaw,
-  parseIntegerParameter,
   parseEnumParameter,
-  type RawQuery
+  parseIntegerParameter,
+  type RawQuery,
+  readNamespacedRaw
 } from "@mcbanners/domain";
 
 import { parseHexColor } from "./hex-color";
-import { shadowPresetValues, type ShadowPreset } from "./shadow-preset";
+import { type ShadowPreset, shadowPresetValues } from "./shadow-preset";
 import type { BannerStyleSettings } from "./style-settings";
 
 const STYLE_FIELD_KEYS = [

@@ -1,7 +1,6 @@
 import { describe, expect, test } from "bun:test";
-
-import { computeAlignedX, truncateText, wrapText } from "@mcbanners/banner-renderer";
 import type { TextMeasurer } from "@mcbanners/banner-renderer";
+import { computeAlignedX, truncateText, wrapText } from "@mcbanners/banner-renderer";
 
 describe("wrapText", () => {
   test("returns single element when text fits within maxWidth", () => {
