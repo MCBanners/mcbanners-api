@@ -2,15 +2,13 @@ import { describe, expect, test } from "bun:test";
 
 import { stat } from "node:fs/promises";
 import { resolve } from "node:path";
-
-import { createCanvas } from "@napi-rs/canvas";
-
 import { validateAssetFiles } from "@mcbanners/banner-renderer";
 import {
   createCanvasSpike,
   registerCanvasSpikeFont,
   writeCanvasSpikeOutputs
 } from "@mcbanners/banner-renderer/canvas/spike";
+import { createCanvas } from "@napi-rs/canvas";
 
 const pngSignature = [0x89, 0x50, 0x4e, 0x47] as const;
 const jpgSignature = [0xff, 0xd8, 0xff] as const;

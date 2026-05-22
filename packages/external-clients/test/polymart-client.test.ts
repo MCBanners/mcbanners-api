@@ -1,6 +1,6 @@
-import { describe, it, expect } from "bun:test";
-import { PolymartResourceClient } from "../src/polymart-client";
+import { describe, expect, it } from "bun:test";
 import type { FetchFn } from "../src/http-client";
+import { PolymartResourceClient } from "../src/polymart-client";
 
 const POLYMART_BASE = "https://api.polymart.org/v1/";
 

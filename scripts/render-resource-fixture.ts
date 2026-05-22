@@ -18,13 +18,6 @@
 
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-
-import {
-  buildResourceBannerNodes,
-  DEFAULT_RESOURCE_BANNER_SETTINGS,
-  RESOURCE_BANNER_HEIGHT,
-  RESOURCE_BANNER_WIDTH
-} from "../packages/banner-renderer/src/layouts/resource";
 import {
   createCanvasSurface,
   encodeJpg,
@@ -32,6 +25,12 @@ import {
   registerRendererFonts,
   renderNode
 } from "../packages/banner-renderer/src";
+import {
+  buildResourceBannerNodes,
+  DEFAULT_RESOURCE_BANNER_SETTINGS,
+  RESOURCE_BANNER_HEIGHT,
+  RESOURCE_BANNER_WIDTH
+} from "../packages/banner-renderer/src/layouts/resource";
 
 const FIXTURES: Record<
   string,

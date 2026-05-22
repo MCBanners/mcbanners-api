@@ -1,3 +1,4 @@
+import type { RawQuery } from "@mcbanners/domain";
 import {
   backgroundTemplateValues,
   fontFaceValues,
@@ -7,7 +8,6 @@ import {
   readStringParameter,
   textAlignValues
 } from "@mcbanners/domain";
-import type { RawQuery } from "@mcbanners/domain";
 
 import { DEFAULT_SERVER_BANNER_SETTINGS } from "./server-banner-defaults";
 import type { ServerBannerSettings, ServerBannerTextSettings } from "./server-banner-settings";

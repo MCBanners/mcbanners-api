@@ -20,7 +20,7 @@ if (!host) {
 }
 
 const port = portStr !== undefined ? parseInt(portStr, 10) : 25565;
-if (isNaN(port) || port < 1 || port > 65535) {
+if (Number.isNaN(port) || port < 1 || port > 65535) {
   console.error(`Invalid port: ${portStr}`);
   process.exit(1);
 }

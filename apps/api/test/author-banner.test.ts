@@ -1,12 +1,11 @@
 import { beforeAll, describe, expect, it } from "bun:test";
-
-import { MemoryCache } from "@mcbanners/cache";
 import type { AuthorBannerData } from "@mcbanners/banner-renderer";
 import { registerRendererFonts } from "@mcbanners/banner-renderer";
+import { MemoryCache } from "@mcbanners/cache";
 import type { AuthorClient } from "@mcbanners/external-clients";
 import { createFixtureAdapter, MC_STATUS_FIXTURES } from "@mcbanners/minecraft-status";
 import { createApp } from "../src/app";
-import { buildAuthorBannerCacheKey, type AuthorClients } from "../src/routes/author-banner";
+import { type AuthorClients, buildAuthorBannerCacheKey } from "../src/routes/author-banner";
 
 beforeAll(() => {
   registerRendererFonts();

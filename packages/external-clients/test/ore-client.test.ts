@@ -1,6 +1,6 @@
-import { describe, it, expect } from "bun:test";
-import { OreResourceClient } from "../src/ore-client";
+import { describe, expect, it } from "bun:test";
 import type { FetchFn } from "../src/http-client";
+import { OreResourceClient } from "../src/ore-client";
 
 interface MockResponse {
   status: number;

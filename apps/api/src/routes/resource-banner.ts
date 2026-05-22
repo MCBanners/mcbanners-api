@@ -1,20 +1,20 @@
-import { Hono } from "hono";
-import { normalizeResourceId, type ResourceClient } from "@mcbanners/external-clients";
-import type { MemoryCache } from "@mcbanners/cache";
 import {
   buildResourceBannerNodes,
-  parseResourceBannerSettings,
-  RESOURCE_BANNER_WIDTH,
-  RESOURCE_BANNER_HEIGHT,
   createCanvasSurface,
-  encodePng,
   encodeJpg,
-  renderNode,
+  encodePng,
+  parseBannerStyleSettings,
+  parseResourceBannerSettings,
+  RESOURCE_BANNER_HEIGHT,
+  RESOURCE_BANNER_WIDTH,
   registerRendererFonts,
-  validateBannerStyleSettings,
-  parseBannerStyleSettings
+  renderNode,
+  validateBannerStyleSettings
 } from "@mcbanners/banner-renderer";
-import { parseResourceRoutePath, extractRouteRemainder } from "./resource-route-parser";
+import type { MemoryCache } from "@mcbanners/cache";
+import { normalizeResourceId, type ResourceClient } from "@mcbanners/external-clients";
+import { Hono } from "hono";
+import { extractRouteRemainder, parseResourceRoutePath } from "./resource-route-parser";
 
 /** Matches `banner.png` or `banner.jpg` (case-insensitive). */
 const BANNER_FILENAME_RE = /^banner\.(png|jpg)$/i;

@@ -10,13 +10,13 @@ import {
   encodePng,
   MEMBER_BANNER_HEIGHT,
   MEMBER_BANNER_WIDTH,
+  type MemberBannerData,
   parseMemberBannerSettings,
   parseTeamBannerSettings,
   registerRendererFonts,
   renderNode,
   TEAM_BANNER_HEIGHT,
   TEAM_BANNER_WIDTH,
-  type MemberBannerData,
   type TeamBannerData
 } from "../src";
 

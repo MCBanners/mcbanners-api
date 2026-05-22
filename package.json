@@ -23,8 +23,10 @@
     "saved:validate-corpus": "bun run scripts/validate-saved-banner-corpus.ts",
     "public:check": "bun run scripts/public-readiness-check.ts",
     "typecheck": "tsc -b tsconfig.build.json --pretty",
-    "lint": "eslint .",
-    "format": "prettier --write \"apps/**/*.{json,ts}\" \"packages/**/*.{json,ts}\" \"scripts/**/*.ts\" \"test/**/*.{json,ts}\" \"tests/**/*.{json,ts}\" \"docs/**/*.md\" \"*.json\" \"*.js\"",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "lint:fix:unsafe": "biome check --write --unsafe .",
+    "format": "biome format --write .",
     "check": "bun run typecheck && bun run lint && bun run test"
   },
   "trustedDependencies": [],
@@ -37,17 +39,14 @@
     "@mcbanners/external-clients": "workspace:*",
     "@mcbanners/logger": "workspace:*",
     "@mcbanners/minecraft-status": "workspace:*",
-    "hono": "^4.12.18",
-    "kysely": "^0.29.0",
+    "hono": "^4.12.21",
+    "kysely": "^0.29.2",
     "pino": "^10.3.1",
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@eslint/js": "^10.0.1",
+    "@biomejs/biome": "2.4.15",
     "@types/bun": "^1.3.14",
-    "eslint": "^10.4.0",
-    "prettier": "^3.8.3",
-    "typescript": "5.9.3",
-    "typescript-eslint": "^8.59.3"
+    "typescript": "6.0.3"
   }
 }

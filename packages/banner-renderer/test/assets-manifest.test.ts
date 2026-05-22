@@ -1,13 +1,13 @@
 import { describe, expect, test } from "bun:test";
 
 import {
+  type AssetManifest,
   AssetValidationError,
   computeAssetSha256,
   rendererAssetManifest,
   resolveAssetPath,
   validateAssetFiles,
-  validateAssetManifest,
-  type AssetManifest
+  validateAssetManifest
 } from "@mcbanners/banner-renderer";
 
 const expectAssetValidationFailure = async (promise: Promise<unknown>): Promise<void> => {

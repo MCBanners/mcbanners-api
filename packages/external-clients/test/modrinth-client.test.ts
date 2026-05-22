@@ -1,6 +1,6 @@
-import { describe, it, expect } from "bun:test";
-import { ModrinthResourceClient } from "../src/modrinth-client";
+import { describe, expect, it } from "bun:test";
 import type { FetchFn } from "../src/http-client";
+import { ModrinthResourceClient } from "../src/modrinth-client";
 
 const makeMockFetch =
   (responses: Record<string, { status: number; body: string | Uint8Array }>): FetchFn =>

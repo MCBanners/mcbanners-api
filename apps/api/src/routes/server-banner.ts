@@ -1,20 +1,20 @@
-import { Hono } from "hono";
 import {
   buildServerBannerNodes,
-  mapStatusToServerBannerData,
-  parseServerBannerSettings,
   createCanvasSurface,
-  encodePng,
   encodeJpg,
-  renderNode,
+  encodePng,
+  mapStatusToServerBannerData,
+  parseBannerStyleSettings,
+  parseServerBannerSettings,
   registerRendererFonts,
-  SERVER_BANNER_WIDTH,
+  renderNode,
   SERVER_BANNER_HEIGHT,
-  validateBannerStyleSettings,
-  parseBannerStyleSettings
+  SERVER_BANNER_WIDTH,
+  validateBannerStyleSettings
 } from "@mcbanners/banner-renderer";
-import type { MinecraftStatusAdapter } from "@mcbanners/minecraft-status";
 import type { MemoryCache } from "@mcbanners/cache";
+import type { MinecraftStatusAdapter } from "@mcbanners/minecraft-status";
+import { Hono } from "hono";
 
 /** Matches `banner.png` or `banner.jpg` (case-insensitive). */
 const BANNER_FILENAME_RE = /^banner\.(png|jpg)$/i;
@@ -70,7 +70,7 @@ export const createServerBannerRoute = (
     const { host: rawHost, port: portStr } = c.req.param();
     const host = rawHost.toLowerCase();
     const port = parseInt(portStr, 10);
-    if (isNaN(port)) {
+    if (Number.isNaN(port)) {
       return c.json({ valid: false });
     }
     const status = await adapter.getStatus(host, port);
@@ -94,7 +94,7 @@ export const createServerBannerRoute = (
     const outputType = match[1].toLowerCase(); // "png" or "jpg"
 
     const port = parseInt(portStr, 10);
-    if (isNaN(port) || port < 1 || port > 65535) {
+    if (Number.isNaN(port) || port < 1 || port > 65535) {
       return c.json({ error: "Invalid port" }, 400);
     }
 

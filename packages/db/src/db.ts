@@ -1,4 +1,4 @@
-import { Kysely, type Dialect, type KyselyConfig } from "kysely";
+import { type Dialect, Kysely, type KyselyConfig } from "kysely";
 
 import type { MCBannersDatabase } from "./schema";
 

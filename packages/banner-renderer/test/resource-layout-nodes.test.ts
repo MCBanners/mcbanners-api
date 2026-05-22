@@ -1,21 +1,20 @@
 import { describe, expect, test } from "bun:test";
-
+import type { ResourceBannerData } from "../src/layouts/resource";
 import {
+  buildResourceBannerNodes,
   DEFAULT_RESOURCE_BANNER_SETTINGS,
+  parseResourceBannerSettings,
   RESOURCE_BANNER_HEIGHT,
   RESOURCE_BANNER_LOGO_MAX_SIZE,
   RESOURCE_BANNER_STAR_SIZE,
-  RESOURCE_BANNER_WIDTH,
-  buildResourceBannerNodes,
-  parseResourceBannerSettings
+  RESOURCE_BANNER_WIDTH
 } from "../src/layouts/resource";
-import type { ResourceBannerData } from "../src/layouts/resource";
-import type { RenderNode } from "../src/nodes/render-node";
 import type { ImageNode } from "../src/nodes/image-node";
+import type { RenderNode } from "../src/nodes/render-node";
 import type { SpriteNode } from "../src/nodes/sprite-node";
 import type { TextNode } from "../src/nodes/text-node";
-import { abbreviateNumber } from "../src/text/number-util";
 import { formatUpdatedDate } from "../src/text/date-util";
+import { abbreviateNumber } from "../src/text/number-util";
 import {
   ALL_RESOURCE_FIXTURES,
   FIXTURE_CURSEFORGE,
@@ -516,29 +515,33 @@ describe("buildResourceBannerNodes — price", () => {
 // ─── buildResourceBannerNodes — JSON serializability ─────────────────────────
 
 describe("buildResourceBannerNodes — JSON serializability", () => {
-  test.each(ALL_RESOURCE_FIXTURES)(
-    "$label nodes are JSON-round-trippable",
-    ({ fixture }: { label: string; fixture: ResourceBannerData }) => {
-      const nodes = buildResourceBannerNodes(fixture, DEFAULT_RESOURCE_BANNER_SETTINGS);
-      const json = JSON.stringify(nodes);
-      const parsed = JSON.parse(json) as RenderNode[];
-      expect(parsed).toHaveLength(nodes.length);
-      expect(parsed[0].type).toBe("image");
-    }
-  );
+  test.each(ALL_RESOURCE_FIXTURES)("$label nodes are JSON-round-trippable", ({
+    fixture
+  }: {
+    label: string;
+    fixture: ResourceBannerData;
+  }) => {
+    const nodes = buildResourceBannerNodes(fixture, DEFAULT_RESOURCE_BANNER_SETTINGS);
+    const json = JSON.stringify(nodes);
+    const parsed = JSON.parse(json) as RenderNode[];
+    expect(parsed).toHaveLength(nodes.length);
+    expect(parsed[0].type).toBe("image");
+  });
 });
 
 // ─── buildResourceBannerNodes — determinism ───────────────────────────────────
 
 describe("buildResourceBannerNodes — determinism", () => {
-  test.each(ALL_RESOURCE_FIXTURES)(
-    "$label produces identical output on repeated calls",
-    ({ fixture }: { label: string; fixture: ResourceBannerData }) => {
-      const a = buildResourceBannerNodes(fixture, DEFAULT_RESOURCE_BANNER_SETTINGS);
-      const b = buildResourceBannerNodes(fixture, DEFAULT_RESOURCE_BANNER_SETTINGS);
-      expect(JSON.stringify(a)).toBe(JSON.stringify(b));
-    }
-  );
+  test.each(ALL_RESOURCE_FIXTURES)("$label produces identical output on repeated calls", ({
+    fixture
+  }: {
+    label: string;
+    fixture: ResourceBannerData;
+  }) => {
+    const a = buildResourceBannerNodes(fixture, DEFAULT_RESOURCE_BANNER_SETTINGS);
+    const b = buildResourceBannerNodes(fixture, DEFAULT_RESOURCE_BANNER_SETTINGS);
+    expect(JSON.stringify(a)).toBe(JSON.stringify(b));
+  });
 });
 
 // ─── buildResourceBannerNodes — long/unicode ──────────────────────────────────

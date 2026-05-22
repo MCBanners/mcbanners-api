@@ -32,23 +32,6 @@
 
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-
-import {
-  SpigotResourceClient,
-  ModrinthResourceClient,
-  CurseForgeResourceClient,
-  HangarResourceClient,
-  OreResourceClient,
-  BuiltByBitResourceClient,
-  PolymartResourceClient,
-  type ResourceClient
-} from "../packages/external-clients/src";
-import {
-  buildResourceBannerNodes,
-  DEFAULT_RESOURCE_BANNER_SETTINGS,
-  RESOURCE_BANNER_HEIGHT,
-  RESOURCE_BANNER_WIDTH
-} from "../packages/banner-renderer/src/layouts/resource";
 import {
   createCanvasSurface,
   encodeJpg,
@@ -56,6 +39,22 @@ import {
   registerRendererFonts,
   renderNode
 } from "../packages/banner-renderer/src";
+import {
+  buildResourceBannerNodes,
+  DEFAULT_RESOURCE_BANNER_SETTINGS,
+  RESOURCE_BANNER_HEIGHT,
+  RESOURCE_BANNER_WIDTH
+} from "../packages/banner-renderer/src/layouts/resource";
+import {
+  BuiltByBitResourceClient,
+  CurseForgeResourceClient,
+  HangarResourceClient,
+  ModrinthResourceClient,
+  OreResourceClient,
+  PolymartResourceClient,
+  type ResourceClient,
+  SpigotResourceClient
+} from "../packages/external-clients/src";
 
 const [, , rawPlatform, rawId, rawOutputType, rawOutputDir] = process.argv;
 

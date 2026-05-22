@@ -1,16 +1,16 @@
 import { describe, expect, test } from "bun:test";
 
 import {
+  buildServerBannerNodes,
   DEFAULT_SERVER_BANNER_SETTINGS,
+  parseServerBannerSettings,
   SERVER_BANNER_HEIGHT,
   SERVER_BANNER_LOGO_MAX_SIZE,
   SERVER_BANNER_WIDTH,
-  SERVER_BANNER_WRAP_RIGHT_EDGE,
-  buildServerBannerNodes,
-  parseServerBannerSettings
+  SERVER_BANNER_WRAP_RIGHT_EDGE
 } from "../src/layouts/server";
-import type { RenderNode } from "../src/nodes/render-node";
 import type { ImageNode } from "../src/nodes/image-node";
+import type { RenderNode } from "../src/nodes/render-node";
 import type { SpriteNode } from "../src/nodes/sprite-node";
 import type { TextNode } from "../src/nodes/text-node";
 import type { WrappedTextNode } from "../src/nodes/wrapped-text-node";

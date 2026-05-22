@@ -1,7 +1,7 @@
-import { z } from "zod";
 import type { AuthorBannerData, ResourceBannerData } from "@mcbanners/banner-renderer";
+import { z } from "zod";
+import { type FetchFn, fetchImageBase64, fetchJson, type HttpClientOptions } from "./http-client";
 import type { AuthorClient, ResourceClient } from "./resource-client";
-import { fetchJson, fetchImageBase64, type FetchFn, type HttpClientOptions } from "./http-client";
 import { normalizeResourceId } from "./resource-id";
 
 const ORE_BASE_URL = "https://ore.spongepowered.org/api/v2";

@@ -1,8 +1,8 @@
-import { pingMinecraftServer } from "./ping";
-import { normalizeMinecraftServerStatus } from "./normalize";
 import type { MinecraftStatusAdapter } from "./adapter";
-import type { MinecraftServerStatus } from "./types";
+import { normalizeMinecraftServerStatus } from "./normalize";
+import { pingMinecraftServer } from "./ping";
 import { resolveMcSrv, type SrvResolver } from "./srv";
+import type { MinecraftServerStatus } from "./types";
 import { validateHost, validatePort } from "./validate";
 
 /** Default TCP port for Minecraft Java Edition servers. */

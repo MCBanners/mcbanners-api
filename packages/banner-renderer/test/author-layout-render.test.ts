@@ -1,5 +1,5 @@
-import { createHash } from "node:crypto";
 import { beforeAll, describe, expect, it } from "bun:test";
+import { createHash } from "node:crypto";
 
 import {
   AUTHOR_BANNER_HEIGHT,

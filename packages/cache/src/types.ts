@@ -39,7 +39,6 @@ export interface CacheStats {
 
 /** Minimal interface that CacheNamespace delegates to. */
 export interface IMemoryCache {
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters
   get<T>(key: string): T | undefined;
   set(key: string, value: unknown, ttlMs?: number, byteEstimate?: number): void;
   delete(key: string): boolean;

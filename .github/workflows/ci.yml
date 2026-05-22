@@ -33,18 +33,6 @@ jobs:
       - name: Public readiness check
         run: bun run public:check
 
-      - name: Format check
-        run: >
-          bunx prettier --check
-          "apps/**/*.{json,ts}"
-          "packages/**/*.{json,ts}"
-          "scripts/**/*.ts"
-          "test/**/*.{json,ts}"
-          "tests/**/*.{json,ts}"
-          "docs/**/*.md"
-          "*.json"
-          "*.js"
-
       - name: Typecheck, lint, and test
         run: bun run check
 

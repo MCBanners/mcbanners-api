@@ -1,19 +1,19 @@
-import { Hono } from "hono";
-import type { MemoryCache } from "@mcbanners/cache";
 import {
   buildTeamBannerNodes,
   createCanvasSurface,
   encodeJpg,
   encodePng,
+  parseBannerStyleSettings,
   parseTeamBannerSettings,
   registerRendererFonts,
   renderNode,
   TEAM_BANNER_HEIGHT,
   TEAM_BANNER_WIDTH,
-  validateBannerStyleSettings,
-  parseBannerStyleSettings
+  validateBannerStyleSettings
 } from "@mcbanners/banner-renderer";
+import type { MemoryCache } from "@mcbanners/cache";
 import { normalizeResourceId, type TeamClient } from "@mcbanners/external-clients";
+import { Hono } from "hono";
 import { extractRouteRemainder, parseResourceRoutePath } from "./resource-route-parser";
 
 const BANNER_FILENAME_RE = /^banner\.(png|jpg)$/i;

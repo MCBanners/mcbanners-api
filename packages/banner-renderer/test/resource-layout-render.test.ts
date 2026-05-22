@@ -1,13 +1,5 @@
 import { describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
-
-import {
-  buildResourceBannerNodes,
-  DEFAULT_RESOURCE_BANNER_SETTINGS,
-  RESOURCE_BANNER_HEIGHT,
-  RESOURCE_BANNER_WIDTH
-} from "../src/layouts/resource";
-import type { ResourceBannerData } from "../src/layouts/resource";
 import {
   createCanvasSurface,
   encodeJpg,
@@ -15,6 +7,13 @@ import {
   registerRendererFonts,
   renderNode
 } from "../src";
+import type { ResourceBannerData } from "../src/layouts/resource";
+import {
+  buildResourceBannerNodes,
+  DEFAULT_RESOURCE_BANNER_SETTINGS,
+  RESOURCE_BANNER_HEIGHT,
+  RESOURCE_BANNER_WIDTH
+} from "../src/layouts/resource";
 import {
   ALL_RESOURCE_FIXTURES,
   FIXTURE_SPIGOT_FREE,
@@ -60,12 +59,14 @@ describe("resource banner render — PNG/JPG encoding", () => {
 });
 
 describe("resource banner render — determinism", () => {
-  test.each(ALL_RESOURCE_FIXTURES)(
-    "$label PNG hash is stable across two renders",
-    async ({ fixture }: { label: string; fixture: ResourceBannerData }) => {
-      const { png: png1 } = await renderFixture(fixture);
-      const { png: png2 } = await renderFixture(fixture);
-      expect(sha256(png1)).toBe(sha256(png2));
-    }
-  );
+  test.each(ALL_RESOURCE_FIXTURES)("$label PNG hash is stable across two renders", async ({
+    fixture
+  }: {
+    label: string;
+    fixture: ResourceBannerData;
+  }) => {
+    const { png: png1 } = await renderFixture(fixture);
+    const { png: png2 } = await renderFixture(fixture);
+    expect(sha256(png1)).toBe(sha256(png2));
+  });
 });

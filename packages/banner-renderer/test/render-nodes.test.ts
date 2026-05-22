@@ -8,7 +8,7 @@ import type {
   TextNode,
   WrappedTextNode
 } from "@mcbanners/banner-renderer";
-import { BLACK, WHITE, rgbaColor } from "@mcbanners/banner-renderer";
+import { BLACK, rgbaColor, WHITE } from "@mcbanners/banner-renderer";
 
 const sampleTextNode = (): TextNode => ({
   type: "text",

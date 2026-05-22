@@ -1,6 +1,6 @@
-import { describe, it, expect } from "bun:test";
-import { SpigotResourceClient } from "../src/spigot-client";
+import { describe, expect, it } from "bun:test";
 import type { FetchFn } from "../src/http-client";
+import { SpigotResourceClient } from "../src/spigot-client";
 
 /** Creates a mock fetch that returns predefined responses by URL. */
 const makeMockFetch =

@@ -1,6 +1,6 @@
-import { describe, it, expect } from "bun:test";
-import { createRateLimitMiddleware } from "../src/middleware/rate-limit";
+import { describe, expect, it } from "bun:test";
 import { Hono } from "hono";
+import { createRateLimitMiddleware } from "../src/middleware/rate-limit";
 
 describe("rate limit middleware", () => {
   it("allows requests within limit", async () => {

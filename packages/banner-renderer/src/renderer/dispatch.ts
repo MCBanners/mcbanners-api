@@ -1,11 +1,9 @@
 import type { RenderNode } from "../nodes/render-node";
 import type { RenderSurface } from "../types/render-surface";
-import { renderTextNode } from "./text";
-import { renderWrappedTextNode } from "./text";
-import { renderImageNode } from "./image";
-import { renderSpriteNode } from "./image";
 import { renderDebugNode } from "./debug";
 import { renderFillRectNode } from "./fill";
+import { renderImageNode, renderSpriteNode } from "./image";
+import { renderTextNode, renderWrappedTextNode } from "./text";
 
 /**
  * Dispatches a single render node to its appropriate primitive renderer.

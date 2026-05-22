@@ -5,14 +5,14 @@
  * All tests are deterministic — no live Minecraft server or DNS is required.
  */
 
-import { describe, it, expect } from "bun:test";
+import { describe, expect, it } from "bun:test";
 import * as net from "node:net";
-import { validateHost, validatePort, componentToLegacy, LiveMinecraftStatusAdapter } from "../src";
+import { componentToLegacy, LiveMinecraftStatusAdapter, validateHost, validatePort } from "../src";
 import {
   encodeVarInt,
-  MAX_PACKET_BYTES,
   MAX_FAVICON_BYTES,
   MAX_MOTD_LENGTH,
+  MAX_PACKET_BYTES,
   slpToMcApiResponse
 } from "../src/ping";
 
@@ -30,8 +30,7 @@ describe("validateHost", () => {
   });
 
   it("returns null for a 253-character hostname (max allowed)", () => {
-    const long =
-      "a".repeat(63) + "." + "b".repeat(63) + "." + "c".repeat(63) + "." + "d".repeat(61);
+    const long = `${"a".repeat(63)}.${"b".repeat(63)}.${"c".repeat(63)}.${"d".repeat(61)}`;
     expect(long.length).toBe(253);
     expect(validateHost(long)).toBeNull();
   });
@@ -180,7 +179,7 @@ describe("componentToLegacy — edge cases", () => {
 describe("slpToMcApiResponse — safety limits", () => {
   it("drops a favicon that exceeds MAX_FAVICON_BYTES", () => {
     // Build a data URI that is one byte over the limit.
-    const oversize = "data:image/png;base64," + "A".repeat(MAX_FAVICON_BYTES);
+    const oversize = `data:image/png;base64,${"A".repeat(MAX_FAVICON_BYTES)}`;
     const slp = {
       version: { name: "1.20.4" },
       players: { online: 0, max: 0 },
@@ -193,8 +192,7 @@ describe("slpToMcApiResponse — safety limits", () => {
 
   it("keeps a favicon that is exactly MAX_FAVICON_BYTES", () => {
     // A favicon at exactly the limit should be kept.
-    const exact =
-      "data:image/png;base64," + "A".repeat(MAX_FAVICON_BYTES - "data:image/png;base64,".length);
+    const exact = `data:image/png;base64,${"A".repeat(MAX_FAVICON_BYTES - "data:image/png;base64,".length)}`;
     const slp = {
       version: { name: "1.20.4" },
       players: { online: 0, max: 0 },

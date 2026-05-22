@@ -1,6 +1,6 @@
+import type { MinecraftStatusAdapter } from "./adapter";
 import type { McApiResponse } from "./mc-api-response";
 import { normalizeMinecraftServerStatus } from "./normalize";
-import type { MinecraftStatusAdapter } from "./adapter";
 import type { MinecraftServerStatus } from "./types";
 
 /**
