@@ -44,6 +44,8 @@ export interface CacheStats {
 /** Minimal interface that CacheNamespace delegates to. */
 export interface IMemoryCache {
   get<T>(key: string): T | undefined;
+  /** Returns the configured default TTL used for entries without an override. */
+  getDefaultTtlMs?(): number;
   /** Returns the unexpired entry's remaining lifetime, or undefined if absent/expired. */
   getRemainingTtlMs(key: string): number | undefined;
   /** Returns a payload-free token for the active entry and its remaining lifetime. */

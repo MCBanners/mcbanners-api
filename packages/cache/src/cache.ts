@@ -48,6 +48,10 @@ export class MemoryCache implements IMemoryCache {
     return this.getWithToken<T>(key)?.value;
   }
 
+  getDefaultTtlMs(): number {
+    return this.defaultTtlMs;
+  }
+
   private getWithToken<T>(key: string): CachedValue<T> | undefined {
     const entry = this.entries.get(key);
     if (entry === undefined) {

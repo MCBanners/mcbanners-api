@@ -14,6 +14,12 @@ import {
 import type { MemoryCache } from "@mcbanners/cache";
 import { normalizeResourceId, type ResourceClient } from "@mcbanners/external-clients";
 import { Hono } from "hono";
+import {
+  bannerImageResponse,
+  getOrRenderBannerImage,
+  getSourceWithFreshness,
+  readWarmBannerImage
+} from "./banner-image-cache";
 import { extractRouteRemainder, parseResourceRoutePath } from "./resource-route-parser";
 
 /** Matches `banner.png` or `banner.jpg` (case-insensitive). */
@@ -50,14 +56,11 @@ export const createResourceBannerRoute = (
   const route = new Hono();
 
   const fetchResourceData = (client: ResourceClient, platform: string, normalizedId: string) => {
-    if (dataCache === undefined) {
-      return client.getResourceBannerData(normalizedId);
-    }
-    return dataCache.getOrSet(
+    return getSourceWithFreshness(
+      dataCache,
       `resource:${platform.toLowerCase()}:${normalizedId}`,
-      () => client.getResourceBannerData(normalizedId),
-      { cacheNull: false }
-    );
+      () => client.getResourceBannerData(normalizedId)
+    ).then(({ value }) => value);
   };
 
   /**
@@ -112,14 +115,34 @@ export const createResourceBannerRoute = (
 
     const outputType = match[1].toLowerCase();
     const normalizedId = normalizeResourceId(platform, id);
-    const data = await fetchResourceData(client, platform, normalizedId);
-    if (data === null) {
-      return c.body(null, 404);
+    const rawQuery = Object.fromEntries(new URL(c.req.url).searchParams.entries());
+    const sourceKey = `resource:${platform.toLowerCase()}:${normalizedId}`;
+    const readSourceFreshness = () => dataCache?.getEntryFreshness(sourceKey);
+    const sourceFreshness = readSourceFreshness();
+
+    if (sourceFreshness !== undefined) {
+      ensureFonts();
+      const styleErrors = validateBannerStyleSettings(rawQuery);
+      if (styleErrors.length > 0) return c.json({ errors: styleErrors }, 400);
+
+      const warm = readWarmBannerImage(
+        bannerCache,
+        buildBannerCacheKey(platform, normalizedId, outputType, rawQuery),
+        sourceFreshness
+      );
+      if (warm !== undefined) {
+        return bannerImageResponse(warm.image, outputType, warm.remainingTtlMs);
+      }
     }
 
-    ensureFonts();
+    const { value: data, token: sourceToken } = await getSourceWithFreshness(
+      dataCache,
+      sourceKey,
+      () => client.getResourceBannerData(normalizedId)
+    );
+    if (data === null) return c.body(null, 404);
 
-    const rawQuery = Object.fromEntries(new URL(c.req.url).searchParams.entries());
+    ensureFonts();
 
     const styleErrors = validateBannerStyleSettings(rawQuery);
     if (styleErrors.length > 0) {
@@ -137,23 +160,21 @@ export const createResourceBannerRoute = (
       return outputType === "jpg" ? encodeJpg(surface) : encodePng(surface);
     };
 
-    const buf =
-      bannerCache !== undefined
-        ? await bannerCache.getOrSet<Buffer>(
-            buildBannerCacheKey(platform, normalizedId, outputType, rawQuery),
-            renderBanner,
-            { byteEstimate: (b) => b.length }
-          )
-        : await renderBanner();
+    const imageKey = buildBannerCacheKey(platform, normalizedId, outputType, rawQuery);
+    const buf = await getOrRenderBannerImage(
+      bannerCache,
+      imageKey,
+      renderBanner,
+      sourceToken,
+      dataCache === undefined ? undefined : readSourceFreshness
+    );
+    const currentSource = readSourceFreshness();
+    const sourceStillCurrent =
+      dataCache === undefined ||
+      (sourceToken !== undefined && currentSource?.token === sourceToken);
+    if (!sourceStillCurrent) bannerCache?.delete(imageKey);
 
-    const contentType = outputType === "jpg" ? "image/jpeg" : "image/png";
-    return new Response(buf, {
-      headers: {
-        "Content-Type": contentType,
-        "Content-Length": String(buf.length),
-        "Cache-Control": "public, max-age=60, stale-while-revalidate=300"
-      }
-    });
+    return bannerImageResponse(buf, outputType, currentSource?.remainingTtlMs, sourceStillCurrent);
   });
 
   return route;

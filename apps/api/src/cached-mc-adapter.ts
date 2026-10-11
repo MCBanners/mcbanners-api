@@ -35,4 +35,8 @@ export class CachedMinecraftStatusAdapter implements MinecraftStatusAdapter {
       { cacheNull: false }
     );
   }
+
+  getStatusCacheFreshness(host: string, port: number) {
+    return this.cache.getEntryFreshness(`mc:status:${host.toLowerCase()}:${String(port)}`);
+  }
 }

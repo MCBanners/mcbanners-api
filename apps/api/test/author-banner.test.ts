@@ -4,7 +4,7 @@ import { registerRendererFonts } from "@mcbanners/banner-renderer";
 import { MemoryCache } from "@mcbanners/cache";
 import type { AuthorClient } from "@mcbanners/external-clients";
 import { createFixtureAdapter, MC_STATUS_FIXTURES } from "@mcbanners/minecraft-status";
-import { createApp } from "../src/app";
+import { type AppCaches, createApp } from "../src/app";
 import { type AuthorClients, buildAuthorBannerCacheKey } from "../src/routes/author-banner";
 
 beforeAll(() => {
@@ -34,7 +34,7 @@ class FixtureAuthorClient implements AuthorClient {
   }
 }
 
-const makeApp = (authorClients: AuthorClients, caches = {}) =>
+const makeApp = (authorClients: AuthorClients, caches?: AppCaches) =>
   createApp(createFixtureAdapter(MC_STATUS_FIXTURES), {}, caches, undefined, authorClients);
 
 describe("GET /banner/author/:platform/:id/isValid", () => {
@@ -110,6 +110,30 @@ describe("GET /banner/author/:platform/:id/banner", () => {
     expect(first.status).toBe(200);
     expect(second.status).toBe(200);
     expect(cache.stats().hits).toBeGreaterThan(0);
+  });
+
+  it("serves a warm image before looking up cached author data", async () => {
+    const client = new FixtureAuthorClient();
+    const authorData = new MemoryCache({ ttlMs: 60_000, maxEntries: 50 });
+    const authorImage = new MemoryCache({ ttlMs: 60_000, maxEntries: 50 });
+    const cachedApp = makeApp(
+      { SPIGOT: client },
+      {
+        authorData,
+        authorBannerImage: authorImage
+      }
+    );
+
+    const first = await cachedApp.request("/banner/author/spigot/123/banner.png");
+    const firstImage = Buffer.from(await first.arrayBuffer());
+    const second = await cachedApp.request("/banner/author/spigot/123/banner.png");
+    const secondImage = Buffer.from(await second.arrayBuffer());
+
+    expect(first.status).toBe(200);
+    expect(secondImage.equals(firstImage)).toBe(true);
+    expect(client.calls).toEqual(["123"]);
+    expect(authorData.stats().hits).toBe(0);
+    expect(authorImage.stats().hits).toBe(1);
   });
 
   it("uses display override settings in render output", async () => {

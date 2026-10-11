@@ -1,8 +1,9 @@
 import { describe, expect, it } from "bun:test";
 
 import type { MemberBannerData, TeamBannerData } from "@mcbanners/banner-renderer";
+import { MemoryCache } from "@mcbanners/cache";
 import { createFixtureAdapter, MC_STATUS_FIXTURES } from "@mcbanners/minecraft-status";
-import { createApp } from "../src/app";
+import { type AppCaches, createApp } from "../src/app";
 
 const MEMBER: MemberBannerData = {
   member: {
@@ -28,33 +29,84 @@ const TEAM: TeamBannerData = {
 };
 
 class FixtureMemberClient {
+  calls = 0;
+
   constructor(private readonly data: MemberBannerData | null) {}
 
   getMemberBannerData(): Promise<MemberBannerData | null> {
+    this.calls += 1;
     return Promise.resolve(this.data);
   }
 }
 
 class FixtureTeamClient {
+  calls = 0;
+
   constructor(private readonly data: TeamBannerData | null) {}
 
   getTeamBannerData(): Promise<TeamBannerData | null> {
+    this.calls += 1;
     return Promise.resolve(this.data);
   }
 }
 
-const makeApp = (member: MemberBannerData | null = MEMBER, team: TeamBannerData | null = TEAM) =>
+const makeApp = (
+  member: MemberBannerData | null = MEMBER,
+  team: TeamBannerData | null = TEAM,
+  caches?: AppCaches,
+  memberClient = new FixtureMemberClient(member),
+  teamClient = new FixtureTeamClient(team)
+) =>
   createApp(
     createFixtureAdapter(MC_STATUS_FIXTURES),
     {},
+    caches,
     undefined,
     undefined,
-    undefined,
-    { BUILTBYBIT: new FixtureMemberClient(member) },
-    { POLYMART: new FixtureTeamClient(team) }
+    { BUILTBYBIT: memberClient },
+    { POLYMART: teamClient }
   );
 
 describe("member and team banner routes", () => {
+  it("serves warm member and team images before source-cache lookups", async () => {
+    const memberClient = new FixtureMemberClient(MEMBER);
+    const teamClient = new FixtureTeamClient(TEAM);
+    const memberData = new MemoryCache({ ttlMs: 60_000, maxEntries: 50 });
+    const memberImage = new MemoryCache({ ttlMs: 60_000, maxEntries: 50 });
+    const teamData = new MemoryCache({ ttlMs: 60_000, maxEntries: 50 });
+    const teamImage = new MemoryCache({ ttlMs: 60_000, maxEntries: 50 });
+    const app = makeApp(
+      MEMBER,
+      TEAM,
+      {
+        memberData,
+        memberBannerImage: memberImage,
+        teamData,
+        teamBannerImage: teamImage
+      },
+      memberClient,
+      teamClient
+    );
+
+    const memberPath = "/banner/member/builtbybit/99/banner.png";
+    const teamPath = "/banner/team/polymart/789/banner.png";
+    const firstMember = await app.request(memberPath);
+    const firstTeam = await app.request(teamPath);
+    const secondMember = await app.request(memberPath);
+    const secondTeam = await app.request(teamPath);
+
+    expect(firstMember.status).toBe(200);
+    expect(firstTeam.status).toBe(200);
+    expect(secondMember.status).toBe(200);
+    expect(secondTeam.status).toBe(200);
+    expect(memberClient.calls).toBe(1);
+    expect(teamClient.calls).toBe(1);
+    expect(memberData.stats().hits).toBe(0);
+    expect(teamData.stats().hits).toBe(0);
+    expect(memberImage.stats().hits).toBe(1);
+    expect(teamImage.stats().hits).toBe(1);
+  });
+
   it("renders BuiltByBit member PNG and JPG banners", async () => {
     const app = makeApp();
     const png = await app.request("/banner/member/builtbybit/99/banner.png");

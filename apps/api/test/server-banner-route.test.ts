@@ -140,6 +140,31 @@ describe("GET /banner/server/:host/:port/isValid", () => {
 // ---------------------------------------------------------------------------
 
 describe("GET /banner/server/:host/:port/banner.png", () => {
+  it("serves a warm image before calling the cached Minecraft adapter", async () => {
+    let calls = 0;
+    const countingAdapter = {
+      getStatus: async (host: string, port: number) => {
+        calls += 1;
+        return adapter.getStatus(host, port);
+      }
+    };
+    const mcStatus = new MemoryCache({ ttlMs: 60_000, maxEntries: 50 });
+    const bannerImage = new MemoryCache({ ttlMs: 60_000, maxEntries: 50 });
+    const cachedApp = createApp(countingAdapter, {}, { mcStatus, bannerImage });
+    const path = "/banner/server/mc.hypixel.net/25565/banner.png";
+
+    const first = await cachedApp.request(path);
+    const firstImage = Buffer.from(await first.arrayBuffer());
+    const second = await cachedApp.request(path);
+    const secondImage = Buffer.from(await second.arrayBuffer());
+
+    expect(first.status).toBe(200);
+    expect(secondImage.equals(firstImage)).toBe(true);
+    expect(calls).toBe(1);
+    expect(mcStatus.stats().hits).toBe(0);
+    expect(bannerImage.stats().hits).toBe(1);
+  });
+
   it("returns 200 PNG image for a known fixture", async () => {
     const res = await app.request("/banner/server/mc.hypixel.net/25565/banner.png");
     expect(res.status).toBe(200);

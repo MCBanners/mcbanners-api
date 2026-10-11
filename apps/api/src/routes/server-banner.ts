@@ -15,6 +15,11 @@ import {
 import type { MemoryCache } from "@mcbanners/cache";
 import type { MinecraftStatusAdapter } from "@mcbanners/minecraft-status";
 import { Hono } from "hono";
+import {
+  bannerImageResponse,
+  getOrRenderBannerImage,
+  readWarmBannerImage
+} from "./banner-image-cache";
 
 /** Matches `banner.png` or `banner.jpg` (case-insensitive). */
 const BANNER_FILENAME_RE = /^banner\.(png|jpg)$/i;
@@ -98,20 +103,41 @@ export const createServerBannerRoute = (
       return c.json({ error: "Invalid port" }, 400);
     }
 
-    const status = await adapter.getStatus(host, port);
-    if (status === null) {
-      return c.body(null, 404);
+    const rawQuery = Object.fromEntries(new URL(c.req.url).searchParams.entries());
+    const imageKey = buildBannerCacheKey(host, port, outputType, rawQuery);
+    const readSourceFreshness =
+      adapter.getStatusCacheFreshness === undefined
+        ? undefined
+        : () => adapter.getStatusCacheFreshness?.(host, port);
+    const sourceFreshness = readSourceFreshness?.();
+    let style: ReturnType<typeof parseBannerStyleSettings> | undefined;
+    let styleValidated = false;
+
+    if (sourceFreshness !== undefined) {
+      ensureFonts();
+      const styleErrors = validateBannerStyleSettings(rawQuery);
+      if (styleErrors.length > 0) return c.json({ errors: styleErrors }, 400);
+      style = parseBannerStyleSettings(rawQuery) ?? undefined;
+      styleValidated = true;
+
+      const warm = readWarmBannerImage(bannerCache, imageKey, sourceFreshness);
+      if (warm !== undefined) {
+        return bannerImageResponse(warm.image, outputType, warm.remainingTtlMs);
+      }
     }
+
+    const statusResult = adapter.getStatusWithFreshness
+      ? await adapter.getStatusWithFreshness(host, port)
+      : { value: await adapter.getStatus(host, port), token: undefined };
+    const status = statusResult.value;
+    if (status === null) return c.body(null, 404);
 
     ensureFonts();
-
-    const rawQuery = Object.fromEntries(new URL(c.req.url).searchParams.entries());
-
-    const styleErrors = validateBannerStyleSettings(rawQuery);
-    if (styleErrors.length > 0) {
-      return c.json({ errors: styleErrors }, 400);
+    if (!styleValidated) {
+      const styleErrors = validateBannerStyleSettings(rawQuery);
+      if (styleErrors.length > 0) return c.json({ errors: styleErrors }, 400);
+      style = parseBannerStyleSettings(rawQuery) ?? undefined;
     }
-    const style = parseBannerStyleSettings(rawQuery) ?? undefined;
 
     const renderBanner = async (): Promise<Buffer> => {
       const data = mapStatusToServerBannerData(status);
@@ -129,23 +155,20 @@ export const createServerBannerRoute = (
       return encodePng(surface);
     };
 
-    const buf =
-      bannerCache !== undefined
-        ? await bannerCache.getOrSet<Buffer>(
-            buildBannerCacheKey(host, port, outputType, rawQuery),
-            renderBanner,
-            { byteEstimate: (b) => b.length }
-          )
-        : await renderBanner();
+    const buf = await getOrRenderBannerImage(
+      bannerCache,
+      imageKey,
+      renderBanner,
+      statusResult.token,
+      readSourceFreshness
+    );
+    const currentSource = readSourceFreshness?.();
+    const sourceStillCurrent =
+      readSourceFreshness === undefined ||
+      (statusResult.token !== undefined && currentSource?.token === statusResult.token);
+    if (!sourceStillCurrent) bannerCache?.delete(imageKey);
 
-    const contentType = outputType === "jpg" ? "image/jpeg" : "image/png";
-    return new Response(buf, {
-      headers: {
-        "Content-Type": contentType,
-        "Content-Length": String(buf.length),
-        "Cache-Control": "public, max-age=60, stale-while-revalidate=300"
-      }
-    });
+    return bannerImageResponse(buf, outputType, currentSource?.remainingTtlMs, sourceStillCurrent);
   });
 
   return route;
