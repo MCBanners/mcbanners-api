@@ -786,6 +786,8 @@ export const createSavedBannerRoute = (
         return c.body(null, 404);
       }
 
+      const sourceStillCurrent = recall.imageMatchesCurrentSource(row, buf);
+      if (!sourceStillCurrent) caches.savedBannerImage?.delete(imageCacheKey);
       const remainingImageTtlMs =
         caches.savedBannerImage?.getRemainingTtlMs(imageCacheKey) ??
         (caches.savedBannerImage === undefined && Object.keys(caches).length === 0
@@ -802,7 +804,9 @@ export const createSavedBannerRoute = (
         headers: {
           "Content-Type": contentTypeFor(outputType),
           "Content-Length": String(buf.length),
-          "Cache-Control": `public, max-age=${maxAgeSeconds}, stale-while-revalidate=${staleWhileRevalidateSeconds}`
+          "Cache-Control": sourceStillCurrent
+            ? `public, max-age=${maxAgeSeconds}, stale-while-revalidate=${staleWhileRevalidateSeconds}`
+            : "no-store"
         }
       });
     } catch (error) {

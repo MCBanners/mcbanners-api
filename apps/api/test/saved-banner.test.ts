@@ -698,12 +698,16 @@ describe("GET /banner/saved/:mnemonic.:outputType", () => {
     const first = await app.request("/banner/saved/abcdefghijklmn.png");
     const firstImage = new Uint8Array(await first.arrayBuffer());
     expect(first.status).toBe(200);
+    expect(first.headers.get("Cache-Control")).toBe("no-store");
     expect(replaced).toBe(true);
     expect(savedBannerImage.stats().sets).toBe(0);
 
     const second = await app.request("/banner/saved/abcdefghijklmn.png");
     const secondImage = new Uint8Array(await second.arrayBuffer());
     expect(second.status).toBe(200);
+    expect(second.headers.get("Cache-Control")).toMatch(
+      /^public, max-age=\d+, stale-while-revalidate=\d+$/
+    );
     expect(savedBannerImage.stats().sets).toBe(1);
     expect(secondImage).not.toEqual(firstImage);
   });
@@ -780,7 +784,8 @@ describe("GET /banner/saved/:mnemonic.:outputType", () => {
     expect(client.calls).toBe(0);
     expect(remainingImageTtl).toBeGreaterThan(30);
     expect(remainingImageTtl).toBeLessThanOrEqual(2_000);
-    expect((maxAge + staleWhileRevalidate) * 1000).toBeLessThanOrEqual(remainingImageTtl);
+    // Cache-Control is expressed in whole seconds, so allow subsecond rounding drift.
+    expect((maxAge + staleWhileRevalidate) * 1000).toBeLessThanOrEqual(remainingImageTtl + 999);
   });
 
   it("recalls a Spigot resource saved banner", async () => {
