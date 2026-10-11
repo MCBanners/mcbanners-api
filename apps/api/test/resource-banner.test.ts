@@ -1010,6 +1010,30 @@ describe("resource data cache", () => {
     expect(imageCache.stats().sets).toBe(1);
   });
 
+  it("bounds cold and warm HTTP freshness by a near-expiry image", async () => {
+    const dataCache = new MemoryCache({ maxEntries: 100, ttlMs: 60_000 });
+    const imageCache = new MemoryCache({ maxEntries: 100, ttlMs: 60_000 });
+    const imageKey = "banner:resource:spigot:12345:png:";
+    const getRemainingTtlMs = imageCache.getRemainingTtlMs.bind(imageCache);
+    let imageRemainingTtlMs = 2_500;
+    imageCache.getRemainingTtlMs = (key) =>
+      key === imageKey
+        ? Math.min(imageRemainingTtlMs, getRemainingTtlMs(key) ?? imageRemainingTtlMs)
+        : getRemainingTtlMs(key);
+    const cachedApp = makeApp(
+      { SPIGOT: new FixtureResourceClient(FIXTURE_SPIGOT_FREE) },
+      { resourceData: dataCache, resourceBannerImage: imageCache }
+    );
+
+    const cold = await cachedApp.request("/banner/resource/spigot/12345/banner.png");
+    expect(cold.headers.get("Cache-Control")).toBe("public, max-age=2, stale-while-revalidate=0");
+
+    imageRemainingTtlMs = 500;
+    const warm = await cachedApp.request("/banner/resource/spigot/12345/banner.png");
+    expect(warm.headers.get("Cache-Control")).toBe("public, max-age=0, stale-while-revalidate=0");
+    expect(dataCache.getRemainingTtlMs("resource:spigot:12345")).toBeGreaterThan(50_000);
+  });
+
   it("re-renders after source expiry and replacement instead of serving the old image", async () => {
     const capturing = new CapturingResourceClient(FIXTURE_SPIGOT_FREE);
     const dataCache = new MemoryCache({ maxEntries: 100, ttlMs: 60_000 });

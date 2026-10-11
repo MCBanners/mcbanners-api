@@ -16,6 +16,7 @@ import { normalizeResourceId, type ResourceClient } from "@mcbanners/external-cl
 import { Hono } from "hono";
 import {
   bannerImageResponse,
+  getBannerImageRemainingTtlMs,
   getOrRenderBannerImage,
   getSourceWithFreshness,
   readWarmBannerImage
@@ -174,7 +175,12 @@ export const createResourceBannerRoute = (
       (sourceToken !== undefined && currentSource?.token === sourceToken);
     if (!sourceStillCurrent) bannerCache?.delete(imageKey);
 
-    return bannerImageResponse(buf, outputType, currentSource?.remainingTtlMs, sourceStillCurrent);
+    return bannerImageResponse(
+      buf,
+      outputType,
+      getBannerImageRemainingTtlMs(bannerCache, imageKey, currentSource?.remainingTtlMs),
+      sourceStillCurrent
+    );
   });
 
   return route;

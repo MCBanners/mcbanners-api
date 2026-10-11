@@ -9,6 +9,18 @@ export type ReadBannerSourceFreshness = () => BannerSourceFreshness | undefined;
 
 const imageSourceTokens = new WeakMap<Buffer, symbol | undefined>();
 
+export const getBannerImageRemainingTtlMs = (
+  cache: MemoryCache | undefined,
+  imageKey: string,
+  sourceRemainingTtlMs?: number
+): number | undefined => {
+  if (cache === undefined) return sourceRemainingTtlMs;
+  const imageRemainingTtlMs = cache.getRemainingTtlMs(imageKey) ?? 0;
+  return sourceRemainingTtlMs === undefined
+    ? imageRemainingTtlMs
+    : Math.min(sourceRemainingTtlMs, imageRemainingTtlMs);
+};
+
 export const readWarmBannerImage = (
   cache: MemoryCache | undefined,
   imageKey: string,
@@ -23,7 +35,9 @@ export const readWarmBannerImage = (
     return undefined;
   }
 
-  return { image, remainingTtlMs: source.remainingTtlMs };
+  const remainingTtlMs = getBannerImageRemainingTtlMs(cache, imageKey, source.remainingTtlMs);
+  if (remainingTtlMs === undefined) return undefined;
+  return { image, remainingTtlMs };
 };
 
 export const getOrRenderBannerImage = async (

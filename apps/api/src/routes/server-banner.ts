@@ -17,6 +17,7 @@ import type { MinecraftStatusAdapter } from "@mcbanners/minecraft-status";
 import { Hono } from "hono";
 import {
   bannerImageResponse,
+  getBannerImageRemainingTtlMs,
   getOrRenderBannerImage,
   readWarmBannerImage
 } from "./banner-image-cache";
@@ -168,7 +169,12 @@ export const createServerBannerRoute = (
       (statusResult.token !== undefined && currentSource?.token === statusResult.token);
     if (!sourceStillCurrent) bannerCache?.delete(imageKey);
 
-    return bannerImageResponse(buf, outputType, currentSource?.remainingTtlMs, sourceStillCurrent);
+    return bannerImageResponse(
+      buf,
+      outputType,
+      getBannerImageRemainingTtlMs(bannerCache, imageKey, currentSource?.remainingTtlMs),
+      sourceStillCurrent
+    );
   });
 
   return route;
