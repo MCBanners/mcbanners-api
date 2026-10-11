@@ -629,6 +629,71 @@ describe("GET /banner/saved/:mnemonic.:outputType", () => {
     expect(secondImage).not.toEqual(firstImage);
   });
 
+  it("invalidates a rendered image when its source cache entry is replaced before expiry", async () => {
+    const refreshedData: ResourceBannerData = {
+      ...FIXTURE_SPIGOT_RESOURCE,
+      resource: { ...FIXTURE_SPIGOT_RESOURCE.resource, name: "Replaced Resource" }
+    };
+    const client = new FixtureResourceClient(refreshedData);
+    const resourceData = new MemoryCache({ ttlMs: 60_000, maxEntries: 100 });
+    resourceData.set("resource:spigot:12345", FIXTURE_SPIGOT_RESOURCE);
+    const savedBannerImage = new MemoryCache({ ttlMs: 60_000, maxEntries: 100 });
+    const repository = new InMemorySavedBannerRepository([
+      savedRow({ mnemonic: "abcdefghijklmn", type: 3, metadata: '{"resource_id":"12345"}' })
+    ]);
+    const app = createApp(
+      createFixtureAdapter(MC_STATUS_FIXTURES),
+      { SPIGOT: client },
+      { resourceData, savedBannerImage },
+      { savedBanners: repository }
+    );
+
+    const first = await app.request("/banner/saved/abcdefghijklmn.png");
+    const firstImage = new Uint8Array(await first.arrayBuffer());
+    resourceData.set("resource:spigot:12345", refreshedData);
+    const second = await app.request("/banner/saved/abcdefghijklmn.png");
+    const secondImage = new Uint8Array(await second.arrayBuffer());
+
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(200);
+    expect(client.calls).toBe(0);
+    expect(savedBannerImage.stats().deletes).toBe(1);
+    expect(secondImage).not.toEqual(firstImage);
+  });
+
+  it("invalidates a rendered image when its source cache entry is evicted before expiry", async () => {
+    const refreshedData: ResourceBannerData = {
+      ...FIXTURE_SPIGOT_RESOURCE,
+      resource: { ...FIXTURE_SPIGOT_RESOURCE.resource, name: "Eviction Refresh" }
+    };
+    const client = new FixtureResourceClient(refreshedData);
+    const resourceData = new MemoryCache({ ttlMs: 60_000, maxEntries: 1 });
+    resourceData.set("resource:spigot:12345", FIXTURE_SPIGOT_RESOURCE);
+    const savedBannerImage = new MemoryCache({ ttlMs: 60_000, maxEntries: 100 });
+    const repository = new InMemorySavedBannerRepository([
+      savedRow({ mnemonic: "abcdefghijklmn", type: 3, metadata: '{"resource_id":"12345"}' })
+    ]);
+    const app = createApp(
+      createFixtureAdapter(MC_STATUS_FIXTURES),
+      { SPIGOT: client },
+      { resourceData, savedBannerImage },
+      { savedBanners: repository }
+    );
+
+    const first = await app.request("/banner/saved/abcdefghijklmn.png");
+    const firstImage = new Uint8Array(await first.arrayBuffer());
+    resourceData.set("resource:spigot:another", FIXTURE_SPIGOT_RESOURCE);
+    const second = await app.request("/banner/saved/abcdefghijklmn.png");
+    const secondImage = new Uint8Array(await second.arrayBuffer());
+
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(200);
+    expect(resourceData.stats().evictions).toBeGreaterThan(0);
+    expect(client.calls).toBe(1);
+    expect(savedBannerImage.stats().deletes).toBe(1);
+    expect(secondImage).not.toEqual(firstImage);
+  });
+
   it("uses the matching banner family's rendered-image TTL", async () => {
     const client = new FixtureResourceClient(FIXTURE_SPIGOT_RESOURCE);
     const resourceData = new MemoryCache({ ttlMs: 60_000, maxEntries: 100 });

@@ -57,14 +57,19 @@ export class MemoryCache implements IMemoryCache {
   }
 
   getRemainingTtlMs(key: string): number | undefined {
+    return this.getEntryFreshness(key)?.remainingTtlMs;
+  }
+
+  /** Returns the active entry identity and remaining TTL for freshness checks. */
+  getEntryFreshness(key: string): { token: object; remainingTtlMs: number } | undefined {
     const entry = this.entries.get(key);
     if (entry === undefined) return undefined;
-    const remainingMs = entry.expiresAt - Date.now();
-    if (remainingMs <= 0) {
+    const remainingTtlMs = entry.expiresAt - Date.now();
+    if (remainingTtlMs <= 0) {
       this.removeEntry(key, entry, true);
       return undefined;
     }
-    return remainingMs;
+    return { token: entry, remainingTtlMs };
   }
 
   set(key: string, value: unknown, ttlMs?: number, byteEstimate?: number): void {
@@ -131,7 +136,10 @@ export class MemoryCache implements IMemoryCache {
    */
   getOrSet<T>(key: string, fn: () => Promise<T>, opts?: GetOrSetOptions<T>): Promise<T> {
     const cached = this.get<T>(key);
-    if (cached !== undefined) return Promise.resolve(cached);
+    if (cached !== undefined) {
+      if (opts?.isFresh?.(cached) !== false) return Promise.resolve(cached);
+      this.delete(key);
+    }
 
     const existing = this.inflight.get(key);
     if (existing !== undefined) {

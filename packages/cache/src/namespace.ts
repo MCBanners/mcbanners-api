@@ -26,6 +26,10 @@ export class CacheNamespace {
     return this.cache.getRemainingTtlMs(this.key(key));
   }
 
+  getEntryFreshness(key: string): { token: object; remainingTtlMs: number } | undefined {
+    return this.cache.getEntryFreshness(this.key(key));
+  }
+
   set(key: string, value: unknown, ttlMs?: number, byteEstimate?: number): void {
     this.cache.set(this.key(key), value, ttlMs, byteEstimate);
   }

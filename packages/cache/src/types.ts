@@ -10,6 +10,8 @@ export interface CacheOptions {
 
 /** Per-call options for {@link IMemoryCache.getOrSet}. */
 export interface GetOrSetOptions<T = unknown> {
+  /** Reject a cached value when caller-specific freshness checks fail. */
+  isFresh?: (value: T) => boolean;
   /** Override the cache-wide TTL for this entry, optionally after resolving its value. */
   ttlMs?: number | ((value: T) => number);
   /**
@@ -42,6 +44,8 @@ export interface IMemoryCache {
   get<T>(key: string): T | undefined;
   /** Returns the unexpired entry's remaining lifetime, or undefined if absent/expired. */
   getRemainingTtlMs(key: string): number | undefined;
+  /** Returns a stable token for the active entry and its remaining lifetime. */
+  getEntryFreshness(key: string): { token: object; remainingTtlMs: number } | undefined;
   set(key: string, value: unknown, ttlMs?: number, byteEstimate?: number): void;
   delete(key: string): boolean;
   clearPrefix(prefix: string): void;

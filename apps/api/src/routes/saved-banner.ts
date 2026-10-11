@@ -292,6 +292,8 @@ const backendForAuthorBannerType = (bannerType: BannerType): ServiceBackend | nu
 };
 
 export class SavedBannerRecallService {
+  private readonly sourceTokenByImage = new WeakMap<Buffer, object | undefined>();
+
   constructor(
     private readonly minecraftAdapter: MinecraftStatusAdapter,
     private readonly resourceClients: ResourceClients,
@@ -303,6 +305,14 @@ export class SavedBannerRecallService {
 
   /** Returns how long an image can stay fresh without outliving its source data. */
   imageCacheTtlMs(row: SavedBannerRow): number | undefined {
+    return this.imageCacheFreshness(row).ttlMs;
+  }
+
+  /** Returns source entry identity as well as its TTL to detect early replacement/eviction. */
+  imageCacheFreshness(row: SavedBannerRow): {
+    ttlMs: number | undefined;
+    sourceToken: object | undefined;
+  } {
     let bannerType: BannerType;
     let metadata: SavedBannerJsonMap;
     try {
@@ -317,11 +327,14 @@ export class SavedBannerRecallService {
       sourceCache: MemoryCache | undefined,
       sourceKey: string,
       renderTtl?: number
-    ) => {
-      if (sourceCache === undefined) return renderTtl;
-      const sourceTtl = sourceCache.getRemainingTtlMs(sourceKey);
-      if (sourceTtl === undefined) return 0;
-      return Math.min(sourceTtl, renderTtl ?? Number.POSITIVE_INFINITY);
+    ): { ttlMs: number | undefined; sourceToken: object | undefined } => {
+      if (sourceCache === undefined) return { ttlMs: renderTtl, sourceToken: undefined };
+      const source = sourceCache.getEntryFreshness(sourceKey);
+      if (source === undefined) return { ttlMs: 0, sourceToken: undefined };
+      return {
+        ttlMs: Math.min(source.remainingTtlMs, renderTtl ?? Number.POSITIVE_INFINITY),
+        sourceToken: source.token
+      };
     };
 
     if (bannerType === "MINECRAFT_SERVER") {
@@ -387,7 +400,15 @@ export class SavedBannerRecallService {
       return getTtl(this.caches.teamData, `team:polymart:${normalizedId}`, imageTtls?.team);
     }
 
-    return undefined;
+    return { ttlMs: undefined, sourceToken: undefined };
+  }
+
+  rememberImageSource(row: SavedBannerRow, image: Buffer): void {
+    this.sourceTokenByImage.set(image, this.imageCacheFreshness(row).sourceToken);
+  }
+
+  imageMatchesSource(image: Buffer, sourceToken: object | undefined): boolean {
+    return this.sourceTokenByImage.get(image) === sourceToken;
   }
 
   async render(row: SavedBannerRow, outputType: SavedBannerOutputType): Promise<Buffer | null> {
@@ -703,17 +724,25 @@ export const createSavedBannerRoute = (
             );
       if (row === null) return c.body(null, 404);
 
-      const imageTtlMs = recall.imageCacheTtlMs(row);
-      if (imageTtlMs === 0) caches.savedBannerImage?.delete(imageCacheKey);
-      const renderSavedBanner = (): Promise<Buffer | null> => recall.render(row, outputType);
+      const imageFreshness = recall.imageCacheFreshness(row);
+      if (imageFreshness.ttlMs === 0) caches.savedBannerImage?.delete(imageCacheKey);
+      const renderSavedBanner = async (): Promise<Buffer | null> => {
+        const image = await recall.render(row, outputType);
+        if (image !== null) recall.rememberImageSource(row, image);
+        return image;
+      };
       const buf =
         caches.savedBannerImage === undefined
           ? await renderSavedBanner()
           : await caches.savedBannerImage.getOrSet(imageCacheKey, renderSavedBanner, {
-              ...(imageTtlMs === undefined
+              isFresh: (image) =>
+                image !== null &&
+                imageFreshness.ttlMs !== 0 &&
+                recall.imageMatchesSource(image, imageFreshness.sourceToken),
+              ...(imageFreshness.ttlMs === undefined
                 ? {}
                 : {
-                    ttlMs: () => recall.imageCacheTtlMs(row) ?? imageTtlMs
+                    ttlMs: () => recall.imageCacheTtlMs(row) ?? imageFreshness.ttlMs ?? 0
                   }),
               byteEstimate: (image) => image?.length ?? 0
             });
