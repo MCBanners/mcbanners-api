@@ -65,6 +65,9 @@ export async function fetchImageBase64(
   const timer = setTimeout(() => {
     controller.abort();
   }, timeoutMs);
+  let cancelReader: (() => Promise<void>) | undefined;
+  let releaseReaderLock: (() => void) | undefined;
+  let bodyComplete = false;
 
   try {
     const response = await fetchFn(url, {
@@ -72,33 +75,62 @@ export async function fetchImageBase64(
       headers: { "User-Agent": USER_AGENT }
     });
 
-    if (!response.ok) return null;
+    if (!response.ok) {
+      void response.body?.cancel().catch(() => {});
+      return null;
+    }
 
     const contentTypeHeader = response.headers.get("Content-Type");
     if (contentTypeHeader !== null) {
       const contentType = contentTypeHeader.split(";")[0]?.trim().toLowerCase();
       if (contentType === undefined || !ALLOWED_IMAGE_CONTENT_TYPES.has(contentType)) {
+        void response.body?.cancel().catch(() => {});
         return null;
       }
     }
 
     const contentLengthHeader = response.headers.get("Content-Length");
     if (contentLengthHeader !== null) {
-      const contentLength = Number.parseInt(contentLengthHeader, 10);
-      if (Number.isFinite(contentLength) && contentLength > maxImageBytes) {
+      const contentLength = /^\d+$/.test(contentLengthHeader.trim())
+        ? Number(contentLengthHeader)
+        : Number.NaN;
+      if (contentLength > maxImageBytes) {
+        controller.abort();
+        void response.body?.cancel().catch(() => {});
         return null;
       }
     }
 
-    const buffer = await response.arrayBuffer();
-    if (buffer.byteLength > maxImageBytes) {
-      return null;
+    if (response.body === null) {
+      bodyComplete = true;
+      return maxImageBytes < 0 ? null : "";
     }
 
-    return Buffer.from(buffer).toString("base64");
+    const reader = response.body.getReader();
+    cancelReader = () => reader.cancel();
+    releaseReaderLock = () => reader.releaseLock();
+    const chunks: Uint8Array[] = [];
+    let totalBytes = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) {
+        bodyComplete = true;
+        break;
+      }
+      if (totalBytes + value.byteLength > maxImageBytes) {
+        controller.abort();
+        return null;
+      }
+      chunks.push(value);
+      totalBytes += value.byteLength;
+    }
+
+    return Buffer.concat(chunks, totalBytes).toString("base64");
   } catch {
     return null;
   } finally {
     clearTimeout(timer);
+    if (!bodyComplete) void cancelReader?.().catch(() => {});
+    releaseReaderLock?.();
   }
 }
