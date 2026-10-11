@@ -80,12 +80,18 @@ const savedBannerDataCache = new MemoryCache({
     cacheTtl.marketplaceMemberMs,
     cacheTtl.marketplaceTeamMs
   ),
-  maxEntries: 500
+  maxEntries: 500,
+  maxBytes: 5_000_000
 });
 const savedBannerImageCache = new MemoryCache({
-  // Keep cached saved images within both source-data freshness and the
-  // existing rendered-image/browser freshness window.
-  ttlMs: Math.min(60_000, ...Object.values(cacheTtl)),
+  // Per-image TTLs are set from the matching source/render freshness limits.
+  ttlMs: Math.max(
+    cacheTtl.serverBannerImageMs,
+    cacheTtl.resourceBannerImageMs,
+    cacheTtl.authorBannerImageMs,
+    cacheTtl.memberBannerImageMs,
+    cacheTtl.teamBannerImageMs
+  ),
   maxEntries: 200,
   maxBytes: 50_000_000
 });
@@ -156,7 +162,14 @@ const app = createApp(
     teamData: teamDataCache,
     teamBannerImage: teamBannerImageCache,
     savedBannerData: savedBannerDataCache,
-    savedBannerImage: savedBannerImageCache
+    savedBannerImage: savedBannerImageCache,
+    savedBannerImageTtl: {
+      server: cacheTtl.serverBannerImageMs,
+      resource: cacheTtl.resourceBannerImageMs,
+      author: cacheTtl.authorBannerImageMs,
+      member: cacheTtl.memberBannerImageMs,
+      team: cacheTtl.teamBannerImageMs
+    }
   },
   {
     savedBanners: savedBannerRepository

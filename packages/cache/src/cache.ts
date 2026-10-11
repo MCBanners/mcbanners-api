@@ -56,6 +56,17 @@ export class MemoryCache implements IMemoryCache {
     return entry.value as T;
   }
 
+  getRemainingTtlMs(key: string): number | undefined {
+    const entry = this.entries.get(key);
+    if (entry === undefined) return undefined;
+    const remainingMs = entry.expiresAt - Date.now();
+    if (remainingMs <= 0) {
+      this.removeEntry(key, entry, true);
+      return undefined;
+    }
+    return remainingMs;
+  }
+
   set(key: string, value: unknown, ttlMs?: number, byteEstimate?: number): void {
     const bytes = byteEstimate ?? 0;
     // Replace an existing entry without double-counting its bytes.
@@ -134,7 +145,9 @@ export class MemoryCache implements IMemoryCache {
         if (value !== null || opts?.cacheNull === true) {
           const raw = opts?.byteEstimate;
           const bytes = typeof raw === "function" ? raw(value) : (raw ?? 0);
-          this.set(key, value, opts?.ttlMs, bytes);
+          const rawTtl = opts?.ttlMs;
+          const ttlMs = typeof rawTtl === "function" ? rawTtl(value) : rawTtl;
+          this.set(key, value, ttlMs, bytes);
         }
         return value;
       })

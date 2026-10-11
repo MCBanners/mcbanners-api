@@ -45,6 +45,14 @@ export interface AppCaches {
   savedBannerData?: MemoryCache;
   /** Cached saved-banner image Buffers keyed by mnemonic and format. */
   savedBannerImage?: MemoryCache;
+  /** Per-family rendered-image TTLs used by saved-banner images. */
+  savedBannerImageTtl?: {
+    readonly server: number;
+    readonly resource: number;
+    readonly author: number;
+    readonly member: number;
+    readonly team: number;
+  };
 }
 
 export type { AuthorClients, MemberClients, ResourceClients, TeamClients };
@@ -215,6 +223,10 @@ export const createApp = (
         {
           ...(caches?.savedBannerData && { savedBannerData: caches.savedBannerData }),
           ...(caches?.savedBannerImage && { savedBannerImage: caches.savedBannerImage }),
+          ...(caches?.savedBannerImageTtl && {
+            savedBannerImageTtl: caches.savedBannerImageTtl
+          }),
+          ...(caches?.mcStatus && { mcStatus: caches.mcStatus }),
           ...(caches?.resourceData && { resourceData: caches.resourceData }),
           ...(caches?.authorData && { authorData: caches.authorData }),
           ...(caches?.memberData && { memberData: caches.memberData }),

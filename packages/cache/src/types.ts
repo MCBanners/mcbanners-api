@@ -10,8 +10,8 @@ export interface CacheOptions {
 
 /** Per-call options for {@link IMemoryCache.getOrSet}. */
 export interface GetOrSetOptions<T = unknown> {
-  /** Override the cache-wide TTL for this specific entry. */
-  ttlMs?: number;
+  /** Override the cache-wide TTL for this entry, optionally after resolving its value. */
+  ttlMs?: number | ((value: T) => number);
   /**
    * Byte estimate for this entry (used for maxBytes tracking).
    * Accepts either a static number or a function called with the resolved
@@ -40,6 +40,8 @@ export interface CacheStats {
 /** Minimal interface that CacheNamespace delegates to. */
 export interface IMemoryCache {
   get<T>(key: string): T | undefined;
+  /** Returns the unexpired entry's remaining lifetime, or undefined if absent/expired. */
+  getRemainingTtlMs(key: string): number | undefined;
   set(key: string, value: unknown, ttlMs?: number, byteEstimate?: number): void;
   delete(key: string): boolean;
   clearPrefix(prefix: string): void;

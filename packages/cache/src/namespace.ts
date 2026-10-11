@@ -22,6 +22,10 @@ export class CacheNamespace {
     return this.cache.get<T>(this.key(key));
   }
 
+  getRemainingTtlMs(key: string): number | undefined {
+    return this.cache.getRemainingTtlMs(this.key(key));
+  }
+
   set(key: string, value: unknown, ttlMs?: number, byteEstimate?: number): void {
     this.cache.set(this.key(key), value, ttlMs, byteEstimate);
   }
