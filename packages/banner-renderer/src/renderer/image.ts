@@ -3,6 +3,12 @@ import { rendererAssetManifest, resolveAssetPath } from "../assets";
 import type { ImageNode } from "../nodes/image-node";
 import type { SpriteNode } from "../nodes/sprite-node";
 import type { RenderSurface } from "../types/render-surface";
+import { BoundedAsyncCache } from "./bounded-async-cache";
+
+const decodedManifestImages = new BoundedAsyncCache<Awaited<ReturnType<typeof loadImage>>>(
+  32 * 1024 * 1024,
+  (image) => image.width * image.height * 4
+);
 
 const loadManifestImage = async (assetKey: string): ReturnType<typeof loadImage> => {
   const asset = rendererAssetManifest.assets.find((a) => a.key === assetKey);
@@ -11,7 +17,10 @@ const loadManifestImage = async (assetKey: string): ReturnType<typeof loadImage>
     throw new Error(`Image asset not found in manifest: ${assetKey}`);
   }
 
-  return loadImage(resolveAssetPath(asset));
+  const path = resolveAssetPath(asset);
+  return asset.kind === "font"
+    ? loadImage(path)
+    : decodedManifestImages.get(assetKey, () => loadImage(path));
 };
 
 /**

@@ -324,6 +324,35 @@ describe("renderer primitives", () => {
     expect([...jpg.subarray(0, jpgSignature.length)]).toEqual([...jpgSignature]);
   });
 
+  test("concurrent bundled asset renders preserve the cold-render output", async () => {
+    const render = async () => {
+      const surface = createCanvasSurface(468, 60);
+      await renderImageNode(surface, {
+        type: "image",
+        x: 0,
+        y: 0,
+        width: 468,
+        height: 60,
+        assetKey: "BLUE_RADIAL"
+      });
+      await renderSpriteNode(surface, {
+        type: "sprite",
+        x: 18,
+        y: 17,
+        width: 24,
+        height: 24,
+        assetKey: "STAR_FULL"
+      });
+      return encodePng(surface);
+    };
+
+    const outputs = await Promise.all(Array.from({ length: 8 }, () => render()));
+    const hashes = outputs.map((png) => createHash("sha256").update(png).digest("hex"));
+
+    expect(new Set(hashes).size).toBe(1);
+    expect(hashes[0]).toBe("89e5970bc55d0f59a0bd96f267c44eed6abab866f930b4602d20a6c28c73434c");
+  });
+
   test("all eight font faces render without error", () => {
     registerRendererFonts();
     const surface = createCanvasSurface(468, 60);
