@@ -65,6 +65,195 @@ describe("fetchJson", () => {
 });
 
 describe("fetchImageBase64", () => {
+  it("reuses a successfully fetched image for the same URL", async () => {
+    let requests = 0;
+    const fetchFn: FetchFn = () => {
+      requests += 1;
+      return Promise.resolve(new Response(tinyPng, { headers: { "Content-Type": "image/png" } }));
+    };
+
+    const first = await fetchImageBase64("https://example.test/logo.png", {}, fetchFn);
+    const second = await fetchImageBase64("https://example.test/logo.png", {}, fetchFn);
+
+    expect(second).toBe(first);
+    expect(requests).toBe(1);
+  });
+
+  it("coalesces concurrent requests for the same URL and options", async () => {
+    let requests = 0;
+    const fetchFn: FetchFn = async () => {
+      requests += 1;
+      await Bun.sleep(5);
+      return new Response(tinyPng, { headers: { "Content-Type": "image/png" } });
+    };
+
+    const results = await Promise.all(
+      Array.from({ length: 8 }, () =>
+        fetchImageBase64("https://example.test/concurrent-logo.png", {}, fetchFn)
+      )
+    );
+
+    expect(new Set(results).size).toBe(1);
+    expect(requests).toBe(1);
+  });
+
+  it("does not let a cached image bypass a caller's smaller byte limit", async () => {
+    let requests = 0;
+    const fetchFn: FetchFn = () => {
+      requests += 1;
+      return Promise.resolve(new Response(tinyPng, { headers: { "Content-Type": "image/png" } }));
+    };
+
+    expect(
+      await fetchImageBase64(
+        "https://example.test/limited-logo.png",
+        { maxImageBytes: tinyPng.byteLength },
+        fetchFn
+      )
+    ).toBe(Buffer.from(tinyPng).toString("base64"));
+    expect(
+      await fetchImageBase64(
+        "https://example.test/limited-logo.png",
+        { maxImageBytes: tinyPng.byteLength - 1 },
+        fetchFn
+      )
+    ).toBeNull();
+    expect(requests).toBe(1);
+  });
+
+  it("keeps concurrent requests with different byte limits independent", async () => {
+    let requests = 0;
+    const fetchFn: FetchFn = async () => {
+      requests += 1;
+      await Bun.sleep(5);
+      return new Response(tinyPng, { headers: { "Content-Type": "image/png" } });
+    };
+
+    const [withinLimit, overLimit] = await Promise.all([
+      fetchImageBase64(
+        "https://example.test/concurrent-limits.png",
+        { maxImageBytes: tinyPng.byteLength },
+        fetchFn
+      ),
+      fetchImageBase64(
+        "https://example.test/concurrent-limits.png",
+        { maxImageBytes: tinyPng.byteLength - 1 },
+        fetchFn
+      )
+    ]);
+
+    expect(withinLimit).toBe(Buffer.from(tinyPng).toString("base64"));
+    expect(overLimit).toBeNull();
+    expect(requests).toBe(2);
+  });
+
+  it("isolates custom fetch implementations and keeps changed URLs distinct", async () => {
+    let firstFetchRequests = 0;
+    const firstFetch: FetchFn = () => {
+      firstFetchRequests += 1;
+      return Promise.resolve(
+        new Response(new Uint8Array([1]), { headers: { "Content-Type": "image/png" } })
+      );
+    };
+    const secondFetch: FetchFn = () =>
+      Promise.resolve(
+        new Response(new Uint8Array([2]), { headers: { "Content-Type": "image/png" } })
+      );
+
+    const first = await fetchImageBase64("https://example.test/logo-a.png", {}, firstFetch);
+    const isolated = await fetchImageBase64("https://example.test/logo-a.png", {}, secondFetch);
+    const changedUrl = await fetchImageBase64("https://example.test/logo-b.png", {}, firstFetch);
+
+    expect(first).toBe(Buffer.from([1]).toString("base64"));
+    expect(isolated).toBe(Buffer.from([2]).toString("base64"));
+    expect(changedUrl).toBe(Buffer.from([1]).toString("base64"));
+    expect(firstFetchRequests).toBe(2);
+  });
+
+  it("expires successful entries and fetches them again", async () => {
+    let requests = 0;
+    let now = 1_000;
+    const realNow = Date.now;
+    Date.now = () => now;
+    const fetchFn: FetchFn = () => {
+      requests += 1;
+      return Promise.resolve(new Response(tinyPng, { headers: { "Content-Type": "image/png" } }));
+    };
+
+    try {
+      await fetchImageBase64("https://example.test/expiring-logo.png", {}, fetchFn);
+      await fetchImageBase64("https://example.test/expiring-logo.png", {}, fetchFn);
+      now += 5 * 60_000;
+      await fetchImageBase64("https://example.test/expiring-logo.png", {}, fetchFn);
+    } finally {
+      Date.now = realNow;
+    }
+
+    expect(requests).toBe(2);
+  });
+
+  it("evicts the least recently used entry when the entry limit is reached", async () => {
+    const requests = new Map<string, number>();
+    const fetchFn: FetchFn = (input) => {
+      const url = String(input);
+      requests.set(url, (requests.get(url) ?? 0) + 1);
+      return Promise.resolve(new Response(tinyPng, { headers: { "Content-Type": "image/png" } }));
+    };
+
+    const logoUrl = (index: number) => `https://example.test/logo-${index}.png`;
+    await fetchImageBase64(logoUrl(0), {}, fetchFn);
+    await fetchImageBase64(logoUrl(1), {}, fetchFn);
+    await fetchImageBase64(logoUrl(0), {}, fetchFn);
+    for (let index = 2; index < 129; index += 1) {
+      await fetchImageBase64(logoUrl(index), {}, fetchFn);
+    }
+
+    await fetchImageBase64(logoUrl(0), {}, fetchFn);
+    await fetchImageBase64(logoUrl(1), {}, fetchFn);
+
+    expect(requests.get(logoUrl(0))).toBe(1);
+    expect(requests.get(logoUrl(1))).toBe(2);
+  });
+
+  it("evicts entries when the cache byte limit is reached", async () => {
+    const largeLogo = new Uint8Array(2.5 * 1024 * 1024);
+    const requests = new Map<string, number>();
+    const fetchFn: FetchFn = (input) => {
+      const url = String(input);
+      requests.set(url, (requests.get(url) ?? 0) + 1);
+      return Promise.resolve(new Response(largeLogo, { headers: { "Content-Type": "image/png" } }));
+    };
+
+    const options = { maxImageBytes: largeLogo.byteLength };
+    const firstUrl = "https://example.test/large-logo-a.png";
+    const secondUrl = "https://example.test/large-logo-b.png";
+    expect(await fetchImageBase64(firstUrl, options, fetchFn)).not.toBe(null);
+    expect(await fetchImageBase64(secondUrl, options, fetchFn)).not.toBe(null);
+    expect(await fetchImageBase64(secondUrl, options, fetchFn)).not.toBe(null);
+    expect(await fetchImageBase64(firstUrl, options, fetchFn)).not.toBe(null);
+
+    expect(requests.get(firstUrl)).toBe(2);
+    expect(requests.get(secondUrl)).toBe(1);
+  });
+
+  it("does not cache failures", async () => {
+    let requests = 0;
+    const fetchFn: FetchFn = () => {
+      requests += 1;
+      return Promise.resolve(
+        requests === 1
+          ? new Response("", { status: 500 })
+          : new Response(tinyPng, { headers: { "Content-Type": "image/png" } })
+      );
+    };
+
+    expect(await fetchImageBase64("https://example.test/retry-logo.png", {}, fetchFn)).toBeNull();
+    expect(await fetchImageBase64("https://example.test/retry-logo.png", {}, fetchFn)).toBe(
+      Buffer.from(tinyPng).toString("base64")
+    );
+    expect(requests).toBe(2);
+  });
+
   it("returns base64 for allowed image content types", async () => {
     const result = await fetchImageBase64(
       "https://example.test/icon.png",
