@@ -4,7 +4,7 @@ MCBanners API Next is deployed as a self-hosted Bun container. The container run
 
 ## Image Strategy
 
-- Base image: `oven/bun:1.3.14`, matching the pinned root `packageManager`.
+- Base image: `oven/bun:1.4.3`, matching the pinned root `packageManager`.
 - The image intentionally uses the standard glibc-based Bun image instead of Alpine to reduce native canvas binding risk.
 - Builder stage installs dependencies with `bun install --frozen-lockfile`.
 - Builder stage runs `bun run typecheck`, `bun run test`, and `bun run build`.
@@ -155,7 +155,7 @@ bun install --frozen-lockfile --production
 
 ### Native Canvas
 
-`@napi-rs/canvas` is a native dependency used by the renderer. The Dockerfile uses the standard glibc-based `oven/bun:1.3.14` image instead of Alpine to reduce native binding risk. If image rendering fails only in Docker, check the canvas package install, Linux native binary support, and renderer asset readiness before changing API behavior.
+`@napi-rs/canvas` is a native dependency used by the renderer. The Dockerfile uses the standard glibc-based `oven/bun:1.4.3` image instead of Alpine to reduce native binding risk. If image rendering fails only in Docker, check the canvas package install, Linux native binary support, and renderer asset readiness before changing API behavior.
 
 ## Production Notes
 

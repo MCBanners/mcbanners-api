@@ -59,14 +59,12 @@ describe("resource banner render — PNG/JPG encoding", () => {
 });
 
 describe("resource banner render — determinism", () => {
-  test.each(ALL_RESOURCE_FIXTURES)("$label PNG hash is stable across two renders", async ({
-    fixture
-  }: {
-    label: string;
-    fixture: ResourceBannerData;
-  }) => {
-    const { png: png1 } = await renderFixture(fixture);
-    const { png: png2 } = await renderFixture(fixture);
-    expect(sha256(png1)).toBe(sha256(png2));
-  });
+  test.each(ALL_RESOURCE_FIXTURES)(
+    "$label PNG hash is stable across two renders",
+    async ({ fixture }: { label: string; fixture: ResourceBannerData }) => {
+      const { png: png1 } = await renderFixture(fixture);
+      const { png: png2 } = await renderFixture(fixture);
+      expect(sha256(png1)).toBe(sha256(png2));
+    }
+  );
 });

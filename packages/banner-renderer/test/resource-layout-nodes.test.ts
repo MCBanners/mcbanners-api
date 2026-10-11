@@ -515,33 +515,29 @@ describe("buildResourceBannerNodes — price", () => {
 // ─── buildResourceBannerNodes — JSON serializability ─────────────────────────
 
 describe("buildResourceBannerNodes — JSON serializability", () => {
-  test.each(ALL_RESOURCE_FIXTURES)("$label nodes are JSON-round-trippable", ({
-    fixture
-  }: {
-    label: string;
-    fixture: ResourceBannerData;
-  }) => {
-    const nodes = buildResourceBannerNodes(fixture, DEFAULT_RESOURCE_BANNER_SETTINGS);
-    const json = JSON.stringify(nodes);
-    const parsed = JSON.parse(json) as RenderNode[];
-    expect(parsed).toHaveLength(nodes.length);
-    expect(parsed[0].type).toBe("image");
-  });
+  test.each(ALL_RESOURCE_FIXTURES)(
+    "$label nodes are JSON-round-trippable",
+    ({ fixture }: { label: string; fixture: ResourceBannerData }) => {
+      const nodes = buildResourceBannerNodes(fixture, DEFAULT_RESOURCE_BANNER_SETTINGS);
+      const json = JSON.stringify(nodes);
+      const parsed = JSON.parse(json) as RenderNode[];
+      expect(parsed).toHaveLength(nodes.length);
+      expect(parsed[0].type).toBe("image");
+    }
+  );
 });
 
 // ─── buildResourceBannerNodes — determinism ───────────────────────────────────
 
 describe("buildResourceBannerNodes — determinism", () => {
-  test.each(ALL_RESOURCE_FIXTURES)("$label produces identical output on repeated calls", ({
-    fixture
-  }: {
-    label: string;
-    fixture: ResourceBannerData;
-  }) => {
-    const a = buildResourceBannerNodes(fixture, DEFAULT_RESOURCE_BANNER_SETTINGS);
-    const b = buildResourceBannerNodes(fixture, DEFAULT_RESOURCE_BANNER_SETTINGS);
-    expect(JSON.stringify(a)).toBe(JSON.stringify(b));
-  });
+  test.each(ALL_RESOURCE_FIXTURES)(
+    "$label produces identical output on repeated calls",
+    ({ fixture }: { label: string; fixture: ResourceBannerData }) => {
+      const a = buildResourceBannerNodes(fixture, DEFAULT_RESOURCE_BANNER_SETTINGS);
+      const b = buildResourceBannerNodes(fixture, DEFAULT_RESOURCE_BANNER_SETTINGS);
+      expect(JSON.stringify(a)).toBe(JSON.stringify(b));
+    }
+  );
 });
 
 // ─── buildResourceBannerNodes — long/unicode ──────────────────────────────────

@@ -16,6 +16,6 @@
     "@mcbanners/external-clients": "workspace:*",
     "@mcbanners/logger": "workspace:*",
     "@mcbanners/minecraft-status": "workspace:*",
-    "hono": "^4.12.18"
+    "hono": "^4.13.13"
   }
 }
