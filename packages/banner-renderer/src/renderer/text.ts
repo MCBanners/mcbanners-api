@@ -15,6 +15,11 @@ const drawAligned = (
   y: number,
   align: RendererTextAlign
 ): void => {
+  if (align === "left") {
+    surface.context.fillText(text, x, y);
+    return;
+  }
+
   const textWidth = surface.context.measureText(text).width;
   const drawX = computeAlignedX(surface.width, textWidth, x, align);
   surface.context.fillText(text, drawX, y);
