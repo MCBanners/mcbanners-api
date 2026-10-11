@@ -41,6 +41,18 @@ export interface AppCaches {
   teamData?: MemoryCache;
   /** In-memory cache for rendered team banner image Buffers (TTL 300 s). */
   teamBannerImage?: MemoryCache;
+  /** Cached saved-banner database rows keyed by mnemonic. */
+  savedBannerData?: MemoryCache;
+  /** Cached saved-banner image Buffers keyed by mnemonic and format. */
+  savedBannerImage?: MemoryCache;
+  /** Per-family rendered-image TTLs used by saved-banner images. */
+  savedBannerImageTtl?: {
+    readonly server: number;
+    readonly resource: number;
+    readonly author: number;
+    readonly member: number;
+    readonly team: number;
+  };
 }
 
 export type { AuthorClients, MemberClients, ResourceClients, TeamClients };
@@ -207,7 +219,19 @@ export const createApp = (
         resourceClients,
         authorClients ?? {},
         memberClients ?? {},
-        teamClients ?? {}
+        teamClients ?? {},
+        {
+          ...(caches?.savedBannerData && { savedBannerData: caches.savedBannerData }),
+          ...(caches?.savedBannerImage && { savedBannerImage: caches.savedBannerImage }),
+          ...(caches?.savedBannerImageTtl && {
+            savedBannerImageTtl: caches.savedBannerImageTtl
+          }),
+          ...(caches?.mcStatus && { mcStatus: caches.mcStatus }),
+          ...(caches?.resourceData && { resourceData: caches.resourceData }),
+          ...(caches?.authorData && { authorData: caches.authorData }),
+          ...(caches?.memberData && { memberData: caches.memberData }),
+          ...(caches?.teamData && { teamData: caches.teamData })
+        }
       )
     );
   }

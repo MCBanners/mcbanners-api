@@ -29,6 +29,7 @@ import {
   TEAM_BANNER_WIDTH,
   validateBannerStyleSettings
 } from "@mcbanners/banner-renderer";
+import type { MemoryCache } from "@mcbanners/cache";
 import {
   decodeBannerTypeOrdinal,
   parseSavedBannerMetadata,
@@ -44,7 +45,8 @@ import type {
   ResourceClient,
   TeamClient
 } from "@mcbanners/external-clients";
-import type { MinecraftStatusAdapter } from "@mcbanners/minecraft-status";
+import { normalizeResourceId } from "@mcbanners/external-clients";
+import type { MinecraftServerStatus, MinecraftStatusAdapter } from "@mcbanners/minecraft-status";
 import { type Context, Hono } from "hono";
 import type { AuthorClients } from "./author-banner";
 import type { MemberClients } from "./member-banner";
@@ -129,6 +131,23 @@ export class UnsupportedSavedBannerTypeError extends Error {
     super(`Unsupported saved banner type: ${bannerType}`);
     this.name = "UnsupportedSavedBannerTypeError";
   }
+}
+
+interface SavedBannerCaches {
+  readonly mcStatus?: MemoryCache;
+  readonly savedBannerData?: MemoryCache;
+  readonly savedBannerImage?: MemoryCache;
+  readonly resourceData?: MemoryCache;
+  readonly authorData?: MemoryCache;
+  readonly memberData?: MemoryCache;
+  readonly teamData?: MemoryCache;
+  readonly savedBannerImageTtl?: {
+    readonly server: number;
+    readonly resource: number;
+    readonly author: number;
+    readonly member: number;
+    readonly team: number;
+  };
 }
 
 const coerceLegacyStringMap = (value: unknown): SavedBannerJsonMap | null => {
@@ -273,15 +292,146 @@ const backendForAuthorBannerType = (bannerType: BannerType): ServiceBackend | nu
 };
 
 export class SavedBannerRecallService {
+  private readonly sourceTokenByImage = new WeakMap<Buffer, symbol | undefined>();
+
   constructor(
     private readonly minecraftAdapter: MinecraftStatusAdapter,
     private readonly resourceClients: ResourceClients,
     private readonly authorClients: AuthorClients,
     private readonly memberClients: MemberClients,
-    private readonly teamClients: TeamClients
+    private readonly teamClients: TeamClients,
+    private readonly caches: SavedBannerCaches = {}
   ) {}
 
-  async render(row: SavedBannerRow, outputType: SavedBannerOutputType): Promise<Buffer | null> {
+  /** Returns how long an image can stay fresh without outliving its source data. */
+  imageCacheTtlMs(row: SavedBannerRow): number | undefined {
+    return this.imageCacheFreshness(row).ttlMs;
+  }
+
+  /** Returns source entry identity as well as its TTL to detect early replacement/eviction. */
+  imageCacheFreshness(row: SavedBannerRow): {
+    ttlMs: number | undefined;
+    sourceToken: symbol | undefined;
+  } {
+    let bannerType: BannerType;
+    let metadata: SavedBannerJsonMap;
+    try {
+      bannerType = decodeBannerTypeOrdinal(row.type);
+      metadata = parseSavedBannerMetadata(row.metadata);
+    } catch (error) {
+      throw new SavedBannerDataError(String(error));
+    }
+
+    const imageTtls = this.caches.savedBannerImageTtl;
+    const getTtl = (
+      sourceCache: MemoryCache | undefined,
+      sourceKey: string,
+      renderTtl?: number
+    ): { ttlMs: number | undefined; sourceToken: symbol | undefined } => {
+      if (sourceCache === undefined) return { ttlMs: renderTtl, sourceToken: undefined };
+      const source = sourceCache.getEntryFreshness(sourceKey);
+      if (source === undefined) return { ttlMs: 0, sourceToken: undefined };
+      return {
+        ttlMs: Math.min(source.remainingTtlMs, renderTtl ?? Number.POSITIVE_INFINITY),
+        sourceToken: source.token
+      };
+    };
+
+    if (bannerType === "MINECRAFT_SERVER") {
+      const host = metadata["server_host"];
+      if (host === undefined) {
+        throw new SavedBannerDataError("Saved Minecraft server banner is missing server_host");
+      }
+      const parsedPort =
+        metadata["server_port"] === undefined
+          ? 25565
+          : Number.parseInt(metadata["server_port"], 10);
+      const port = Number.isFinite(parsedPort) ? parsedPort : 25565;
+      return getTtl(
+        this.caches.mcStatus,
+        `mc:status:${host.toLowerCase()}:${String(port)}`,
+        imageTtls?.server
+      );
+    }
+
+    const resourceBackend = backendForResourceBannerType(bannerType);
+    if (resourceBackend !== null) {
+      const resourceId = metadata["resource_id"];
+      if (resourceId === undefined) {
+        throw new SavedBannerDataError(`Saved ${bannerType} banner is missing resource_id`);
+      }
+      const normalizedId = normalizeResourceId(resourceBackend, resourceId);
+      return getTtl(
+        this.caches.resourceData,
+        `resource:${resourceBackend.toLowerCase()}:${normalizedId}`,
+        imageTtls?.resource
+      );
+    }
+
+    const authorBackend = backendForAuthorBannerType(bannerType);
+    if (authorBackend !== null) {
+      const authorId = metadata["author_id"];
+      if (authorId === undefined) {
+        throw new SavedBannerDataError(`Saved ${bannerType} banner is missing author_id`);
+      }
+      const normalizedId = normalizeResourceId(authorBackend, authorId);
+      return getTtl(
+        this.caches.authorData,
+        `author:${authorBackend.toLowerCase()}:${normalizedId}`,
+        imageTtls?.author
+      );
+    }
+
+    if (bannerType === "BUILTBYBIT_MEMBER") {
+      const memberId = metadata["member_id"];
+      if (memberId === undefined) {
+        throw new SavedBannerDataError("Saved BUILTBYBIT_MEMBER banner is missing member_id");
+      }
+      const normalizedId = normalizeResourceId("BUILTBYBIT", memberId);
+      return getTtl(this.caches.memberData, `member:builtbybit:${normalizedId}`, imageTtls?.member);
+    }
+
+    if (bannerType === "POLYMART_TEAM") {
+      const teamId = metadata["team_id"];
+      if (teamId === undefined) {
+        throw new SavedBannerDataError("Saved POLYMART_TEAM banner is missing team_id");
+      }
+      const normalizedId = normalizeResourceId("POLYMART", teamId);
+      return getTtl(this.caches.teamData, `team:polymart:${normalizedId}`, imageTtls?.team);
+    }
+
+    return { ttlMs: undefined, sourceToken: undefined };
+  }
+
+  rememberImageSource(image: Buffer, sourceToken: symbol | undefined): void {
+    this.sourceTokenByImage.set(image, sourceToken);
+  }
+
+  imageMatchesCurrentSource(row: SavedBannerRow, image: Buffer): boolean {
+    const current = this.imageCacheFreshness(row);
+    return current.ttlMs !== 0 && this.sourceTokenByImage.get(image) === current.sourceToken;
+  }
+
+  private async getSourceData<T>(
+    cache: MemoryCache | undefined,
+    key: string,
+    fetch: () => Promise<T>,
+    onSourceToken?: (token: symbol | undefined) => void
+  ): Promise<T> {
+    if (cache === undefined) {
+      onSourceToken?.(undefined);
+      return fetch();
+    }
+    const result = await cache.getOrSetWithFreshness(key, fetch);
+    onSourceToken?.(result.token);
+    return result.value;
+  }
+
+  async render(
+    row: SavedBannerRow,
+    outputType: SavedBannerOutputType,
+    onSourceToken?: (token: symbol | undefined) => void
+  ): Promise<Buffer | null> {
     let bannerType: BannerType;
     let metadata: SavedBannerJsonMap;
     let settings: SavedBannerJsonMap;
@@ -304,25 +454,25 @@ export class SavedBannerRecallService {
     validateSavedBannerMetadata(bannerType, metadata);
 
     if (bannerType === "MINECRAFT_SERVER") {
-      return await this.renderMinecraftServer(metadata, settings, outputType);
+      return await this.renderMinecraftServer(metadata, settings, outputType, onSourceToken);
     }
 
     const backend = backendForResourceBannerType(bannerType);
     if (backend !== null) {
-      return await this.renderResource(backend, metadata, settings, outputType);
+      return await this.renderResource(backend, metadata, settings, outputType, onSourceToken);
     }
 
     const authorBackend = backendForAuthorBannerType(bannerType);
     if (authorBackend !== null) {
-      return await this.renderAuthor(authorBackend, metadata, settings, outputType);
+      return await this.renderAuthor(authorBackend, metadata, settings, outputType, onSourceToken);
     }
 
     if (bannerType === "BUILTBYBIT_MEMBER") {
-      return await this.renderMember(metadata, settings, outputType);
+      return await this.renderMember(metadata, settings, outputType, onSourceToken);
     }
 
     if (bannerType === "POLYMART_TEAM") {
-      return await this.renderTeam(metadata, settings, outputType);
+      return await this.renderTeam(metadata, settings, outputType, onSourceToken);
     }
 
     throw new UnsupportedSavedBannerTypeError(bannerType);
@@ -331,7 +481,8 @@ export class SavedBannerRecallService {
   private async renderMinecraftServer(
     metadata: SavedBannerJsonMap,
     settings: SavedBannerJsonMap,
-    outputType: SavedBannerOutputType
+    outputType: SavedBannerOutputType,
+    onSourceToken?: (token: symbol | undefined) => void
   ): Promise<Buffer | null> {
     const host = metadata["server_host"];
     if (host === undefined)
@@ -340,7 +491,16 @@ export class SavedBannerRecallService {
     const parsedPort =
       metadata["server_port"] === undefined ? 25565 : Number.parseInt(metadata["server_port"], 10);
     const port = Number.isFinite(parsedPort) ? parsedPort : 25565;
-    const status = await this.minecraftAdapter.getStatus(host.toLowerCase(), port);
+    const statusResult = this.minecraftAdapter.getStatusWithFreshness;
+    let status: MinecraftServerStatus | null;
+    if (statusResult === undefined) {
+      status = await this.minecraftAdapter.getStatus(host.toLowerCase(), port);
+      onSourceToken?.(undefined);
+    } else {
+      const result = await statusResult.call(this.minecraftAdapter, host.toLowerCase(), port);
+      status = result.value;
+      onSourceToken?.(result.token);
+    }
     if (status === null) {
       return null;
     }
@@ -361,7 +521,8 @@ export class SavedBannerRecallService {
     backend: ServiceBackend,
     metadata: SavedBannerJsonMap,
     settings: SavedBannerJsonMap,
-    outputType: SavedBannerOutputType
+    outputType: SavedBannerOutputType,
+    onSourceToken?: (token: symbol | undefined) => void
   ): Promise<Buffer | null> {
     const resourceId = metadata["resource_id"];
     if (resourceId === undefined)
@@ -372,7 +533,14 @@ export class SavedBannerRecallService {
       return null;
     }
 
-    const data = await client.getResourceBannerData(resourceId);
+    const normalizedId = normalizeResourceId(backend, resourceId);
+    const key = `resource:${backend.toLowerCase()}:${normalizedId}`;
+    const data = await this.getSourceData(
+      this.caches.resourceData,
+      key,
+      () => client.getResourceBannerData(normalizedId),
+      onSourceToken
+    );
     if (data === null) {
       return null;
     }
@@ -392,7 +560,8 @@ export class SavedBannerRecallService {
     backend: ServiceBackend,
     metadata: SavedBannerJsonMap,
     settings: SavedBannerJsonMap,
-    outputType: SavedBannerOutputType
+    outputType: SavedBannerOutputType,
+    onSourceToken?: (token: symbol | undefined) => void
   ): Promise<Buffer | null> {
     const authorId = metadata["author_id"];
     if (authorId === undefined)
@@ -403,7 +572,14 @@ export class SavedBannerRecallService {
       return null;
     }
 
-    const data = await client.getAuthorBannerData(authorId);
+    const normalizedId = normalizeResourceId(backend, authorId);
+    const key = `author:${backend.toLowerCase()}:${normalizedId}`;
+    const data = await this.getSourceData(
+      this.caches.authorData,
+      key,
+      () => client.getAuthorBannerData(normalizedId),
+      onSourceToken
+    );
     if (data === null) {
       return null;
     }
@@ -422,7 +598,8 @@ export class SavedBannerRecallService {
   private async renderMember(
     metadata: SavedBannerJsonMap,
     settings: SavedBannerJsonMap,
-    outputType: SavedBannerOutputType
+    outputType: SavedBannerOutputType,
+    onSourceToken?: (token: symbol | undefined) => void
   ): Promise<Buffer | null> {
     const memberId = metadata["member_id"];
     if (memberId === undefined)
@@ -433,7 +610,13 @@ export class SavedBannerRecallService {
       return null;
     }
 
-    const data = await client.getMemberBannerData(memberId);
+    const normalizedId = normalizeResourceId("BUILTBYBIT", memberId);
+    const data = await this.getSourceData(
+      this.caches.memberData,
+      `member:builtbybit:${normalizedId}`,
+      () => client.getMemberBannerData(normalizedId),
+      onSourceToken
+    );
     if (data === null) {
       return null;
     }
@@ -452,7 +635,8 @@ export class SavedBannerRecallService {
   private async renderTeam(
     metadata: SavedBannerJsonMap,
     settings: SavedBannerJsonMap,
-    outputType: SavedBannerOutputType
+    outputType: SavedBannerOutputType,
+    onSourceToken?: (token: symbol | undefined) => void
   ): Promise<Buffer | null> {
     const teamId = metadata["team_id"];
     if (teamId === undefined)
@@ -463,7 +647,13 @@ export class SavedBannerRecallService {
       return null;
     }
 
-    const data = await client.getTeamBannerData(teamId);
+    const normalizedId = normalizeResourceId("POLYMART", teamId);
+    const data = await this.getSourceData(
+      this.caches.teamData,
+      `team:polymart:${normalizedId}`,
+      () => client.getTeamBannerData(normalizedId),
+      onSourceToken
+    );
     if (data === null) {
       return null;
     }
@@ -486,7 +676,8 @@ export const createSavedBannerRoute = (
   resourceClients: ResourceClients,
   authorClients: AuthorClients = {},
   memberClients: MemberClients = {},
-  teamClients: TeamClients = {}
+  teamClients: TeamClients = {},
+  caches: SavedBannerCaches = {}
 ): Hono => {
   const route = new Hono();
   const recall = new SavedBannerRecallService(
@@ -494,7 +685,8 @@ export const createSavedBannerRoute = (
     resourceClients,
     authorClients,
     memberClients,
-    teamClients
+    teamClients,
+    caches
   );
 
   route.post("/save", async (c) => {
@@ -545,22 +737,76 @@ export const createSavedBannerRoute = (
 
     const mnemonic = match[1];
     const outputType = match[2].toLowerCase() as SavedBannerOutputType;
-    const row = await repository.findByMnemonic(mnemonic);
-    if (row === null) {
-      return c.body(null, 404);
-    }
-
+    const imageCacheKey = `saved-banner:${mnemonic}:${outputType}`;
     try {
-      const buf = await recall.render(row, outputType);
+      const row =
+        caches.savedBannerData === undefined
+          ? await repository.findByMnemonic(mnemonic)
+          : await caches.savedBannerData.getOrSet(
+              `saved-banner:${mnemonic}`,
+              () => repository.findByMnemonic(mnemonic),
+              {
+                byteEstimate: (savedRow) =>
+                  savedRow === null
+                    ? 0
+                    : Buffer.byteLength(savedRow.mnemonic) +
+                      Buffer.byteLength(savedRow.metadata) +
+                      Buffer.byteLength(savedRow.settings) +
+                      Buffer.byteLength(savedRow.owner ?? "") +
+                      128
+              }
+            );
+      if (row === null) return c.body(null, 404);
+
+      const imageFreshness = recall.imageCacheFreshness(row);
+      if (imageFreshness.ttlMs === 0) caches.savedBannerImage?.delete(imageCacheKey);
+      const renderSavedBanner = async (): Promise<Buffer | null> => {
+        let sourceToken: symbol | undefined;
+        const image = await recall.render(row, outputType, (token) => {
+          sourceToken = token;
+        });
+        if (image !== null) recall.rememberImageSource(image, sourceToken);
+        return image;
+      };
+      const buf =
+        caches.savedBannerImage === undefined
+          ? await renderSavedBanner()
+          : await caches.savedBannerImage.getOrSet(imageCacheKey, renderSavedBanner, {
+              isFresh: (image) => image !== null && recall.imageMatchesCurrentSource(row, image),
+              cacheResult: (image) =>
+                image !== null && recall.imageMatchesCurrentSource(row, image),
+              ...(imageFreshness.ttlMs === undefined
+                ? {}
+                : {
+                    ttlMs: () => recall.imageCacheTtlMs(row) ?? imageFreshness.ttlMs ?? 0
+                  }),
+              byteEstimate: (image) => image?.length ?? 0
+            });
       if (buf === null) {
         return c.body(null, 404);
       }
 
+      const sourceStillCurrent = recall.imageMatchesCurrentSource(row, buf);
+      if (!sourceStillCurrent) caches.savedBannerImage?.delete(imageCacheKey);
+      const remainingImageTtlMs =
+        caches.savedBannerImage?.getRemainingTtlMs(imageCacheKey) ??
+        (caches.savedBannerImage === undefined && Object.keys(caches).length === 0
+          ? undefined
+          : recall.imageCacheTtlMs(row));
+      const maxAgeSeconds = Math.floor(Math.min(60_000, remainingImageTtlMs ?? 60_000) / 1000);
+      const staleWhileRevalidateSeconds =
+        remainingImageTtlMs === undefined
+          ? 300
+          : Math.floor(
+              Math.min(300_000, Math.max(0, remainingImageTtlMs - maxAgeSeconds * 1000)) / 1000
+            );
       return new Response(buf, {
         headers: {
           "Content-Type": contentTypeFor(outputType),
           "Content-Length": String(buf.length),
-          "Cache-Control": "public, max-age=60, stale-while-revalidate=300"
+          "Cache-Control": sourceStillCurrent
+            ? `public, max-age=${maxAgeSeconds}, stale-while-revalidate=${staleWhileRevalidateSeconds}`
+            : "no-store"
         }
       });
     } catch (error) {

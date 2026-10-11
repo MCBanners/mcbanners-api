@@ -84,6 +84,8 @@ Cache TTLs (all values in milliseconds):
 | `CACHE_MARKETPLACE_TEAM_TTL_MS`         | `900000` | Marketplace team data (15 min)         |
 | `CACHE_RENDERED_TEAM_BANNER_TTL_MS`     | `300000` | Rendered team banner image (5 min)     |
 
+Saved-banner row lookups are held in a process-local cache bounded to 500 rows and approximately 5 MB. Saved-banner images use the matching source-data expiry and rendered-image TTL for their banner family; PNG and JPEG entries have separate keys. The saved route's HTTP freshness and stale-while-revalidate window are capped by the remaining in-process image lifetime.
+
 ## Health And Readiness
 
 - `GET /health` returns `200` when the process is alive.

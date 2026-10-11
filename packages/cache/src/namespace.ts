@@ -22,6 +22,14 @@ export class CacheNamespace {
     return this.cache.get<T>(this.key(key));
   }
 
+  getRemainingTtlMs(key: string): number | undefined {
+    return this.cache.getRemainingTtlMs(this.key(key));
+  }
+
+  getEntryFreshness(key: string): { token: symbol; remainingTtlMs: number } | undefined {
+    return this.cache.getEntryFreshness(this.key(key));
+  }
+
   set(key: string, value: unknown, ttlMs?: number, byteEstimate?: number): void {
     this.cache.set(this.key(key), value, ttlMs, byteEstimate);
   }
@@ -37,5 +45,13 @@ export class CacheNamespace {
 
   getOrSet<T>(key: string, fn: () => Promise<T>, opts?: GetOrSetOptions<T>): Promise<T> {
     return this.cache.getOrSet<T>(this.key(key), fn, opts);
+  }
+
+  getOrSetWithFreshness<T>(
+    key: string,
+    fn: () => Promise<T>,
+    opts?: GetOrSetOptions<T>
+  ): Promise<{ value: T; token: symbol | undefined }> {
+    return this.cache.getOrSetWithFreshness<T>(this.key(key), fn, opts);
   }
 }

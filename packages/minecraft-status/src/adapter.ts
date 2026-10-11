@@ -12,4 +12,12 @@ export interface MinecraftStatusAdapter {
    * unreachable or unknown.
    */
   getStatus(host: string, port: number): Promise<MinecraftServerStatus | null>;
+  /** Optional cached form that returns the exact cache version used. */
+  getStatusWithFreshness?(
+    host: string,
+    port: number
+  ): Promise<{
+    value: MinecraftServerStatus | null;
+    token: symbol | undefined;
+  }>;
 }

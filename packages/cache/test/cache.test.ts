@@ -74,6 +74,17 @@ describe("MemoryCache – TTL expiry", () => {
     expect(cache.get<string>("slow")).toBe("value");
   });
 
+  it("reports remaining lifetime and clears expired entries", async () => {
+    const cache = new MemoryCache({ ttlMs: 60_000 });
+    cache.set("short", "value", 20);
+    const remaining = cache.getRemainingTtlMs("short");
+    expect(remaining).toBeGreaterThan(0);
+    expect(remaining).toBeLessThanOrEqual(20);
+    await sleep(25);
+    expect(cache.getRemainingTtlMs("short")).toBeUndefined();
+    expect(cache.stats().evictions).toBe(1);
+  });
+
   it("expired entry counts as a miss and eviction", async () => {
     const cache = new MemoryCache({ ttlMs: 5 });
     cache.set("key", "v");
@@ -140,6 +151,45 @@ describe("MemoryCache – maxBytes eviction", () => {
 // ---------------------------------------------------------------------------
 
 describe("MemoryCache – getOrSet", () => {
+  it("uses payload-free symbol tokens across eviction and replacement", async () => {
+    const cache = new MemoryCache({ ttlMs: 60_000, maxEntries: 1 });
+    const largePayload = { contents: "x".repeat(100_000) };
+    cache.set("source", largePayload);
+    const first = cache.getEntryFreshness("source");
+    expect(first).toBeDefined();
+    expect(typeof first?.token).toBe("symbol");
+
+    cache.set("other", "evicts source");
+    const refreshed = await cache.getOrSetWithFreshness("source", async () => ({
+      contents: "new"
+    }));
+    expect(typeof refreshed.token).toBe("symbol");
+    expect(refreshed.token).not.toBe(first?.token);
+    expect(cache.stats().evictions).toBe(2);
+  });
+
+  it("coalesces getOrSet callers with callers that need source freshness", async () => {
+    const cache = new MemoryCache({ ttlMs: 60_000 });
+    let calls = 0;
+    const [fresh, value] = await Promise.all([
+      cache.getOrSetWithFreshness("key", async () => {
+        calls++;
+        await sleep(10);
+        return "value";
+      }),
+      cache.getOrSet("key", async () => {
+        calls++;
+        return "other";
+      })
+    ]);
+
+    expect(calls).toBe(1);
+    expect(fresh.value).toBe("value");
+    expect(typeof fresh.token).toBe("symbol");
+    expect(value).toBe("value");
+    expect(cache.stats().coalesced).toBe(1);
+  });
+
   it("calls fn and returns its value", async () => {
     const cache = new MemoryCache({ ttlMs: 60_000 });
     const result = await cache.getOrSet("key", () => Promise.resolve("result"));
@@ -245,6 +295,18 @@ describe("MemoryCache – getOrSet byteEstimate function", () => {
     expect(cache.get<unknown>("large")).toBeUndefined(); // evicted
     expect(cache.get<string>("small")).toBe(small);
     expect(cache.stats().evictions).toBe(1);
+  });
+});
+
+describe("MemoryCache – resolved-value TTL override", () => {
+  it("chooses the entry TTL from the resolved value", async () => {
+    const cache = new MemoryCache({ ttlMs: 60_000 });
+    await cache.getOrSet("key", () => Promise.resolve("fresh"), {
+      ttlMs: (value) => (value === "fresh" ? 25 : 0)
+    });
+    const remaining = cache.getRemainingTtlMs("key");
+    expect(remaining).toBeGreaterThan(0);
+    expect(remaining).toBeLessThanOrEqual(25);
   });
 });
 

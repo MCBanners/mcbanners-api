@@ -12,22 +12,23 @@ Recommended Cloudflare Page Rule or Cache Rule:
 
 | Route pattern         | Cache level      | Edge TTL   | Browser TTL |
 | --------------------- | ---------------- | ---------- | ----------- |
-| `*/banner/server/*`   | Cache Everything | 60 seconds | 30 seconds  |
-| `*/banner/resource/*` | Cache Everything | 60 seconds | 30 seconds  |
-| `*/banner/author/*`   | Cache Everything | 60 seconds | 30 seconds  |
-| `*/banner/member/*`   | Cache Everything | 60 seconds | 30 seconds  |
-| `*/banner/team/*`     | Cache Everything | 60 seconds | 30 seconds  |
+| `*/banner/server/*`   | Cache Everything | Honor origin `Cache-Control` | Honor origin `Cache-Control` |
+| `*/banner/resource/*` | Cache Everything | Honor origin `Cache-Control` | Honor origin `Cache-Control` |
+| `*/banner/author/*`   | Cache Everything | Honor origin `Cache-Control` | Honor origin `Cache-Control` |
+| `*/banner/member/*`   | Cache Everything | Honor origin `Cache-Control` | Honor origin `Cache-Control` |
+| `*/banner/team/*`     | Cache Everything | Honor origin `Cache-Control` | Honor origin `Cache-Control` |
+| `*/banner/saved/*`    | Cache Everything | Honor origin `Cache-Control` | Honor origin `Cache-Control` |
 | `*/mc/server*`        | Cache Everything | 30 seconds | 15 seconds  |
 | `*/mc/icon*`          | Cache Everything | 30 seconds | 15 seconds  |
 
-These TTLs align with the in-process memory cache TTLs (30 s for status/data, 60 s for rendered images). Setting Cloudflare edge TTL equal to or shorter than the in-process TTL avoids serving stale content after the API cache has refreshed.
+Honor the origin's `Cache-Control` for banner routes. Saved banners use the matching source-data and rendered-image TTLs; their `max-age` plus `stale-while-revalidate` never exceeds the remaining saved-image freshness window. Do not override these with a longer edge TTL.
 
 ### No-Cache / Bypass for POST /banner/saved/save
 
 `POST /banner/saved/save` creates a new saved banner record and must never be served from cache. Cloudflare bypasses cache for non-GET/HEAD requests by default, but to be explicit:
 
 - Set a Cache Rule matching `*/banner/saved/save` with method `POST` -> **Bypass Cache**.
-- `GET /banner/saved/:mnemonic.png|jpg` is a recall route. It can be cached at the edge if desired; recommended edge TTL is 60 seconds or longer since saved banners do not change after creation.
+- `GET /banner/saved/:mnemonic.png|jpg` can be cached at the edge. Although a saved row is immutable, its rendered image can include changing Minecraft or marketplace data, so honor the response freshness directives instead of assigning a longer fixed edge TTL.
 
 ### Cache Key
 
@@ -51,10 +52,10 @@ The API emits explicit `Cache-Control` response headers on all cacheable routes.
 | `GET /banner/member/*/banner.png\|jpg`       | `public, max-age=60, stale-while-revalidate=300`  |
 | `GET /banner/team/*/isValid`                 | `public, max-age=30, stale-while-revalidate=60`   |
 | `GET /banner/team/*/banner.png\|jpg`         | `public, max-age=60, stale-while-revalidate=300`  |
-| `GET /banner/saved/*.png\|jpg`               | `public, max-age=60, stale-while-revalidate=300`  |
+| `GET /banner/saved/*.png\|jpg`               | Per response: `max-age` is at most 60 seconds; freshness and stale-while-revalidate are bounded by the remaining source/render cache lifetime. |
 | `GET /health`, `GET /ready`, error responses | no `Cache-Control` header                         |
 
-**Alignment with Cloudflare page rule table:** The CDN TTL recommendations in the table above (60 s for images, 30 s for status/data) match the `max-age` values the API already emits. No explicit Cache Rules are needed unless you want a longer edge TTL than the API's `max-age` — Cloudflare will honor the API's `Cache-Control: public` header automatically.
+**Alignment with Cloudflare page rule table:** Cloudflare should honor the API's `Cache-Control` on image routes. For saved banners, the API caps freshness and stale-while-revalidate by the remaining in-process image lifetime, which is bounded by source-data expiry and the banner family's rendered-image TTL.
 
 **Cache TTL env vars:** The API's in-process cache TTLs are configurable via environment variables (see `docs/deployment/docker.md`). If you change them, ensure the Cloudflare CDN TTL is not longer than the new in-process TTL to avoid stale responses.
 
