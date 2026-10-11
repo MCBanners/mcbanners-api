@@ -5,6 +5,7 @@ import type { AuthorClient, ResourceClient } from "./resource-client";
 import { normalizeResourceId } from "./resource-id";
 
 const CFWIDGET_BASE_URL = "https://api.cfwidget.com/";
+const AUTHOR_PROJECT_FETCH_CONCURRENCY = 4;
 
 const CfWidgetMemberSchema = z.object({
   id: z.number(),
@@ -98,15 +99,26 @@ export class CurseForgeResourceClient implements ResourceClient, AuthorClient {
     if (author === null) return null;
 
     let totalDownloads = 0;
-    for (const project of author.projects) {
-      const resource = await fetchJson(
-        `${CFWIDGET_BASE_URL}${String(project.id)}`,
-        CfWidgetResourceSchema,
-        this.options,
-        this.fetchFn
+    for (
+      let offset = 0;
+      offset < author.projects.length;
+      offset += AUTHOR_PROJECT_FETCH_CONCURRENCY
+    ) {
+      const projects = author.projects.slice(offset, offset + AUTHOR_PROJECT_FETCH_CONCURRENCY);
+      const resources = await Promise.all(
+        projects.map((project) =>
+          fetchJson(
+            `${CFWIDGET_BASE_URL}${String(project.id)}`,
+            CfWidgetResourceSchema,
+            this.options,
+            this.fetchFn
+          )
+        )
       );
-      if (resource !== null) {
-        totalDownloads += resource.downloads.total;
+      for (const resource of resources) {
+        if (resource !== null) {
+          totalDownloads += resource.downloads.total;
+        }
       }
     }
 

@@ -175,4 +175,72 @@ describe("CurseForgeResourceClient", () => {
     // NO_THUMBNAIL_RESOURCE_JSON has uploaded_at="2024-01-01..." — not null
     expect(result?.resource.lastUpdated).toBe("2024-01-01T00:00:00Z");
   });
+
+  it("fetches author projects with at most four concurrent requests and aggregates downloads", async () => {
+    const projectIds = Array.from({ length: 9 }, (_, index) => index + 1);
+    const author = JSON.stringify({
+      id: 123,
+      username: "BenchmarkAuthor",
+      projects: projectIds.map((id) => ({ id }))
+    });
+    let activeRequests = 0;
+    let maxActiveRequests = 0;
+    const requestedUrls: string[] = [];
+    const mockFetch: FetchFn = async (input) => {
+      const url = input instanceof URL ? input.href : input instanceof Request ? input.url : input;
+      requestedUrls.push(url);
+      if (url === `${CFWIDGET_BASE}author/123`) {
+        return new Response(author, { status: 200 });
+      }
+
+      activeRequests += 1;
+      maxActiveRequests = Math.max(maxActiveRequests, activeRequests);
+      await Bun.sleep(10);
+      activeRequests -= 1;
+      const id = Number(url.slice(CFWIDGET_BASE.length));
+      return new Response(
+        JSON.stringify({
+          id,
+          title: `Project ${id}`,
+          downloads: { monthly: 0, total: id * 100 },
+          members: []
+        }),
+        { status: 200 }
+      );
+    };
+
+    const result = await new CurseForgeResourceClient({}, mockFetch).getAuthorBannerData("123");
+
+    expect(result?.author.name).toBe("BenchmarkAuthor");
+    expect(result?.author.resourceCount).toBe(projectIds.length);
+    expect(result?.author.downloadCount).toBe(projectIds.reduce((sum, id) => sum + id * 100, 0));
+    expect(maxActiveRequests).toBe(4);
+    expect(requestedUrls).toHaveLength(projectIds.length + 1);
+    expect(new Set(requestedUrls.slice(1)).size).toBe(projectIds.length);
+  });
+
+  it("aggregates successful author projects when some project requests fail", async () => {
+    const author = JSON.stringify({
+      id: 123,
+      username: "PartialAuthor",
+      projects: [{ id: 10 }, { id: 20 }, { id: 30 }]
+    });
+    const mockFetch = makeMockFetch({
+      [`${CFWIDGET_BASE}author/123`]: { status: 200, body: author },
+      [`${CFWIDGET_BASE}10`]: {
+        status: 200,
+        body: JSON.stringify({ id: 10, title: "A", downloads: { total: 100 } })
+      },
+      [`${CFWIDGET_BASE}20`]: { status: 503, body: "unavailable" },
+      [`${CFWIDGET_BASE}30`]: {
+        status: 200,
+        body: JSON.stringify({ id: 30, title: "C", downloads: { total: 300 } })
+      }
+    });
+
+    const result = await new CurseForgeResourceClient({}, mockFetch).getAuthorBannerData("123");
+
+    expect(result?.author.resourceCount).toBe(3);
+    expect(result?.author.downloadCount).toBe(400);
+  });
 });
