@@ -9,6 +9,9 @@ export interface HttpClientOptions {
 
 const DEFAULT_TIMEOUT_MS = 5000;
 const DEFAULT_MAX_IMAGE_BYTES = 1_048_576;
+const REMOTE_LOGO_CACHE_TTL_MS = 5 * 60_000;
+const REMOTE_LOGO_CACHE_MAX_ENTRIES = 128;
+const REMOTE_LOGO_CACHE_MAX_BYTES = 8 * 1024 * 1024;
 const USER_AGENT = "MCBanners";
 export const allowedImageContentTypes = [
   "image/png",
@@ -20,6 +23,82 @@ export const allowedImageContentTypes = [
 const ALLOWED_IMAGE_CONTENT_TYPES = new Set<string>(allowedImageContentTypes);
 
 export const defaultMaxImageBytes = DEFAULT_MAX_IMAGE_BYTES;
+
+interface FetchedImage {
+  readonly base64: string;
+  readonly byteLength: number;
+}
+
+interface RemoteLogoCacheEntry extends FetchedImage {
+  readonly expiresAt: number;
+  readonly estimatedBytes: number;
+}
+
+interface RemoteLogoCache {
+  readonly entries: Map<string, RemoteLogoCacheEntry>;
+  readonly inFlight: Map<string, Promise<FetchedImage | null>>;
+  bytes: number;
+}
+
+const remoteLogoCache: RemoteLogoCache = { entries: new Map(), inFlight: new Map(), bytes: 0 };
+const fetchCacheIds = new WeakMap<FetchFn, number>();
+let nextFetchCacheId = 0;
+
+const getFetchCacheId = (fetchFn: FetchFn): number => {
+  let id = fetchCacheIds.get(fetchFn);
+  if (id === undefined) {
+    id = ++nextFetchCacheId;
+    fetchCacheIds.set(fetchFn, id);
+  }
+  return id;
+};
+
+const deleteRemoteLogoCacheEntry = (cache: RemoteLogoCache, url: string): void => {
+  const entry = cache.entries.get(url);
+  if (entry === undefined) return;
+  cache.entries.delete(url);
+  cache.bytes -= entry.estimatedBytes;
+};
+
+const readRemoteLogoCache = (
+  cache: RemoteLogoCache,
+  url: string,
+  maxImageBytes: number
+): RemoteLogoCacheEntry | null | undefined => {
+  const entry = cache.entries.get(url);
+  if (entry === undefined) return undefined;
+  if (entry.expiresAt <= Date.now()) {
+    deleteRemoteLogoCacheEntry(cache, url);
+    return undefined;
+  }
+  if (entry.byteLength > maxImageBytes) return null;
+
+  cache.entries.delete(url);
+  cache.entries.set(url, entry);
+  return entry;
+};
+
+const cacheRemoteLogo = (cache: RemoteLogoCache, url: string, image: FetchedImage): void => {
+  const estimatedBytes = (image.base64.length + url.length) * 2;
+  if (estimatedBytes > REMOTE_LOGO_CACHE_MAX_BYTES) return;
+
+  deleteRemoteLogoCacheEntry(cache, url);
+  while (
+    cache.entries.size >= REMOTE_LOGO_CACHE_MAX_ENTRIES ||
+    cache.bytes + estimatedBytes > REMOTE_LOGO_CACHE_MAX_BYTES
+  ) {
+    const oldestUrl = cache.entries.keys().next().value;
+    if (oldestUrl === undefined) break;
+    deleteRemoteLogoCacheEntry(cache, oldestUrl);
+  }
+
+  cache.entries.set(url, {
+    ...image,
+    expiresAt: Date.now() + REMOTE_LOGO_CACHE_TTL_MS,
+    estimatedBytes
+  });
+  cache.bytes += estimatedBytes;
+};
 
 export async function fetchJson<T>(
   url: string,
@@ -59,6 +138,35 @@ export async function fetchImageBase64(
 ): Promise<string | null> {
   if (!url) return null;
 
+  const timeoutMs = options?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const maxImageBytes = options?.maxImageBytes ?? DEFAULT_MAX_IMAGE_BYTES;
+  const cacheKey = JSON.stringify([getFetchCacheId(fetchFn), url]);
+  const cached = readRemoteLogoCache(remoteLogoCache, cacheKey, maxImageBytes);
+  if (cached !== undefined) return cached?.base64 ?? null;
+
+  const inFlightKey = JSON.stringify([cacheKey, maxImageBytes, timeoutMs]);
+  let request = remoteLogoCache.inFlight.get(inFlightKey);
+  if (request === undefined) {
+    request = fetchImageBase64Uncached(url, options, fetchFn);
+    remoteLogoCache.inFlight.set(inFlightKey, request);
+  }
+
+  try {
+    const image = await request;
+    if (image !== null) cacheRemoteLogo(remoteLogoCache, cacheKey, image);
+    return image?.base64 ?? null;
+  } finally {
+    if (remoteLogoCache.inFlight.get(inFlightKey) === request) {
+      remoteLogoCache.inFlight.delete(inFlightKey);
+    }
+  }
+}
+
+async function fetchImageBase64Uncached(
+  url: string,
+  options: HttpClientOptions | undefined,
+  fetchFn: FetchFn
+): Promise<FetchedImage | null> {
   const timeoutMs = options?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const maxImageBytes = options?.maxImageBytes ?? DEFAULT_MAX_IMAGE_BYTES;
   const controller = new AbortController();
@@ -103,7 +211,7 @@ export async function fetchImageBase64(
 
     if (response.body === null) {
       bodyComplete = true;
-      return maxImageBytes < 0 ? null : "";
+      return maxImageBytes < 0 ? null : { base64: "", byteLength: 0 };
     }
 
     const reader = response.body.getReader();
@@ -125,7 +233,7 @@ export async function fetchImageBase64(
       totalBytes += value.byteLength;
     }
 
-    return Buffer.concat(chunks, totalBytes).toString("base64");
+    return { base64: Buffer.concat(chunks, totalBytes).toString("base64"), byteLength: totalBytes };
   } catch {
     return null;
   } finally {
