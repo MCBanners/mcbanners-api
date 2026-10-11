@@ -58,4 +58,23 @@ describe("BoundedAsyncCache", () => {
 
     expect(loadCount).toBe(2);
   });
+
+  test("evicts least recently used entries when the entry limit is reached", async () => {
+    const cache = new BoundedAsyncCache<{ bytes: number }>(16, (value) => value.bytes, 2);
+    const loads = new Map<string, number>();
+    const load = (key: string) => async () => {
+      loads.set(key, (loads.get(key) ?? 0) + 1);
+      return { bytes: 1 };
+    };
+
+    await cache.get("first", load("first"));
+    await cache.get("second", load("second"));
+    await cache.get("first", load("first"));
+    await cache.get("third", load("third"));
+    await cache.get("first", load("first"));
+    await cache.get("second", load("second"));
+
+    expect(loads.get("first")).toBe(1);
+    expect(loads.get("second")).toBe(2);
+  });
 });

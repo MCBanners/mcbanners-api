@@ -9,6 +9,10 @@ const decodedManifestImages = new BoundedAsyncCache<Awaited<ReturnType<typeof lo
   32 * 1024 * 1024,
   (image) => image.width * image.height * 4
 );
+const decodedInlineImages = new BoundedAsyncCache<{
+  readonly image: Awaited<ReturnType<typeof loadImage>>;
+  readonly encodedBytes: number;
+}>(8 * 1024 * 1024, ({ image, encodedBytes }) => image.width * image.height * 4 + encodedBytes, 32);
 
 const loadManifestImage = async (assetKey: string): ReturnType<typeof loadImage> => {
   const asset = rendererAssetManifest.assets.find((a) => a.key === assetKey);
@@ -36,7 +40,12 @@ export const renderImageNode = async (surface: RenderSurface, node: ImageNode): 
   const image =
     node.assetKey !== undefined
       ? await loadManifestImage(node.assetKey)
-      : await loadImage(Buffer.from(node.imageData!, "base64"));
+      : (
+          await decodedInlineImages.get(node.imageData!, async () => ({
+            image: await loadImage(Buffer.from(node.imageData!, "base64")),
+            encodedBytes: node.imageData!.length * 2
+          }))
+        ).image;
 
   surface.context.drawImage(image, node.x, node.y, node.width, node.height);
 };

@@ -166,6 +166,37 @@ describe("renderer primitives", () => {
     });
   });
 
+  test("cached base64 images preserve pixels and keep distinct sources separate", async () => {
+    const sourceImage = async (color: string): Promise<string> => {
+      const surface = createCanvasSurface(2, 2);
+      surface.context.fillStyle = color;
+      surface.context.fillRect(0, 0, 2, 2);
+      return (await encodePng(surface)).toString("base64");
+    };
+    const renderImage = async (imageData: string): Promise<Buffer> => {
+      const surface = createCanvasSurface(16, 16);
+      await renderImageNode(surface, {
+        type: "image",
+        x: 0,
+        y: 0,
+        width: 16,
+        height: 16,
+        imageData
+      });
+      return encodePng(surface);
+    };
+
+    const redImage = await sourceImage("red");
+    const blueImage = await sourceImage("blue");
+    const redFirst = await renderImage(redImage);
+    const blue = await renderImage(blueImage);
+    const redAgain = await renderImage(redImage);
+
+    const hash = (buffer: Buffer) => createHash("sha256").update(buffer).digest("hex");
+    expect(hash(redAgain)).toBe(hash(redFirst));
+    expect(hash(blue)).not.toBe(hash(redFirst));
+  });
+
   test("renderImageNode throws when neither assetKey nor imageData provided", async () => {
     const surface = createCanvasSurface(10, 10);
     let caughtError: unknown;

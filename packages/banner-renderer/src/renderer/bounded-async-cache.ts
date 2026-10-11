@@ -11,7 +11,8 @@ export class BoundedAsyncCache<Value> {
 
   constructor(
     private readonly maxBytes: number,
-    private readonly sizeOf: (value: Value) => number
+    private readonly sizeOf: (value: Value) => number,
+    private readonly maxEntries = 128
   ) {}
 
   get(key: string, load: () => Promise<Value>): Promise<Value> {
@@ -24,13 +25,14 @@ export class BoundedAsyncCache<Value> {
 
     const pending = this.inFlight.get(key);
     if (pending !== undefined) return pending;
+    if (this.inFlight.size >= this.maxEntries) return load();
 
     const loading = load()
       .then((value) => {
         const bytes = this.sizeOf(value);
         if (bytes <= 0 || bytes > this.maxBytes) return value;
 
-        while (this.sizeBytes + bytes > this.maxBytes) {
+        while (this.entries.size >= this.maxEntries || this.sizeBytes + bytes > this.maxBytes) {
           const oldest = this.entries.entries().next().value as
             | [string, CacheEntry<Value>]
             | undefined;
