@@ -114,12 +114,11 @@ export const createMemberBannerRoute = (
       }
     }
 
-    const { value: data, token: sourceToken } =
-      client === undefined
-        ? { value: null, token: undefined }
-        : await getSourceWithFreshness(memberCache, sourceKey, () =>
-            client.getMemberBannerData(normalizedId)
-          );
+    const { value: data, token: sourceToken } = await getSourceWithFreshness(
+      memberCache,
+      sourceKey,
+      () => client.getMemberBannerData(normalizedId)
+    );
     if (data === null) return c.body(null, 404);
 
     ensureFonts();

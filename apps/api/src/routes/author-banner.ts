@@ -119,12 +119,11 @@ export const createAuthorBannerRoute = (
       }
     }
 
-    const { value: data, token: sourceToken } =
-      client === undefined
-        ? { value: null, token: undefined }
-        : await getSourceWithFreshness(authorCache, sourceKey, () =>
-            client.getAuthorBannerData(normalizedId)
-          );
+    const { value: data, token: sourceToken } = await getSourceWithFreshness(
+      authorCache,
+      sourceKey,
+      () => client.getAuthorBannerData(normalizedId)
+    );
     if (data === null) return c.body(null, 404);
 
     ensureFonts();

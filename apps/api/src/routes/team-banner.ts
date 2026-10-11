@@ -114,12 +114,11 @@ export const createTeamBannerRoute = (
       }
     }
 
-    const { value: data, token: sourceToken } =
-      client === undefined
-        ? { value: null, token: undefined }
-        : await getSourceWithFreshness(teamCache, sourceKey, () =>
-            client.getTeamBannerData(normalizedId)
-          );
+    const { value: data, token: sourceToken } = await getSourceWithFreshness(
+      teamCache,
+      sourceKey,
+      () => client.getTeamBannerData(normalizedId)
+    );
     if (data === null) return c.body(null, 404);
 
     ensureFonts();
