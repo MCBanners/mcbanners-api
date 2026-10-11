@@ -984,6 +984,123 @@ describe("Modrinth resource route", () => {
 // ---------------------------------------------------------------------------
 
 describe("resource data cache", () => {
+  it("serves warm images before looking up cached source data", async () => {
+    const capturing = new CapturingResourceClient(FIXTURE_SPIGOT_FREE);
+    const dataCache = new MemoryCache({ maxEntries: 100, ttlMs: 60_000 });
+    const imageCache = new MemoryCache({ maxEntries: 100, ttlMs: 60_000 });
+    const cachedApp = makeApp(
+      { SPIGOT: capturing },
+      {
+        resourceData: dataCache,
+        resourceBannerImage: imageCache
+      }
+    );
+
+    const first = await cachedApp.request("/banner/resource/spigot/12345/banner.png");
+    const firstImage = Buffer.from(await first.arrayBuffer());
+    const second = await cachedApp.request("/banner/resource/spigot/12345/banner.png");
+    const secondImage = Buffer.from(await second.arrayBuffer());
+
+    expect(second.status).toBe(200);
+    expect(secondImage.equals(firstImage)).toBe(true);
+    expect(capturing.ids).toEqual(["12345"]);
+    expect(dataCache.stats().hits).toBe(0);
+    expect(imageCache.stats().hits).toBe(1);
+    expect(imageCache.stats().misses).toBe(1);
+    expect(imageCache.stats().sets).toBe(1);
+  });
+
+  it("bounds cold and warm HTTP freshness by a near-expiry image", async () => {
+    const dataCache = new MemoryCache({ maxEntries: 100, ttlMs: 60_000 });
+    const imageCache = new MemoryCache({ maxEntries: 100, ttlMs: 60_000 });
+    const imageKey = "banner:resource:spigot:12345:png:";
+    const getRemainingTtlMs = imageCache.getRemainingTtlMs.bind(imageCache);
+    let imageRemainingTtlMs = 2_500;
+    imageCache.getRemainingTtlMs = (key) =>
+      key === imageKey
+        ? Math.min(imageRemainingTtlMs, getRemainingTtlMs(key) ?? imageRemainingTtlMs)
+        : getRemainingTtlMs(key);
+    const cachedApp = makeApp(
+      { SPIGOT: new FixtureResourceClient(FIXTURE_SPIGOT_FREE) },
+      { resourceData: dataCache, resourceBannerImage: imageCache }
+    );
+
+    const cold = await cachedApp.request("/banner/resource/spigot/12345/banner.png");
+    expect(cold.headers.get("Cache-Control")).toBe("public, max-age=2, stale-while-revalidate=0");
+
+    imageRemainingTtlMs = 500;
+    const warm = await cachedApp.request("/banner/resource/spigot/12345/banner.png");
+    expect(warm.headers.get("Cache-Control")).toBe("public, max-age=0, stale-while-revalidate=0");
+    expect(dataCache.getRemainingTtlMs("resource:spigot:12345")).toBeGreaterThan(50_000);
+  });
+
+  it("re-renders after source expiry and replacement instead of serving the old image", async () => {
+    const capturing = new CapturingResourceClient(FIXTURE_SPIGOT_FREE);
+    const dataCache = new MemoryCache({ maxEntries: 100, ttlMs: 60_000 });
+    const imageCache = new MemoryCache({ maxEntries: 100, ttlMs: 60_000 });
+    const cachedApp = makeApp(
+      { SPIGOT: capturing },
+      {
+        resourceData: dataCache,
+        resourceBannerImage: imageCache
+      }
+    );
+    const first = await cachedApp.request("/banner/resource/spigot/12345/banner.png");
+    const firstImage = Buffer.from(await first.arrayBuffer());
+
+    const replacement = {
+      ...FIXTURE_SPIGOT_FREE,
+      resource: { ...FIXTURE_SPIGOT_FREE.resource, name: "Replaced Resource" }
+    };
+    dataCache.set("resource:spigot:12345", replacement);
+    const replaced = await cachedApp.request("/banner/resource/spigot/12345/banner.png");
+    const replacedImage = Buffer.from(await replaced.arrayBuffer());
+    expect(replacedImage.equals(firstImage)).toBe(false);
+
+    dataCache.set("resource:spigot:12345", replacement, 1);
+    await Bun.sleep(5);
+    const expired = await cachedApp.request("/banner/resource/spigot/12345/banner.png");
+    expect(expired.status).toBe(200);
+    expect(capturing.ids).toEqual(["12345", "12345"]);
+  });
+
+  it("marks an image no-store when its source changes during rendering", async () => {
+    const sourceKey = "resource:spigot:12345";
+    const replacement = {
+      ...FIXTURE_SPIGOT_FREE,
+      resource: { ...FIXTURE_SPIGOT_FREE.resource, name: "Changed During Render" }
+    };
+    const dataCache = new MemoryCache({ maxEntries: 100, ttlMs: 60_000 });
+    const getFreshness = dataCache.getEntryFreshness.bind(dataCache);
+    let replaceAfterFreshnessRead = false;
+    dataCache.getEntryFreshness = (key) => {
+      const freshness = getFreshness(key);
+      if (key === sourceKey && replaceAfterFreshnessRead) {
+        replaceAfterFreshnessRead = false;
+        dataCache.set(sourceKey, replacement);
+      }
+      return freshness;
+    };
+    const imageCache = new MemoryCache({ maxEntries: 100, ttlMs: 60_000 });
+    const cachedApp = makeApp(
+      {
+        SPIGOT: {
+          getResourceBannerData: async () => {
+            replaceAfterFreshnessRead = true;
+            return FIXTURE_SPIGOT_FREE;
+          }
+        }
+      },
+      { resourceData: dataCache, resourceBannerImage: imageCache }
+    );
+
+    const response = await cachedApp.request("/banner/resource/spigot/12345/banner.png");
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
+    expect(imageCache.get<Buffer>("banner:resource:spigot:12345:png:")).toBeUndefined();
+  });
+
   it("data cache hit avoids second upstream client call", async () => {
     const capturing = new CapturingResourceClient(FIXTURE_SPIGOT_FREE);
     const dataCache = new MemoryCache({ maxEntries: 100, ttlMs: 60_000 });

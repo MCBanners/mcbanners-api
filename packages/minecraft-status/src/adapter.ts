@@ -20,4 +20,9 @@ export interface MinecraftStatusAdapter {
     value: MinecraftServerStatus | null;
     token: symbol | undefined;
   }>;
+  /** Reads the current cached source version without pinging the server. */
+  getStatusCacheFreshness?(
+    host: string,
+    port: number
+  ): { token: symbol; remainingTtlMs: number } | undefined;
 }

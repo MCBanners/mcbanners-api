@@ -14,6 +14,13 @@ import {
 import type { MemoryCache } from "@mcbanners/cache";
 import { normalizeResourceId, type TeamClient } from "@mcbanners/external-clients";
 import { Hono } from "hono";
+import {
+  bannerImageResponse,
+  getBannerImageRemainingTtlMs,
+  getOrRenderBannerImage,
+  getSourceWithFreshness,
+  readWarmBannerImage
+} from "./banner-image-cache";
 import { extractRouteRemainder, parseResourceRoutePath } from "./resource-route-parser";
 
 const BANNER_FILENAME_RE = /^banner\.(png|jpg)$/i;
@@ -62,16 +69,14 @@ export const createTeamBannerRoute = (
 
     const { id, action } = parts;
     const normalizedId = normalizeResourceId(platform, id);
+    const sourceKey = `team:${platform.toLowerCase()}:${normalizedId}`;
+    const readSourceFreshness = () => teamCache?.getEntryFreshness(sourceKey);
     const getTeam = () =>
       client === undefined
         ? Promise.resolve(null)
-        : teamCache !== undefined
-          ? teamCache.getOrSet(
-              `team:${platform.toLowerCase()}:${normalizedId}`,
-              () => client.getTeamBannerData(normalizedId),
-              { cacheNull: false }
-            )
-          : client.getTeamBannerData(normalizedId);
+        : getSourceWithFreshness(teamCache, sourceKey, () =>
+            client.getTeamBannerData(normalizedId)
+          ).then(({ value }) => value);
 
     if (action === "isValid") {
       const data = await getTeam();
@@ -90,12 +95,33 @@ export const createTeamBannerRoute = (
     if (client === undefined)
       return c.json({ error: `Unsupported platform: ${rawPlatform}.` }, 404);
 
-    const data = await getTeam();
+    const outputType = match[1].toLowerCase();
+    const rawQuery = Object.fromEntries(new URL(c.req.url).searchParams.entries());
+    const sourceFreshness = readSourceFreshness();
+
+    if (sourceFreshness !== undefined) {
+      ensureFonts();
+      const styleErrors = validateBannerStyleSettings(rawQuery);
+      if (styleErrors.length > 0) return c.json({ errors: styleErrors }, 400);
+
+      const warm = readWarmBannerImage(
+        bannerCache,
+        buildTeamBannerCacheKey(platform, normalizedId, outputType, rawQuery),
+        sourceFreshness
+      );
+      if (warm !== undefined) {
+        return bannerImageResponse(warm.image, outputType, warm.remainingTtlMs);
+      }
+    }
+
+    const { value: data, token: sourceToken } = await getSourceWithFreshness(
+      teamCache,
+      sourceKey,
+      () => client.getTeamBannerData(normalizedId)
+    );
     if (data === null) return c.body(null, 404);
 
     ensureFonts();
-    const outputType = match[1].toLowerCase();
-    const rawQuery = Object.fromEntries(new URL(c.req.url).searchParams.entries());
 
     const styleErrors = validateBannerStyleSettings(rawQuery);
     if (styleErrors.length > 0) {
@@ -110,22 +136,26 @@ export const createTeamBannerRoute = (
       return outputType === "jpg" ? encodeJpg(surface) : encodePng(surface);
     };
 
-    const buf =
-      bannerCache !== undefined
-        ? await bannerCache.getOrSet(
-            buildTeamBannerCacheKey(platform, normalizedId, outputType, rawQuery),
-            renderBanner,
-            { byteEstimate: (b) => b.length }
-          )
-        : await renderBanner();
+    const imageKey = buildTeamBannerCacheKey(platform, normalizedId, outputType, rawQuery);
+    const buf = await getOrRenderBannerImage(
+      bannerCache,
+      imageKey,
+      renderBanner,
+      sourceToken,
+      teamCache === undefined ? undefined : readSourceFreshness
+    );
+    const currentSource = readSourceFreshness();
+    const sourceStillCurrent =
+      teamCache === undefined ||
+      (sourceToken !== undefined && currentSource?.token === sourceToken);
+    if (!sourceStillCurrent) bannerCache?.delete(imageKey);
 
-    return new Response(buf, {
-      headers: {
-        "Content-Type": outputType === "jpg" ? "image/jpeg" : "image/png",
-        "Content-Length": String(buf.length),
-        "Cache-Control": "public, max-age=60, stale-while-revalidate=300"
-      }
-    });
+    return bannerImageResponse(
+      buf,
+      outputType,
+      getBannerImageRemainingTtlMs(bannerCache, imageKey, currentSource?.remainingTtlMs),
+      sourceStillCurrent
+    );
   });
 
   return route;
