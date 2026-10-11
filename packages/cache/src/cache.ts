@@ -5,6 +5,12 @@ interface CacheEntry {
   value: unknown;
   expiresAt: number;
   byteEstimate: number;
+  token: symbol;
+}
+
+interface CachedValue<T> {
+  value: T;
+  token: symbol | undefined;
 }
 
 /**
@@ -22,7 +28,7 @@ export class MemoryCache implements IMemoryCache {
   private readonly maxEntries: number;
   private readonly maxBytes: number;
   private readonly entries = new Map<string, CacheEntry>();
-  private readonly inflight = new Map<string, Promise<unknown>>();
+  private readonly inflight = new Map<string, Promise<CachedValue<unknown>>>();
   private totalBytes = 0;
 
   private _hits = 0;
@@ -39,6 +45,10 @@ export class MemoryCache implements IMemoryCache {
   }
 
   get<T>(key: string): T | undefined {
+    return this.getWithToken<T>(key)?.value;
+  }
+
+  private getWithToken<T>(key: string): CachedValue<T> | undefined {
     const entry = this.entries.get(key);
     if (entry === undefined) {
       this._misses++;
@@ -53,15 +63,15 @@ export class MemoryCache implements IMemoryCache {
     this.entries.delete(key);
     this.entries.set(key, entry);
     this._hits++;
-    return entry.value as T;
+    return { value: entry.value as T, token: entry.token };
   }
 
   getRemainingTtlMs(key: string): number | undefined {
     return this.getEntryFreshness(key)?.remainingTtlMs;
   }
 
-  /** Returns the active entry identity and remaining TTL for freshness checks. */
-  getEntryFreshness(key: string): { token: object; remainingTtlMs: number } | undefined {
+  /** Returns the active payload-free entry token and remaining TTL. */
+  getEntryFreshness(key: string): { token: symbol; remainingTtlMs: number } | undefined {
     const entry = this.entries.get(key);
     if (entry === undefined) return undefined;
     const remainingTtlMs = entry.expiresAt - Date.now();
@@ -69,7 +79,7 @@ export class MemoryCache implements IMemoryCache {
       this.removeEntry(key, entry, true);
       return undefined;
     }
-    return { token: entry, remainingTtlMs };
+    return { token: entry.token, remainingTtlMs };
   }
 
   set(key: string, value: unknown, ttlMs?: number, byteEstimate?: number): void {
@@ -83,7 +93,8 @@ export class MemoryCache implements IMemoryCache {
     const entry: CacheEntry = {
       value,
       expiresAt: Date.now() + (ttlMs ?? this.defaultTtlMs),
-      byteEstimate: bytes
+      byteEstimate: bytes,
+      token: Symbol()
     };
     this.entries.set(key, entry);
     this.totalBytes += bytes;
@@ -135,29 +146,39 @@ export class MemoryCache implements IMemoryCache {
    * so subsequent calls will retry.
    */
   getOrSet<T>(key: string, fn: () => Promise<T>, opts?: GetOrSetOptions<T>): Promise<T> {
-    const cached = this.get<T>(key);
+    return this.getOrSetWithFreshness(key, fn, opts).then(({ value }) => value);
+  }
+
+  getOrSetWithFreshness<T>(
+    key: string,
+    fn: () => Promise<T>,
+    opts?: GetOrSetOptions<T>
+  ): Promise<CachedValue<T>> {
+    const cached = this.getWithToken<T>(key);
     if (cached !== undefined) {
-      if (opts?.isFresh?.(cached) !== false) return Promise.resolve(cached);
+      if (opts?.isFresh?.(cached.value) !== false) return Promise.resolve(cached);
       this.delete(key);
     }
 
     const existing = this.inflight.get(key);
     if (existing !== undefined) {
       this._coalesced++;
-      return existing as Promise<T>;
+      return existing as Promise<CachedValue<T>>;
     }
 
-    const promise: Promise<T> = fn()
+    const promise: Promise<CachedValue<T>> = fn()
       .then((value: T) => {
         this.inflight.delete(key);
-        if (value !== null || opts?.cacheNull === true) {
+        let token: symbol | undefined;
+        if ((value !== null || opts?.cacheNull === true) && opts?.cacheResult?.(value) !== false) {
           const raw = opts?.byteEstimate;
           const bytes = typeof raw === "function" ? raw(value) : (raw ?? 0);
           const rawTtl = opts?.ttlMs;
           const ttlMs = typeof rawTtl === "function" ? rawTtl(value) : rawTtl;
           this.set(key, value, ttlMs, bytes);
+          token = this.entries.get(key)?.token;
         }
-        return value;
+        return { value, token };
       })
       .catch((err: unknown) => {
         this.inflight.delete(key);

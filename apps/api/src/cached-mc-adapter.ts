@@ -20,9 +20,16 @@ export class CachedMinecraftStatusAdapter implements MinecraftStatusAdapter {
   }
 
   getStatus(host: string, port: number): Promise<MinecraftServerStatus | null> {
+    return this.getStatusWithFreshness(host, port).then(({ value }) => value);
+  }
+
+  getStatusWithFreshness(
+    host: string,
+    port: number
+  ): Promise<{ value: MinecraftServerStatus | null; token: symbol | undefined }> {
     const normalizedHost = host.toLowerCase();
     const key = `mc:status:${normalizedHost}:${String(port)}`;
-    return this.cache.getOrSet<MinecraftServerStatus | null>(
+    return this.cache.getOrSetWithFreshness<MinecraftServerStatus | null>(
       key,
       () => this.inner.getStatus(normalizedHost, port),
       { cacheNull: false }

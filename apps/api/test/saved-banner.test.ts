@@ -661,6 +661,53 @@ describe("GET /banner/saved/:mnemonic.:outputType", () => {
     expect(secondImage).not.toEqual(firstImage);
   });
 
+  it("does not cache an image if its source is replaced during rendering", async () => {
+    const refreshedData: ResourceBannerData = {
+      ...FIXTURE_SPIGOT_RESOURCE,
+      resource: { ...FIXTURE_SPIGOT_RESOURCE.resource, name: "Concurrent Replacement" }
+    };
+    const resourceData = new MemoryCache({ ttlMs: 60_000, maxEntries: 100 });
+    const replacedKey = "resource:spigot:12345";
+    let replaced = false;
+    const renderingData: ResourceBannerData = {
+      ...FIXTURE_SPIGOT_RESOURCE,
+      resource: {
+        ...FIXTURE_SPIGOT_RESOURCE.resource,
+        get logoBase64() {
+          if (!replaced) {
+            replaced = true;
+            resourceData.set(replacedKey, refreshedData);
+          }
+          return TINY_PNG_B64;
+        }
+      }
+    };
+    resourceData.set(replacedKey, renderingData);
+    const savedBannerImage = new MemoryCache({ ttlMs: 60_000, maxEntries: 100 });
+    const repository = new InMemorySavedBannerRepository([
+      savedRow({ mnemonic: "abcdefghijklmn", type: 3, metadata: '{"resource_id":"12345"}' })
+    ]);
+    const client = new FixtureResourceClient(refreshedData);
+    const app = createApp(
+      createFixtureAdapter(MC_STATUS_FIXTURES),
+      { SPIGOT: client },
+      { resourceData, savedBannerImage },
+      { savedBanners: repository }
+    );
+
+    const first = await app.request("/banner/saved/abcdefghijklmn.png");
+    const firstImage = new Uint8Array(await first.arrayBuffer());
+    expect(first.status).toBe(200);
+    expect(replaced).toBe(true);
+    expect(savedBannerImage.stats().sets).toBe(0);
+
+    const second = await app.request("/banner/saved/abcdefghijklmn.png");
+    const secondImage = new Uint8Array(await second.arrayBuffer());
+    expect(second.status).toBe(200);
+    expect(savedBannerImage.stats().sets).toBe(1);
+    expect(secondImage).not.toEqual(firstImage);
+  });
+
   it("invalidates a rendered image when its source cache entry is evicted before expiry", async () => {
     const refreshedData: ResourceBannerData = {
       ...FIXTURE_SPIGOT_RESOURCE,
