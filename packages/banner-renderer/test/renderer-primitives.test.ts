@@ -15,11 +15,36 @@ import {
   renderTextNode,
   renderWrappedTextNode,
   rgbaColor,
+  rgbaColorToString,
   WHITE
 } from "@mcbanners/banner-renderer";
+import { wrapText } from "../src/text/wrap";
 
 const pngSignature = [0x89, 0x50, 0x4e, 0x47] as const;
 const jpgSignature = [0xff, 0xd8, 0xff] as const;
+const instrumentMeasurements = (surface: ReturnType<typeof createCanvasSurface>) => {
+  let measurements = 0;
+  const context = new Proxy(surface.context, {
+    get(target, property) {
+      const value = Reflect.get(target, property, target) as unknown;
+      if (property === "measureText" && typeof value === "function") {
+        return (...args: Parameters<typeof target.measureText>) => {
+          measurements += 1;
+          return Reflect.apply(value, target, args);
+        };
+      }
+      return typeof value === "function" ? value.bind(target) : value;
+    },
+    set(target, property, value) {
+      return Reflect.set(target, property, value, target);
+    }
+  });
+  return {
+    surface: { ...surface, context },
+    count: () => measurements,
+    reset: () => (measurements = 0)
+  };
+};
 
 describe("renderer primitives", () => {
   test("createCanvasSurface creates a surface with the correct dimensions", () => {
@@ -94,6 +119,33 @@ describe("renderer primitives", () => {
     }).not.toThrow();
   });
 
+  test("left-aligned text skips width measurement while centered text still measures", () => {
+    registerRendererFonts();
+    const surface = createCanvasSurface(468, 60);
+    const instrumented = instrumentMeasurements(surface);
+    const node = {
+      type: "text" as const,
+      x: 20,
+      y: 30,
+      content: "Measure only when alignment needs width",
+      fontFace: "source-sans-pro" as const,
+      fontWeight: "regular" as const,
+      fontSize: 16,
+      color: WHITE
+    };
+
+    renderTextNode(instrumented.surface, { ...node, align: "left" });
+    expect(instrumented.count()).toBe(0);
+    const legacySurface = createCanvasSurface(468, 60);
+    legacySurface.context.font = buildFontSpec(node.fontFace, node.fontWeight, node.fontSize);
+    legacySurface.context.fillStyle = rgbaColorToString(node.color);
+    legacySurface.context.fillText(node.content, node.x, node.y);
+    expect(surface.canvas.data()).toEqual(legacySurface.canvas.data());
+
+    renderTextNode(instrumented.surface, { ...node, align: "center" });
+    expect(instrumented.count()).toBe(1);
+  });
+
   test("renderWrappedTextNode draws wrapped text without error", () => {
     registerRendererFonts();
     const surface = createCanvasSurface(468, 120);
@@ -113,6 +165,56 @@ describe("renderer primitives", () => {
         lineHeight: 18
       });
     }).not.toThrow();
+  });
+
+  test("left-aligned wrapped text reuses only the measurements needed for wrapping", () => {
+    registerRendererFonts();
+    const surface = createCanvasSurface(300, 120);
+    surface.context.font = buildFontSpec("source-sans-pro", "regular", 14);
+    const content =
+      "Welcome to our survival world with quests, events, and friendly players around the world!";
+    let wrapMeasurements = 0;
+    const lines = wrapText(
+      (text) => {
+        wrapMeasurements += 1;
+        return surface.context.measureText(text).width;
+      },
+      content,
+      180
+    );
+
+    const instrumented = instrumentMeasurements(surface);
+    const node = {
+      type: "wrapped-text" as const,
+      x: 12,
+      y: 20,
+      content,
+      fontFace: "source-sans-pro" as const,
+      fontWeight: "regular" as const,
+      fontSize: 14,
+      color: WHITE,
+      maxWidth: 180,
+      lineHeight: 20
+    };
+
+    renderWrappedTextNode(instrumented.surface, { ...node, align: "left" });
+    expect(instrumented.count()).toBe(wrapMeasurements);
+    const legacySurface = createCanvasSurface(300, 120);
+    legacySurface.context.font = buildFontSpec(node.fontFace, node.fontWeight, node.fontSize);
+    legacySurface.context.fillStyle = rgbaColorToString(node.color);
+    const legacyLines = wrapText(
+      (text) => legacySurface.context.measureText(text).width,
+      content,
+      node.maxWidth
+    );
+    for (let i = 0; i < legacyLines.length; i += 1) {
+      legacySurface.context.fillText(legacyLines[i]!, node.x, node.y + i * node.lineHeight);
+    }
+    expect(surface.canvas.data()).toEqual(legacySurface.canvas.data());
+
+    instrumented.reset();
+    renderWrappedTextNode(instrumented.surface, { ...node, align: "right" });
+    expect(instrumented.count()).toBe(wrapMeasurements + lines.length);
   });
 
   test("renderWrappedTextNode truncates before wrapping when maxChars set", () => {
