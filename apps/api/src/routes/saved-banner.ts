@@ -29,6 +29,7 @@ import {
   TEAM_BANNER_WIDTH,
   validateBannerStyleSettings
 } from "@mcbanners/banner-renderer";
+import type { MemoryCache } from "@mcbanners/cache";
 import {
   decodeBannerTypeOrdinal,
   parseSavedBannerMetadata,
@@ -44,6 +45,7 @@ import type {
   ResourceClient,
   TeamClient
 } from "@mcbanners/external-clients";
+import { normalizeResourceId } from "@mcbanners/external-clients";
 import type { MinecraftStatusAdapter } from "@mcbanners/minecraft-status";
 import { type Context, Hono } from "hono";
 import type { AuthorClients } from "./author-banner";
@@ -129,6 +131,15 @@ export class UnsupportedSavedBannerTypeError extends Error {
     super(`Unsupported saved banner type: ${bannerType}`);
     this.name = "UnsupportedSavedBannerTypeError";
   }
+}
+
+interface SavedBannerCaches {
+  readonly savedBannerData?: MemoryCache;
+  readonly savedBannerImage?: MemoryCache;
+  readonly resourceData?: MemoryCache;
+  readonly authorData?: MemoryCache;
+  readonly memberData?: MemoryCache;
+  readonly teamData?: MemoryCache;
 }
 
 const coerceLegacyStringMap = (value: unknown): SavedBannerJsonMap | null => {
@@ -278,7 +289,8 @@ export class SavedBannerRecallService {
     private readonly resourceClients: ResourceClients,
     private readonly authorClients: AuthorClients,
     private readonly memberClients: MemberClients,
-    private readonly teamClients: TeamClients
+    private readonly teamClients: TeamClients,
+    private readonly caches: SavedBannerCaches = {}
   ) {}
 
   async render(row: SavedBannerRow, outputType: SavedBannerOutputType): Promise<Buffer | null> {
@@ -372,7 +384,14 @@ export class SavedBannerRecallService {
       return null;
     }
 
-    const data = await client.getResourceBannerData(resourceId);
+    const normalizedId = normalizeResourceId(backend, resourceId);
+    const key = `resource:${backend.toLowerCase()}:${normalizedId}`;
+    const data =
+      this.caches.resourceData === undefined
+        ? await client.getResourceBannerData(normalizedId)
+        : await this.caches.resourceData.getOrSet(key, () =>
+            client.getResourceBannerData(normalizedId)
+          );
     if (data === null) {
       return null;
     }
@@ -403,7 +422,14 @@ export class SavedBannerRecallService {
       return null;
     }
 
-    const data = await client.getAuthorBannerData(authorId);
+    const normalizedId = normalizeResourceId(backend, authorId);
+    const key = `author:${backend.toLowerCase()}:${normalizedId}`;
+    const data =
+      this.caches.authorData === undefined
+        ? await client.getAuthorBannerData(normalizedId)
+        : await this.caches.authorData.getOrSet(key, () =>
+            client.getAuthorBannerData(normalizedId)
+          );
     if (data === null) {
       return null;
     }
@@ -433,7 +459,13 @@ export class SavedBannerRecallService {
       return null;
     }
 
-    const data = await client.getMemberBannerData(memberId);
+    const data =
+      this.caches.memberData === undefined
+        ? await client.getMemberBannerData(memberId)
+        : await this.caches.memberData.getOrSet(
+            `member:builtbybit:${normalizeResourceId("BUILTBYBIT", memberId)}`,
+            () => client.getMemberBannerData(normalizeResourceId("BUILTBYBIT", memberId))
+          );
     if (data === null) {
       return null;
     }
@@ -463,7 +495,13 @@ export class SavedBannerRecallService {
       return null;
     }
 
-    const data = await client.getTeamBannerData(teamId);
+    const data =
+      this.caches.teamData === undefined
+        ? await client.getTeamBannerData(teamId)
+        : await this.caches.teamData.getOrSet(
+            `team:polymart:${normalizeResourceId("POLYMART", teamId)}`,
+            () => client.getTeamBannerData(normalizeResourceId("POLYMART", teamId))
+          );
     if (data === null) {
       return null;
     }
@@ -486,7 +524,8 @@ export const createSavedBannerRoute = (
   resourceClients: ResourceClients,
   authorClients: AuthorClients = {},
   memberClients: MemberClients = {},
-  teamClients: TeamClients = {}
+  teamClients: TeamClients = {},
+  caches: SavedBannerCaches = {}
 ): Hono => {
   const route = new Hono();
   const recall = new SavedBannerRecallService(
@@ -494,7 +533,8 @@ export const createSavedBannerRoute = (
     resourceClients,
     authorClients,
     memberClients,
-    teamClients
+    teamClients,
+    caches
   );
 
   route.post("/save", async (c) => {
@@ -545,13 +585,24 @@ export const createSavedBannerRoute = (
 
     const mnemonic = match[1];
     const outputType = match[2].toLowerCase() as SavedBannerOutputType;
-    const row = await repository.findByMnemonic(mnemonic);
-    if (row === null) {
-      return c.body(null, 404);
-    }
-
     try {
-      const buf = await recall.render(row, outputType);
+      const renderSavedBanner = async (): Promise<Buffer | null> => {
+        const row =
+          caches.savedBannerData === undefined
+            ? await repository.findByMnemonic(mnemonic)
+            : await caches.savedBannerData.getOrSet(`saved-banner:${mnemonic}`, () =>
+                repository.findByMnemonic(mnemonic)
+              );
+        return row === null ? null : recall.render(row, outputType);
+      };
+      const buf =
+        caches.savedBannerImage === undefined
+          ? await renderSavedBanner()
+          : await caches.savedBannerImage.getOrSet(
+              `saved-banner:${mnemonic}:${outputType}`,
+              renderSavedBanner,
+              { byteEstimate: (image) => image?.length ?? 0 }
+            );
       if (buf === null) {
         return c.body(null, 404);
       }

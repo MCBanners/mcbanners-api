@@ -6,6 +6,7 @@ import {
   registerRendererFonts,
   type TeamBannerData
 } from "@mcbanners/banner-renderer";
+import { MemoryCache } from "@mcbanners/cache";
 import {
   decodeBannerTypeOrdinal,
   type InsertSavedBannerInput,
@@ -89,9 +90,12 @@ const FIXTURE_POLYMART_TEAM: TeamBannerData = {
 };
 
 class FixtureResourceClient {
+  calls = 0;
+
   constructor(private readonly data: ResourceBannerData | null) {}
 
   getResourceBannerData(): Promise<ResourceBannerData | null> {
+    this.calls++;
     return Promise.resolve(this.data);
   }
 }
@@ -123,6 +127,7 @@ class FixtureTeamClient {
 class InMemorySavedBannerRepository implements SavedBannerRepository {
   private nextId = 1;
   readonly inserted: SavedBannerRow[] = [];
+  findCalls = 0;
   private readonly rows = new Map<string, SavedBannerRow>();
 
   constructor(rows: readonly SavedBannerRow[] = []) {
@@ -133,6 +138,7 @@ class InMemorySavedBannerRepository implements SavedBannerRepository {
   }
 
   findByMnemonic(mnemonic: string): Promise<SavedBannerRow | null> {
+    this.findCalls++;
     return Promise.resolve(this.rows.get(mnemonic) ?? null);
   }
 
@@ -443,6 +449,106 @@ describe("GET /banner/saved/:mnemonic.:outputType", () => {
     expect(res.status).toBe(200);
     expect(res.headers.get("Content-Type")).toBe("image/jpeg");
     expect((await res.arrayBuffer()).byteLength).toBeGreaterThan(0);
+  });
+
+  it("coalesces saved lookups and caches each output format separately", async () => {
+    const repository = new InMemorySavedBannerRepository([
+      savedRow({ mnemonic: "abcdefghijklmn" })
+    ]);
+    const savedBannerData = new MemoryCache({ ttlMs: 60_000, maxEntries: 100 });
+    const savedBannerImage = new MemoryCache({
+      ttlMs: 60_000,
+      maxEntries: 100,
+      maxBytes: 10_000_000
+    });
+    const app = createApp(
+      createFixtureAdapter(MC_STATUS_FIXTURES),
+      {},
+      { savedBannerData, savedBannerImage },
+      { savedBanners: repository }
+    );
+
+    const concurrent = await Promise.all(
+      Array.from({ length: 8 }, () => app.request("/banner/saved/abcdefghijklmn.png"))
+    );
+    expect(concurrent.every((response) => response.status === 200)).toBe(true);
+    expect(repository.findCalls).toBe(1);
+    expect(savedBannerImage.stats().sets).toBe(1);
+    expect(savedBannerImage.stats().coalesced).toBeGreaterThan(0);
+
+    const jpg = await app.request("/banner/saved/abcdefghijklmn.jpg");
+    expect(jpg.status).toBe(200);
+    expect(jpg.headers.get("Content-Type")).toBe("image/jpeg");
+    expect(repository.findCalls).toBe(1);
+    expect(savedBannerImage.stats().sets).toBe(2);
+
+    await app.request("/banner/saved/abcdefghijklmn.png");
+    expect(repository.findCalls).toBe(1);
+    expect(savedBannerImage.stats().hits).toBeGreaterThan(0);
+  });
+
+  it("reuses the marketplace data cache shared with resource banners", async () => {
+    const client = new FixtureResourceClient(FIXTURE_SPIGOT_RESOURCE);
+    const resourceData = new MemoryCache({ ttlMs: 60_000, maxEntries: 100 });
+    resourceData.set("resource:spigot:12345", FIXTURE_SPIGOT_RESOURCE);
+    const repository = new InMemorySavedBannerRepository([
+      savedRow({
+        mnemonic: "abcdefghijklmn",
+        type: 3,
+        metadata: '{"resource_id":"12345"}'
+      }),
+      savedRow({
+        id: 2,
+        mnemonic: "abcdefghijklmz",
+        type: 3,
+        metadata: '{"resource_id":"12345"}'
+      })
+    ]);
+    const app = createApp(
+      createFixtureAdapter(MC_STATUS_FIXTURES),
+      { SPIGOT: client },
+      { resourceData },
+      { savedBanners: repository }
+    );
+
+    const first = await app.request("/banner/saved/abcdefghijklmn.png");
+    const second = await app.request("/banner/saved/abcdefghijklmz.png");
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(200);
+    expect(client.calls).toBe(0);
+    expect(resourceData.stats().hits).toBe(2);
+  });
+
+  it("coalesces a marketplace lookup shared by different saved banners", async () => {
+    const client = new FixtureResourceClient(FIXTURE_SPIGOT_RESOURCE);
+    const resourceData = new MemoryCache({ ttlMs: 60_000, maxEntries: 100 });
+    const repository = new InMemorySavedBannerRepository([
+      savedRow({
+        mnemonic: "abcdefghijklmn",
+        type: 3,
+        metadata: '{"resource_id":"12345"}'
+      }),
+      savedRow({
+        id: 2,
+        mnemonic: "abcdefghijklmz",
+        type: 3,
+        metadata: '{"resource_id":"12345"}'
+      })
+    ]);
+    const app = createApp(
+      createFixtureAdapter(MC_STATUS_FIXTURES),
+      { SPIGOT: client },
+      { resourceData },
+      { savedBanners: repository }
+    );
+
+    const responses = await Promise.all([
+      app.request("/banner/saved/abcdefghijklmn.png"),
+      app.request("/banner/saved/abcdefghijklmz.png")
+    ]);
+    expect(responses.every((response) => response.status === 200)).toBe(true);
+    expect(client.calls).toBe(1);
+    expect(resourceData.stats().coalesced).toBeGreaterThan(0);
   });
 
   it("recalls a Spigot resource saved banner", async () => {

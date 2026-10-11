@@ -73,6 +73,22 @@ const teamBannerImageCache = new MemoryCache({
   maxEntries: 200,
   maxBytes: 50_000_000
 });
+const savedBannerDataCache = new MemoryCache({
+  ttlMs: Math.max(
+    cacheTtl.marketplaceResourceMs,
+    cacheTtl.marketplaceAuthorMs,
+    cacheTtl.marketplaceMemberMs,
+    cacheTtl.marketplaceTeamMs
+  ),
+  maxEntries: 500
+});
+const savedBannerImageCache = new MemoryCache({
+  // Keep cached saved images within both source-data freshness and the
+  // existing rendered-image/browser freshness window.
+  ttlMs: Math.min(60_000, ...Object.values(cacheTtl)),
+  maxEntries: 200,
+  maxBytes: 50_000_000
+});
 
 const resourceClients = {
   SPIGOT: new SpigotResourceClient(),
@@ -108,7 +124,9 @@ const appMetrics: AppMetrics | undefined = runtimeConfig.metricsEnabled
           memberData: memberDataCache.stats(),
           memberBannerImage: memberBannerImageCache.stats(),
           teamData: teamDataCache.stats(),
-          teamBannerImage: teamBannerImageCache.stats()
+          teamBannerImage: teamBannerImageCache.stats(),
+          savedBannerData: savedBannerDataCache.stats(),
+          savedBannerImage: savedBannerImageCache.stats()
         }
       })
     }
@@ -136,7 +154,9 @@ const app = createApp(
     memberData: memberDataCache,
     memberBannerImage: memberBannerImageCache,
     teamData: teamDataCache,
-    teamBannerImage: teamBannerImageCache
+    teamBannerImage: teamBannerImageCache,
+    savedBannerData: savedBannerDataCache,
+    savedBannerImage: savedBannerImageCache
   },
   {
     savedBanners: savedBannerRepository
