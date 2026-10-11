@@ -2,7 +2,7 @@
   "name": "mcbanners-api-next",
   "private": true,
   "type": "module",
-  "packageManager": "bun@1.3.14",
+  "packageManager": "bun@1.4.3",
   "workspaces": [
     "apps/*",
     "packages/*"
@@ -39,14 +39,14 @@
     "@mcbanners/external-clients": "workspace:*",
     "@mcbanners/logger": "workspace:*",
     "@mcbanners/minecraft-status": "workspace:*",
-    "hono": "^4.12.21",
-    "kysely": "^0.29.2",
-    "pino": "^10.3.1",
-    "zod": "^4.4.3"
+    "hono": "^4.13.13",
+    "kysely": "^0.29.6",
+    "pino": "^10.4.0",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.4.15",
-    "@types/bun": "^1.3.14",
-    "typescript": "6.0.3"
+    "@biomejs/biome": "2.5.15",
+    "@types/bun": "^1.4.2",
+    "typescript": "7.0.2"
   }
 }

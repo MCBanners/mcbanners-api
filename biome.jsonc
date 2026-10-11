@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.4.15/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.5.15/schema.json",
 
   "vcs": {
     "enabled": true,
@@ -47,7 +47,7 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true,
+      "preset": "recommended",
       "complexity": {
         "useLiteralKeys": "off"
       },
@@ -65,7 +65,7 @@
     "enabled": true,
     "actions": {
       "source": {
-        "recommended": true
+        "preset": "recommended"
       }
     }
   }

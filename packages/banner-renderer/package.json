@@ -15,6 +15,6 @@
   "dependencies": {
     "@mcbanners/domain": "workspace:*",
     "@mcbanners/minecraft-status": "workspace:*",
-    "@napi-rs/canvas": "^1.0.0"
+    "@napi-rs/canvas": "^1.0.11"
   }
 }

@@ -12,6 +12,6 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "pino": "^10.3.1"
+    "pino": "^10.4.0"
   }
 }

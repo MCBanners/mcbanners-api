@@ -1,4 +1,4 @@
-FROM oven/bun:1.3.14 AS builder
+FROM oven/bun:1.4.3 AS builder
 
 WORKDIR /app
 
@@ -9,7 +9,7 @@ RUN bun run typecheck
 RUN bun run test
 RUN bun run build
 
-FROM oven/bun:1.3.14 AS runtime
+FROM oven/bun:1.4.3 AS runtime
 
 WORKDIR /app
 
